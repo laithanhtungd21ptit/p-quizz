@@ -19,7 +19,7 @@ const Sidebar = ({ isCollapsed }) => {
   const isActive = (path) => location.pathname === path
 
   const menuItems = [
-    { icon: Home, label: 'Dashboard', path: '/' },
+    { icon: Home, label: 'Trang chủ', path: '/' },
     { 
       icon: BookOpen, 
       label: 'Thư viện', 
@@ -30,7 +30,7 @@ const Sidebar = ({ isCollapsed }) => {
         { label: 'Bộ câu hỏi đã lưu', path: '/saved-sets' }
       ]
     },
-    { icon: Clock, label: 'Lịch sử', path: '/history' },
+    { icon: Clock, label: 'Lịch sử chơi', path: '/history' },
     { icon: User, label: 'Hồ sơ', path: '/profile' },
   ]
 
