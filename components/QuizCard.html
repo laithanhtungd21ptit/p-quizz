@@ -1,0 +1,72 @@
+<div class="max-w-xl w-full bg-white rounded-lg shadow-2xl flex gap-6 p-6 relative"
+     role="region" aria-label="Thông tin bài quiz P-Quizz chủ đề tiếng Nhật">
+  <!-- Left image block -->
+  <div class="flex-shrink-0 w-40 h-28 bg-gray-300 rounded-md relative flex flex-col justify-center items-center select-none">
+    <span class="text-4xl font-extrabold text-pink-600 mb-1" style="font-family: 'Poppins', sans-serif;">P-QUIZZ</span>
+    <div class="bg-pink-600 text-white rounded-full text-xs px-3 py-1 flex items-center gap-1 select-none" aria-label="Số câu hỏi 10 câu hỏi quiz">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16h6M8 20h8a2 2 0 002-2v-6a2 2 0 00-2-2H8a2 2 0 00-2 2v6a2 2 0 002 2z" />
+      </svg>
+      <span class="question-count">10 câu hỏi</span>
+    </div>
+  </div>
+
+  <!-- Right content block -->
+  <div class="flex-1 flex flex-col justify-between leading-relaxed select-text">
+    <!-- Top row: title and icons -->
+    <div class="flex justify-between items-start gap-3 flex-wrap">
+      <h2 class="text-lg font-semibold text-gray-900">
+        CHỦ ĐỀ: <span class="uppercase topic-text">TIẾNG NHẬT</span>
+      </h2>
+      <div class="flex items-center gap-4 text-gray-600">
+        <!-- Edit icon button -->
+        <button aria-label="Chỉnh sửa bài quiz" 
+                class="edit-btn hover:text-pink-600 focus-visible:outline-pink-600" title="Chỉnh sửa">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M11 5h6m2 2v6m-2 2h-6m-4 4H6a2 2 0 01-2-2v-1.5M3 16l3-3 7-7a2 2 0 112.828 2.828l-7 7-3 3z" />
+          </svg>
+        </button>
+        <!-- Star/Favorite icon button -->
+        <button aria-label="Yêu thích bài quiz" 
+                class="favorite-btn hover:text-pink-600 focus-visible:outline-pink-600" title="Yêu thích">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l2.286 7.01a1 1 0 00.95.69h7.37c.969 0 1.371 1.24.588 1.81l-5.97 4.34a1 1 0 00-.364 1.118l2.287 7.009c.3.922-.755 1.688-1.54 1.118l-5.97-4.34a1 1 0 00-1.175 0l-5.97 4.34c-.784.57-1.838-.196-1.539-1.118l2.287-7.009a1 1 0 00-.364-1.118L2.855 12.438c-.783-.57-.38-1.81.588-1.81h7.37a1 1 0 00.95-.69l2.286-7.01z" />
+          </svg>
+        </button>
+        <!-- More options icon button -->
+        <button aria-label="Thêm tùy chọn" 
+                class="more-btn hover:text-pink-600 focus-visible:outline-pink-600" title="Thêm tùy chọn">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+            <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zm6 0a2 2 0 11-4 0 2 2 0 014 0zm6 0a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Middle row: subtitle and author -->
+    <p class="mt-1 text-gray-700 font-normal text-base tracking-wide subtitle-text">Từ vựng Mina no Nihongo bài 25</p>
+    <div class="flex items-center mt-2 gap-2 text-gray-600 text-sm select-none">
+      <div class="w-6 h-6 rounded-full overflow-hidden border border-gray-300 flex justify-center items-center bg-gray-100 flex-shrink-0" aria-label="Ảnh đại diện người dùng Bạn">
+        <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/e6aad9ee-7272-4c1d-a2a9-a273e9bdda28.png" alt="Ảnh đại diện người dùng Bạn, khung tròn, nền xám nhạt" class="object-cover w-full h-full" onerror="this.style.display='none'" />
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true" focusable="false" style="display:none;">
+          <path d="M8 8a3 3 0 100-6 3 3 0 000 6zM2 14s1-1 6-1 6 1 6 1v-1a5 5 0 00-12 0v1z" />
+        </svg>
+      </div>
+      <span class="author-text">Bạn</span>
+    </div>
+    
+    <!-- Bottom row: buttons and stats -->
+    <div class="flex flex-wrap sm:flex-nowrap items-center gap-3 mt-3">
+      <button type="button"
+        class="start-quiz-btn bg-pink-600 text-white text-xs font-semibold px-4 py-1 rounded-full hover:bg-pink-700 focus-visible:outline-pink-600 focus-visible:outline-2">
+        Bắt đầu quiz trực tiếp
+      </button>
+      <div class="bg-gray-300 text-gray-700 text-xs px-3 py-1 rounded-full flex items-center gap-2 select-none" aria-label="Số lượt chơi quiz là 2">
+        <span class="play-count">2 lượt chơi</span>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87M16 3.13a4 4 0 010 7.75M8 3.13a4 4 0 000 7.75" />
+        </svg>
+      </div>
+    </div>
+  </div>
+</div>
