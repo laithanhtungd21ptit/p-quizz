@@ -36,8 +36,6 @@ cd p-quizz
 npm install
 ```
 
-
-
 ## 🚀 Chạy ứng dụng
 
 ### Chạy Frontend
@@ -139,4 +137,4 @@ P-Quiz Team
 
 ---
 
-**Lưu ý**: Đây là phiên bản demo với mock data. Để sử dụng trong production, cần tích hợp backend API và database thực. 
+**Lưu ý**: Đây là phiên bản demo với mock data. Để sử dụng trong production, cần tích hợp backend API và database thực.
