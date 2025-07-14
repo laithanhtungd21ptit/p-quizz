@@ -10,11 +10,15 @@
 
 body {
   font-family: 'Poppins', sans-serif;
-  background: var(--dark-bg);
+  /* background: var(--dark-bg); */
   color: var(--white);
   margin: 0;
   min-height: 100vh;
   overflow-x: hidden;
+  background-image: url('/background2.png');
+  background-repeat: no-repeat;
+  background-size: cover; /* hoặc contain, hoặc auto */
+  background-position: center center;
 }
 
 /* Sidebar */
@@ -644,4 +648,47 @@ main::before {
   .card-header .title {
     max-width: 100%;
   }
+}
+
+@font-face {
+  font-family: "Berlin Sans FB Demi";
+  src: url("/fonts/BRLNSDB.TTF") format("truetype");
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Berlin Sans FB";
+  src: url("/fonts/BRLNSB.TTF") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Berlin Sans FB Regular";
+  src: url("/fonts/BRLNSR.TTF") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
+
+/* Font FWWC2023 */
+@font-face {
+  font-family: "FWWC2023";
+  src: url("/fonts/FWWC2023-REGULAR.TTF") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "FWWC2023";
+  src: url("/fonts/FWWC2023-SEMIBOLD.TTF") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "FWWC2023";
+  src: url("/fonts/FWWC2023-BOLD.TTF") format("truetype");
+  font-weight: 700;
+  font-style: normal;
 }

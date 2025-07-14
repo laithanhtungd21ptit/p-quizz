@@ -30,12 +30,18 @@ export default {
           700: '#334155',
           800: '#1e293b',
           900: '#0f172a',
-        }
+        },
+        pink: {
+          DEFAULT: 'var(--pink)',
+          light: 'rgba(255, 180, 210, 1)', // màu hồng nhạt
+        },
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
+        title: ['"Berlin Sans FB Demi"', 'sans-serif'],  // cho P-QUIZZ
+        content: ['FWWC2023', 'sans-serif'],              // cho phần nội dung
       },
     },
   },
   plugins: [],
-} 
+}
