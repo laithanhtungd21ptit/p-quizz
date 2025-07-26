@@ -1,19 +1,34 @@
+// src/App.jsx
 import React, { useState } from 'react'
-import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Outlet, useNavigate } from 'react-router-dom'
+
 import Sidebar from './components/Sidebar'
 import TopControls from './components/TopControls'
+import HeaderForController from './components/HeaderForController'
+
 import Dashboard from './pages/Dashboard'
 import CreatedSets from './pages/CreatedSets'
 import SavedSets from './pages/SavedSets'
 import History from './pages/History'
 import Profile from './pages/Profile'
 import Settings from './pages/Settings'
+
 import Login from './pages/Login'
 import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
-// import HistoryStatTest from './pages/HistoryStatTest'
+import SentActivateLink from './pages/SentActivateLink'
+import ActivatedSuccessfully from './pages/ActivatedSuccessfully'
+import EnterRoomCode from './pages/EnterRoomCode'
+import WaitingRoomForController from './pages/WaitingRoomForController'
+import WaitingRoomForPlayer from './pages/WaitingRoomForPlayer'
 
-// Layout chung cho các trang cần sidebar & top controls
+
+import ChatTest from './pages/ChatTest'
+import SupportCardButtonTest from './pages/SupportCardButtonTest'
+
+/**
+ * Layout chung có Sidebar + full TopControls
+ */
 function MainLayout({ sidebarCollapsed, setSidebarCollapsed }) {
   return (
     <div className="app-root flex h-screen bg-dark-bg text-white">
@@ -35,12 +50,56 @@ function MainLayout({ sidebarCollapsed, setSidebarCollapsed }) {
             minWidth: 0,
           }}
         >
-          {/* Background watermark */}
-          <div className="absolute inset-0 bg-[url('https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/55103466-9ca2-48f4-ad9a-d66952d336ce.png')] bg-center bg-cover opacity-5 pointer-events-none"></div>
+          {/* watermark */}
+          <div className="absolute inset-0 bg-[url('https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/55103466-9ca2-48f4-ad9a-d66952d336ce.png')] bg-center bg-cover opacity-5 pointer-events-none" />
           <div className="relative z-10 w-full">
             <Outlet />
           </div>
         </main>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Layout đơn giản chỉ giữ TopControls với props để ẩn menu/logo/search/create
+ * và bật nút Quay lại. Nội dung con sẽ render trong <Outlet/>.
+ */
+function SimpleHeaderLayout() {
+  const navigate = useNavigate()
+  return (
+    <div className="min-h-screen bg-dark-bg text-white">
+      <TopControls
+        // ẩn các phần không cần thiết
+        showMenu={false}
+        showLogo={false}
+        showSearch={false}
+        showCreate={false}
+        showBack={true}
+      >
+        {/* Nút quay lại, nằm ở vị trí bên trái
+        <button
+          onClick={() => navigate(-1)}
+          className="absolute left-6 top-1/2 transform -translate-y-1/2 text-[var(--pink)] font-semibold"
+        >
+          ← Quay lại
+        </button> */}
+      </TopControls>
+
+      {/* khu vực render nội dung trang con */}
+      <div className="pt-14">
+        <Outlet />
+      </div>
+    </div>
+  )
+}
+
+function HeaderForControllerLayout() {
+  return (
+    <div className="min-h-screen bg-dark-bg text-white">
+      <HeaderForController />
+      <div className="pt-14">
+        <Outlet />
       </div>
     </div>
   )
@@ -52,11 +111,26 @@ export default function App() {
   return (
     <Router>
       <Routes>
-        {/* Trang đăng nhập không cần sidebar & top controls */}
+        {/* Những trang thuần form không cần header/sidebar */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
-        {/* <Route path="/history-stat-test" element={<HistoryStatTest />} /> */}
+        <Route path="/sent-activate-link" element={<SentActivateLink />} />
+        <Route path="/activated-successfully" element={<ActivatedSuccessfully />} />
+
+        {/* Những trang chỉ cần header thu gọn */}
+        <Route element={<SimpleHeaderLayout />}>
+          <Route path="/enter-room-code" element={<EnterRoomCode />} />
+          <Route path="/waiting-room-for-player" element={<WaitingRoomForPlayer />} />
+          <Route path="/chat-test" element={<ChatTest />} />
+        </Route>
+
+        {/* Trang cần layout điều khiển (quay lại + kết thúc) */}
+        <Route element={<HeaderForControllerLayout />}>
+          <Route path="/support-card-button" element={<SupportCardButtonTest />} />
+          <Route path="/waiting-room-for-controller" element={<WaitingRoomForController />} />
+
+        </Route>
 
         {/* Các trang còn lại nằm trong MainLayout */}
         <Route

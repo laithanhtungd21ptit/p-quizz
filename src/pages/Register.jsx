@@ -35,7 +35,7 @@ const Register = () => {
         P-QUIZZ
       </h1>
 
-      <div className="w-full max-w-md bg-[var(--white)] border-8 border-[var(--pink)] shadow-[0_4px_30px_var(--shadow-pink)] p-6 rounded-lg relative">
+      <div className="w-full max-w-xl bg-[var(--white)] border-8 border-[var(--pink)] shadow-[0_0_30px_var(--shadow-pink)] px-10 py-6 rounded-lg relative">
         <h2 className="text-center text-3xl font-bold text-[var(--pink)] mb-6">
           ĐĂNG KÝ
         </h2>
@@ -135,7 +135,7 @@ const Register = () => {
             to="/login"
             className="text-base font-semibold text-[var(--pink)] hover:underline hover:scale-105 transition-transform ease-in-out"
           >
-            Đăng nhập
+            ĐĂNG NHẬP
           </Link>
         </div>
       </div>

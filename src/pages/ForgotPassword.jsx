@@ -1,32 +1,31 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
+  const navigate = useNavigate(); // ← khởi tạo useNavigate
 
   const handleEmailChange = (e) => setEmail(e.target.value);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log("Forgot password email:", email);
-    // TODO: Implement send reset link logic
+    // TODO: gửi request API để gửi link...
+    // Sau khi thành công, chuyển sang trang SentActivateLink:
+    navigate("/sent-activate-link", { state: { email } });
   };
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-start pt-4 px-4 font-content">
-      {/* H1 giữ P-QUIZZ */}
       <h1 className="mt-4 mb-6 text-[var(--pink)] text-7xl font-title font-bold text-center">
         P-QUIZZ
       </h1>
 
-      <div className="w-full max-w-md bg-[var(--white)] border-8 border-[var(--pink)] shadow-[0_4px_30px_var(--shadow-pink)] p-6 rounded-lg">
-        {/* Instruction inside white box */}
+      <div className="w-full max-w-xl bg-[var(--white)] h-[75vh] border-8 border-[var(--pink)] shadow-[0_0_30px_var(--shadow-pink)] px-10 py-6 rounded-lg flex flex-col justify-center">
         <p className="mb-4 text-xl font-bold text-[var(--pink)]">
           Vui lòng nhập email của bạn
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Email input */}
           <div>
             <label htmlFor="email" className="block text-xl font-semibold text-[var(--pink)] mb-1">
               Email
@@ -44,7 +43,6 @@ const ForgotPassword = () => {
             </div>
           </div>
 
-          {/* Submit button */}
           <button
             type="submit"
             className="w-full h-12 bg-[var(--pink)] rounded-lg text-white text-xl font-semibold hover:shadow-lg hover:scale-105 transition-transform ease-in-out"
@@ -53,11 +51,15 @@ const ForgotPassword = () => {
           </button>
         </form>
 
-        {/* Back to login text with arrow */}
         <div className="mt-6 text-center">
           <p className="text-black text-base inline-flex items-center">
-            {/* <img src="/arrow-left.png" alt="Back" className="inline-block align-middle w-4 h-4 mr-2" /> */}
-            Quay lại <Link to="/login" className="text-[var(--pink)] font-semibold hover:underline transition ease-in-out ml-1">Đăng nhập</Link>
+            Quay lại{" "}
+            <Link
+              to="/login"
+              className="text-[var(--pink)] font-semibold hover:underline transition ease-in-out ml-1"
+            >
+              ĐĂNG NHẬP
+            </Link>
           </p>
         </div>
       </div>

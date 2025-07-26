@@ -23,7 +23,7 @@ const Login = () => {
         P-QUIZZ
       </h1>
 
-      <div className="w-full max-w-md bg-[var(--white)] border-8 border-[var(--pink)] shadow-[0_4px_30px_var(--shadow-pink)] p-6 rounded-lg relative">
+      <div className="w-full max-w-xl bg-[var(--white)] border-8 border-[var(--pink)] shadow-[0_0_30px_var(--shadow-pink)] px-10 py-6 rounded-lg relative">
         <h2 className="text-center text-3xl font-bold text-[var(--pink)] mb-6">
           ĐĂNG NHẬP
         </h2>
@@ -97,7 +97,7 @@ const Login = () => {
             className="w-full h-12 mt-2 flex items-center justify-center gap-3 rounded-lg border border-[var(--pink)] text-black hover:bg-[var(--pink)] hover:text-white transition ease-in-out"
           >
             <img className="w-6 h-6 object-contain" src="/google-icon.png" alt="Google" />
-            <span className="font-semibold">Đăng nhập bằng google</span>
+            <span className="font-semibold">Đăng nhập bằng Google</span>
           </button>
         </form>
 
