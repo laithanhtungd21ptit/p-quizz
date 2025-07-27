@@ -27,7 +27,7 @@ aside {
   border-right: 1px solid #222;
   width: 280px;
   min-height: 100vh;
-  padding: 30px 20px 30px 40px;
+  /* padding: 30px 20px 30px 40px; */
   position: fixed;
   top: 74px;
   left: 0;
@@ -97,16 +97,12 @@ aside {
 /* Main content */
 main {
   margin-left: 280px;
-  margin-top: 14px;
-  padding: 94px 40px 60px 40px;
+  /* margin-top: 14px; */
+  /* padding: 94px 40px 60px 40px; */
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   gap: 32px;
-  background:
-    radial-gradient(ellipse at center, rgba(255,0,102,0.15) 0%, transparent 80%),
-    repeating-radial-gradient(circle at center, transparent 0 380px, rgba(255,0,102,0.07) 380px 410px),
-    linear-gradient(115deg, #1a001a, #320032);
   position: relative;
   z-index: 1;
   overflow-x: hidden;

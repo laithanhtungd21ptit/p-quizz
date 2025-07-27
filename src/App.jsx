@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Routes, Route, Outlet, useNavigate } from 'rea
 import Sidebar from './components/Sidebar'
 import TopControls from './components/TopControls'
 import HeaderForController from './components/HeaderForController'
+import CreatePageLayout from './components/CreatePageLayout'
 
 import Dashboard from './pages/Dashboard'
 import CreatedSets from './pages/CreatedSets'
@@ -22,9 +23,17 @@ import EnterRoomCode from './pages/EnterRoomCode'
 import WaitingRoomForController from './pages/WaitingRoomForController'
 import WaitingRoomForPlayer from './pages/WaitingRoomForPlayer'
 
-
 import ChatTest from './pages/ChatTest'
 import SupportCardButtonTest from './pages/SupportCardButtonTest'
+
+import CreateRoom from './pages/CreateRoom'
+import CreateQuestionSet from './pages/CreateQuestionSet'
+import QuestionSetDetail from './pages/QuestionSetDetail'
+import HistoryDetail from './pages/HistoryDetail'
+import PreviewPage from './pages/PreviewPage'
+import EditPage from './pages/EditPage'
+import EditQuestionSet from './pages/EditQuestionSet'
+import PlayerGame from './pages/PlayerGame';
 
 /**
  * Layout chung có Sidebar + full TopControls
@@ -107,7 +116,7 @@ function HeaderForControllerLayout() {
 
 export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-
+  
   return (
     <Router>
       <Routes>
@@ -117,6 +126,14 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/sent-activate-link" element={<SentActivateLink />} />
         <Route path="/activated-successfully" element={<ActivatedSuccessfully />} />
+
+        {/* Routes không có Sidebar và TopControls */}
+        <Route path="/create-question-set" element={<CreateQuestionSet />} />
+        <Route path="/edit-question-set/:idx" element={<EditQuestionSet />} />
+        <Route path="/player-game" element={<PlayerGame />} />
+        <Route path="/preview" element={<PreviewPage />} />
+        <Route path="/question-set/:id" element={<QuestionSetDetail />} />
+        <Route path="/edit" element={<EditPage />} />
 
         {/* Những trang chỉ cần header thu gọn */}
         <Route element={<SimpleHeaderLayout />}>
@@ -129,8 +146,14 @@ export default function App() {
         <Route element={<HeaderForControllerLayout />}>
           <Route path="/support-card-button" element={<SupportCardButtonTest />} />
           <Route path="/waiting-room-for-controller" element={<WaitingRoomForController />} />
-
         </Route>
+
+        {/* Routes riêng cho trang tạo phòng và tạo bộ câu hỏi (không có Sidebar và TopControls) */}
+        <Route path="/create-room" element={
+          <CreatePageLayout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
+            <CreateRoom />
+          </CreatePageLayout>
+        } />
 
         {/* Các trang còn lại nằm trong MainLayout */}
         <Route
@@ -142,9 +165,11 @@ export default function App() {
           }
         >
           <Route path="/" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/created-sets" element={<CreatedSets />} />
           <Route path="/saved-sets" element={<SavedSets />} />
           <Route path="/history" element={<History />} />
+          <Route path="/history-detail" element={<HistoryDetail />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
         </Route>

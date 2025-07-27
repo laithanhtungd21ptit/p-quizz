@@ -21,6 +21,10 @@
   --shadow-pink: #ff1a79;
 }
 
+html {
+  overflow-y: scroll;
+}
+
 body {
   font-family: 'Inter', sans-serif;
   background: var(--dark-bg);
@@ -28,24 +32,25 @@ body {
   margin: 0;
   min-height: 100vh;
   overflow-x: hidden;
+  overflow-y: scroll;
 }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 0px; /* Ẩn thanh cuộn dọc */
 }
 
 ::-webkit-scrollbar-track {
-  background: #1a1a1a;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--pink);
+  background: transparent;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #e80055;
+  background: transparent;
 }
 
 /* Hide scrollbar for specific elements */
@@ -56,6 +61,17 @@ body {
 .main-content {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Ẩn thanh cuộn dọc cho toàn bộ trang */
+html {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+body {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
 }
 
 /* Sidebar positioning */

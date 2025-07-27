@@ -3,12 +3,14 @@ import { Clock, Trophy, Target, Calendar } from 'lucide-react'
 import { mockHistory } from '../data/mockData'
 import DateArrow from '../components/DateArrow'
 import PQuizzCard from '../components/PQuizzCard'
+import { useNavigate } from 'react-router-dom'
 
 const History = () => {
   const historyItems = mockHistory
   const [showCalendar, setShowCalendar] = useState(false)
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [currentMonth, setCurrentMonth] = useState(new Date())
+  const navigate = useNavigate();
 
   const getScoreColor = (score) => {
     if (score >= 90) return 'text-green-400'
@@ -212,7 +214,7 @@ const History = () => {
             description: "Từ vựng Mina no Nihongo bài 25 - Học các từ vựng cơ bản về gia đình và công việc",
             questionCount: 15,
             dateTime: "19h30, 10/07/2025",
-            onViewDetails: () => console.log('Xem chi tiết'),
+            onViewDetails: () => navigate('/history-detail'),
             onDelete: () => console.log('Xóa'),
             isDeletable: true
           },
@@ -221,16 +223,16 @@ const History = () => {
             description: "Đại số cơ bản lớp 10 - Phương trình bậc hai và định lý Vi-et",
             questionCount: 12,
             dateTime: "20h00, 12/07/2025",
-            onViewDetails: () => console.log('Xem chi tiết 2'),
+            onViewDetails: () => navigate('/history-detail'),
             onDelete: () => console.log('Xóa 2'),
-            isDeletable: false
+            isDeletable: true
           },
           {
             topic: "Tiếng Anh",
             description: "Grammar Intermediate - Present Perfect và Past Perfect tenses",
             questionCount: 18,
             dateTime: "21h00, 14/07/2025",
-            onViewDetails: () => console.log('Xem chi tiết 3'),
+            onViewDetails: () => navigate('/history-detail'),
             onDelete: () => console.log('Xóa 3'),
             isDeletable: true
           }
@@ -248,7 +250,7 @@ const History = () => {
             description: "Cơ học lượng tử - Nguyên lý bất định Heisenberg và hàm sóng",
             questionCount: 8,
             dateTime: "22h30, 16/07/2025",
-            onViewDetails: () => console.log('Xem chi tiết 4'),
+            onViewDetails: () => navigate('/history-detail'),
             onDelete: () => console.log('Xóa 4'),
             isDeletable: true
           },
@@ -257,9 +259,9 @@ const History = () => {
             description: "Bảng tuần hoàn và liên kết hóa học - Cấu trúc electron",
             questionCount: 22,
             dateTime: "23h00, 18/07/2025",
-            onViewDetails: () => console.log('Xem chi tiết 5'),
+            onViewDetails: () => navigate('/history-detail'),
             onDelete: () => console.log('Xóa 5'),
-            isDeletable: false
+            isDeletable: true
           }
         ]}
       />

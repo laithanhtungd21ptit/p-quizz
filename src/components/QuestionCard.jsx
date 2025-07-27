@@ -1,7 +1,9 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Star, Clock, Users, TrendingUp } from 'lucide-react'
 
 const QuestionCard = ({ question }) => {
+  const navigate = useNavigate()
   const [isStarred, setIsStarred] = useState(question.isStarred)
 
   const getDifficultyColor = (difficulty) => {
@@ -17,8 +19,27 @@ const QuestionCard = ({ question }) => {
     }
   }
 
+  const handleCardClick = () => {
+    navigate(`/question-set/${question.id}`)
+  }
+
+  const handleStartClick = (e) => {
+    e.stopPropagation()
+    // TODO: Navigate to quiz page
+    console.log('Starting quiz:', question.id)
+  }
+
+  const handleAuthorClick = (e) => {
+    e.stopPropagation()
+    // TODO: Navigate to author profile page
+    console.log('Author clicked:', question.author)
+  }
+
   return (
-    <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700 hover:bg-gray-800/70 transition-all duration-300 hover:shadow-lg hover:shadow-pink-500/10">
+    <div 
+      className="bg-gray-800/50 rounded-xl p-6 border border-gray-700 hover:bg-gray-800/70 transition-all duration-300 hover:shadow-lg hover:shadow-pink-500/10 cursor-pointer"
+      onClick={handleCardClick}
+    >
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <h3 className="text-lg font-semibold text-white line-clamp-2 flex-1 mr-3">
@@ -66,7 +87,10 @@ const QuestionCard = ({ question }) => {
 
       {/* Footer */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div 
+          className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={handleAuthorClick}
+        >
           <img
             src={question.authorAvatar}
             alt={question.author}
@@ -76,7 +100,10 @@ const QuestionCard = ({ question }) => {
             {question.author}
           </span>
         </div>
-        <button className="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium rounded-lg transition-colors duration-200">
+        <button 
+          onClick={handleStartClick}
+          className="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+        >
           Bắt đầu
         </button>
       </div>

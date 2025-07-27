@@ -1,7 +1,8 @@
 // src/components/TopControls.jsx
 import React, { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Search, Plus, ChevronDown, LogOut, Settings, User, Menu } from 'lucide-react'
+import { Search, Plus, ChevronDown, LogOut, Settings, User, Menu, Trello, FileText } from 'lucide-react'
+import CreateRoom from '../pages/CreateRoom'
 
 /**
  * Props mới:
@@ -21,13 +22,19 @@ const TopControls = ({
   showBack = false,
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [isCreateDropdownOpen, setIsCreateDropdownOpen] = useState(false)
+  const [showCreateRoomModal, setShowCreateRoomModal] = useState(false)
   const dropdownRef = useRef(null)
+  const createDropdownRef = useRef(null)
   const navigate = useNavigate()
 
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setIsDropdownOpen(false)
+      }
+      if (createDropdownRef.current && !createDropdownRef.current.contains(e.target)) {
+        setIsCreateDropdownOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -77,11 +84,43 @@ const TopControls = ({
         </div>
       )}
 
-      {/* Create Button */}
+      {/* Create Button with Dropdown */}
       {showCreate && (
-        <button className="w-12 h-12 bg-[#ED005D] hover:bg-[#d10052] text-white rounded-full flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-[#ED005D]/25 ml-4">
-          <Plus className="w-6 h-6" />
-        </button>
+        <div className="relative ml-4" ref={createDropdownRef}>
+          <button 
+            onClick={() => setIsCreateDropdownOpen(!isCreateDropdownOpen)}
+            className="w-12 h-12 bg-[#ED005D] hover:bg-[#d10052] text-white rounded-full flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-[#ED005D]/25"
+          >
+            <Plus className="w-6 h-6" />
+          </button>
+          {/* Create Dropdown Menu */}
+          {isCreateDropdownOpen && (
+            <div className="absolute left-1/2 transform -translate-x-1/2 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-xl z-50">
+              <div className="py-2">
+                <button 
+                  onClick={() => {
+                    setIsCreateDropdownOpen(false)
+                    setShowCreateRoomModal(true)
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-200 transition-colors duration-200"
+                >
+                  <Trello className="w-4 h-4" />
+                  Tạo phòng
+                </button>
+                <button 
+                  onClick={() => {
+                    setIsCreateDropdownOpen(false)
+                    navigate('/create-question-set')
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-200 transition-colors duration-200"
+                >
+                  <FileText className="w-4 h-4" />
+                  Tạo bộ câu hỏi
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {/* User Dropdown */}
@@ -106,11 +145,11 @@ const TopControls = ({
           />
         </button>
         {isDropdownOpen && (
-          <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50">
+          <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-xl z-50">
             <div className="py-2">
               <Link
                 to="/profile"
-                className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200"
+                className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-200 transition-colors duration-200"
                 onClick={() => setIsDropdownOpen(false)}
               >
                 <User className="w-4 h-4" />
@@ -118,14 +157,14 @@ const TopControls = ({
               </Link>
               <Link
                 to="/settings"
-                className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200"
+                className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-200 transition-colors duration-200"
                 onClick={() => setIsDropdownOpen(false)}
               >
                 <Settings className="w-4 h-4" />
                 Cài đặt
               </Link>
-              <hr className="border-gray-700 my-1" />
-              <button className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-400 hover:bg-gray-700 hover:text-red-300 transition-colors duration-200">
+              <hr className="border-gray-200 my-1" />
+              <button className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-gray-200 transition-colors duration-200">
                 <LogOut className="w-4 h-4" />
                 Đăng xuất
               </button>
@@ -133,6 +172,7 @@ const TopControls = ({
           </div>
         )}
       </div>
+      {showCreateRoomModal && <CreateRoom onClose={() => setShowCreateRoomModal(false)} />}
     </div>
   )
 }

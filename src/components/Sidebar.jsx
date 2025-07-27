@@ -35,8 +35,9 @@ const Sidebar = ({ isCollapsed }) => {
   ]
 
   return (
-    <aside className={`sidebar fixed left-0 h-full bg-gray-900 border-r border-gray-700 p-6 flex flex-col gap-10 shadow-[inset_4px_0px_18px_2px_#ED005D] z-30 ${isCollapsed ? 'sidebar-collapsed' : ''}`}
-      style={{ width: isCollapsed ? '72px' : '288px', transition: 'width 0.2s cubic-bezier(.4,0,.2,1)', background: '#18181c' }}>
+    <aside className={`sidebar fixed left-0 h-full bg-gray-900 border-r border-gray-700 p-6 flex flex-col gap-10 z-30 ${isCollapsed ? 'sidebar-collapsed' : ''}`}
+      style={{ width: isCollapsed ? '72px' : '288px', transition: 'width 0.2s cubic-bezier(.4,0,.2,1)', background: 'rgba(0,0,0,0.90)', boxShadow: '16px 0 32px -8px rgba(237,0,93,0.28)' }}>
+      <div style={{position: 'absolute', top: 0, left: 0, right: 0, height: '8px', background: 'rgba(0,0,0,1)', zIndex: 40}} />
       {/* Logo đã chuyển lên TopControls */}
       <nav className="flex flex-col gap-4">
         {menuItems.map((item, index) => (

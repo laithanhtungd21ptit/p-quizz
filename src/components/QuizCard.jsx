@@ -1,4 +1,5 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Edit, Star, MoreHorizontal, Users, FileText } from 'lucide-react'
 
 const QuizCard = ({ 
@@ -9,6 +10,12 @@ const QuizCard = ({
   author = "Bạn",
   authorAvatar = "https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/e6aad9ee-7272-4c1d-a2a9-a273e9bdda28.png"
 }) => {
+  const navigate = useNavigate()
+
+  const handleEditClick = (e) => {
+    e.stopPropagation()
+    navigate('/edit')
+  }
   return (
     <div className="max-w-xl w-full bg-white rounded-lg shadow-lg flex gap-6 p-6 relative mx-auto mt-8 border-2 border-[#ED005D]"
          role="region" aria-label={`Thông tin bài quiz P-Quizz chủ đề ${title}`}>
@@ -32,7 +39,11 @@ const QuizCard = ({
           </h2>
           <div className="flex items-center gap-4 text-gray-600">
             {/* Edit */}
-            <button aria-label="Chỉnh sửa bài quiz" className="hover:text-[#ED005D] focus-visible:outline-[#ED005D]">
+            <button 
+              onClick={handleEditClick}
+              aria-label="Chỉnh sửa bài quiz" 
+              className="hover:text-[#ED005D] focus-visible:outline-[#ED005D] transition-colors"
+            >
               <Edit className="h-5 w-5" />
             </button>
             {/* Star */}
