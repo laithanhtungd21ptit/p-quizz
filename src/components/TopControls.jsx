@@ -164,7 +164,17 @@ const TopControls = ({
                 Cài đặt
               </Link>
               <hr className="border-gray-200 my-1" />
-              <button className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-gray-200 transition-colors duration-200">
+              <button 
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  // Xóa thông tin đăng nhập khỏi localStorage (nếu có)
+                  localStorage.removeItem('user');
+                  localStorage.removeItem('token');
+                  // Chuyển hướng đến trang đăng nhập
+                  navigate('/login');
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-gray-200 transition-colors duration-200"
+              >
                 <LogOut className="w-4 h-4" />
                 Đăng xuất
               </button>
