@@ -22,6 +22,7 @@ import ActivatedSuccessfully from './pages/ActivatedSuccessfully'
 import EnterRoomCode from './pages/EnterRoomCode'
 import WaitingRoomForController from './pages/WaitingRoomForController'
 import WaitingRoomForPlayer from './pages/WaitingRoomForPlayer'
+import PlayRoomForController from './pages/PlayRoomForController'
 
 import ChatTest from './pages/ChatTest'
 import SupportCardButtonTest from './pages/SupportCardButtonTest'
@@ -146,6 +147,8 @@ export default function App() {
         <Route element={<HeaderForControllerLayout />}>
           <Route path="/support-card-button" element={<SupportCardButtonTest />} />
           <Route path="/waiting-room-for-controller" element={<WaitingRoomForController />} />
+          <Route path="/play-room-for-controller" element={<PlayRoomForController />} />
+
         </Route>
 
         {/* Routes riêng cho trang tạo phòng và tạo bộ câu hỏi (không có Sidebar và TopControls) */}
