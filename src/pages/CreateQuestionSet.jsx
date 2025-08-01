@@ -30,17 +30,12 @@ const CreateQuestionSet = () => {
         { ...defaultFormat },
         { ...defaultFormat },
       ],
+      explanation: { text: '', image: null }, // Thêm explanation cho từng câu hỏi
     }
   ])
   // selectedField: { questionId, type: 'question' | 'option', optionIndex? }
   const [selectedField, setSelectedField] = useState({ questionId: 1, type: 'question' })
-  const [explanationModal, setExplanationModal] = useState({ open: false, optionIndex: null });
-  const [explanations, setExplanations] = useState([
-    { text: '', image: null },
-    { text: '', image: null },
-    { text: '', image: null },
-    { text: '', image: null },
-  ]);
+  const [explanationModal, setExplanationModal] = useState({ open: false, questionId: null });
   const [selectedIdx, setSelectedIdx] = useState(0);
 
   const addQuestion = () => {
@@ -59,6 +54,7 @@ const CreateQuestionSet = () => {
         { ...defaultFormat },
         { ...defaultFormat },
       ],
+      explanation: { text: '', image: null }, // Thêm explanation cho câu hỏi mới
     }
     setQuestions([...questions, newQuestion])
   }
@@ -135,44 +131,42 @@ const CreateQuestionSet = () => {
   // Hiện tại chỉ làm việc với câu hỏi đầu tiên (id=1)
   const currentQuestion = questions[0];
 
-  // Mở modal giải thích cho đáp án đang chọn
+  // Mở modal giải thích cho câu hỏi hiện tại
   const handleAddExplanation = () => {
-    if (selectedField.type === 'option') {
-      setExplanationModal({ open: true, optionIndex: selectedField.optionIndex });
-    }
+    setExplanationModal({ open: true, questionId: questions[selectedIdx]?.id });
   };
 
   // Lưu giải thích
   const handleSaveExplanation = () => {
-    if (explanationModal.optionIndex !== null) {
-      setExplanations(expls => expls.map((ex, idx) =>
-        idx === explanationModal.optionIndex
-          ? { text: explanationValue, image: explanationImage }
-          : ex
+    if (explanationModal.questionId !== null) {
+      setQuestions(qs => qs.map(q => 
+        q.id === explanationModal.questionId
+          ? { ...q, explanation: { text: explanationValue, image: explanationImage } }
+          : q
       ));
     }
-    setExplanationModal({ open: false, optionIndex: null });
+    setExplanationModal({ open: false, questionId: null });
     setExplanationValue('');
     setExplanationImage(null);
   };
 
   // Xóa giải thích
   const handleDeleteExplanation = () => {
-    if (explanationModal.optionIndex !== null) {
-      setExplanations(expls => expls.map((ex, idx) =>
-        idx === explanationModal.optionIndex
-          ? { text: '', image: null }
-          : ex
+    if (explanationModal.questionId !== null) {
+      setQuestions(qs => qs.map(q => 
+        q.id === explanationModal.questionId
+          ? { ...q, explanation: { text: '', image: null } }
+          : q
       ));
     }
-    setExplanationModal({ open: false, optionIndex: null });
+    setExplanationModal({ open: false, questionId: null });
     setExplanationValue('');
     setExplanationImage(null);
   };
 
   // Đóng modal
   const handleCloseExplanation = () => {
-    setExplanationModal({ open: false, optionIndex: null });
+    setExplanationModal({ open: false, questionId: null });
     setExplanationValue('');
     setExplanationImage(null);
   };
@@ -183,11 +177,12 @@ const CreateQuestionSet = () => {
 
   // Khi mở modal, nạp dữ liệu cũ nếu có
   React.useEffect(() => {
-    if (explanationModal.open && explanationModal.optionIndex !== null) {
-      setExplanationValue(explanations[explanationModal.optionIndex]?.text || '');
-      setExplanationImage(explanations[explanationModal.optionIndex]?.image || null);
+    if (explanationModal.open && explanationModal.questionId !== null) {
+      const currentQuestion = questions.find(q => q.id === explanationModal.questionId);
+      setExplanationValue(currentQuestion?.explanation?.text || '');
+      setExplanationImage(currentQuestion?.explanation?.image || null);
     }
-  }, [explanationModal, explanations]);
+  }, [explanationModal, questions]);
 
   // State caret để lưu vị trí con trỏ
   const [caret, setCaret] = useState({ type: null, questionId: null, optionIndex: null, pos: 0 });
@@ -276,7 +271,7 @@ const CreateQuestionSet = () => {
   }));
 
   return (
-    <div className=" min-h-screen flex text-white">
+    <div className="min-h-screen flex text-white">
       {/* Sidebar bên trái */}
       <CreateSidebar
         cards={sidebarCards}
@@ -293,15 +288,15 @@ const CreateQuestionSet = () => {
         onCopy={handleCopy}
         onDragEnd={handleDragEnd}
       />
-      {/* Main content bên phải */}
-      <CreatePageTopControls 
-        title={questionSetName || "Bộ câu hỏi không có tiêu đề"}
-        onTitleChange={handleTitleChange}
-        onSave={handleSave}
-        showPreview={true}
-        onPreview={handleOpenPreview}
-      />
-      <div className="flex-1 flex flex-col">
+      {/* Main content bên phải - bắt đầu từ sau sidebar */}
+      <div className="flex-1 ml-[300px] flex flex-col">
+        <CreatePageTopControls 
+          title={questionSetName || "Bộ câu hỏi không có tiêu đề"}
+          onTitleChange={handleTitleChange}
+          onSave={handleSave}
+          showPreview={true}
+          onPreview={handleOpenPreview}
+        />
         {/* Toolbar định dạng */}
         <FormatToolbar 
           format={getCurrentFormat()} 
@@ -316,25 +311,25 @@ const CreateQuestionSet = () => {
         {/* Main Content */}
         <div className="flex-1 flex items-center justify-center">
           <div className="scale-75">
-                      <QuestionEditor 
-            question={questions[selectedIdx]?.question || ''}
-            options={questions[selectedIdx]?.options || ['', '', '', '']}
-            correctAnswer={questions[selectedIdx]?.correctAnswer || 0}
-            questionFormat={questions[selectedIdx]?.questionFormat || { ...defaultFormat }}
-            optionFormats={questions[selectedIdx]?.optionFormats || [
-              { ...defaultFormat },
-              { ...defaultFormat },
-              { ...defaultFormat },
-              { ...defaultFormat },
-            ]}
-            image={questions[selectedIdx]?.image || null}
-            onChange={({ question, options, correctAnswer, image }) => {
-              setQuestions(qs => qs.map((q, i) => i === selectedIdx ? { ...q, question, options, correctAnswer, image } : q));
-            }}
-            onFieldFocus={setSelectedField}
-            onCaretChange={setCaret}
-            onActiveInputRefChange={setActiveInputRef}
-          />
+            <QuestionEditor 
+              question={questions[selectedIdx]?.question || ''}
+              options={questions[selectedIdx]?.options || ['', '', '', '']}
+              correctAnswer={questions[selectedIdx]?.correctAnswer || 0}
+              questionFormat={questions[selectedIdx]?.questionFormat || { ...defaultFormat }}
+              optionFormats={questions[selectedIdx]?.optionFormats || [
+                { ...defaultFormat },
+                { ...defaultFormat },
+                { ...defaultFormat },
+                { ...defaultFormat },
+              ]}
+              image={questions[selectedIdx]?.image || null}
+              onChange={({ question, options, correctAnswer, image }) => {
+                setQuestions(qs => qs.map((q, i) => i === selectedIdx ? { ...q, question, options, correctAnswer, image } : q));
+              }}
+              onFieldFocus={setSelectedField}
+              onCaretChange={setCaret}
+              onActiveInputRefChange={setActiveInputRef}
+            />
           </div>
         </div>
         {/* Modal giải thích */}

@@ -1,4 +1,5 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 import './profile.css'
 
 const user = {
@@ -15,6 +16,7 @@ const user = {
 }
 
 const Profile = () => {
+  const navigate = useNavigate()
   return (
     <div className="space-y-6">
       {/* Greeting + Room Code (giống Dashboard) */}
@@ -23,13 +25,23 @@ const Profile = () => {
           CÀI ĐẶT TÀI KHOẢN
         </p>
         <div className="flex-shrink-0 flex items-center h-12">
-          <a href="#" aria-label="Nhập mã phòng" className="room-code-img-link">
+          <button 
+            onClick={() => navigate('/enter-room-code')}
+            aria-label="Nhập mã phòng" 
+            className="room-code-img-link"
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer'
+            }}
+          >
             <img 
               src="./code.png" 
               alt="Nhập mã phòng" 
-              className="h-12 object-contain block transition-transform duration-150 cursor-pointer hover:scale-105" 
+              className="h-12 object-contain block transition-transform duration-150 hover:scale-105" 
             />
-          </a>
+          </button>
         </div>
       </div>
       

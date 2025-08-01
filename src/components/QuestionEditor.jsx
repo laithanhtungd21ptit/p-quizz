@@ -154,7 +154,7 @@ const QuestionEditor = ({
           <div className="flex items-center justify-center w-full">
             <textarea
               ref={questionRef}
-              className="w-full h-20 text-xl resize-none focus:outline-none text-center"
+              className="w-full h-20 text-xl resize-none focus:outline-none text-center rounded-xl"
               placeholder="Nhập câu hỏi vào đây"
               rows={2}
               maxLength={200}
@@ -233,7 +233,7 @@ const QuestionEditor = ({
             >
               <textarea
                 ref={optionRefs[idx]}
-                className="w-full h-[96px] resize-none focus:outline-none bg-transparent text-lg text-white placeholder-white overflow-hidden"
+                className="w-full h-[96px] resize-none focus:outline-none bg-transparent text-lg text-white placeholder-white overflow-hidden rounded-xl"
                 placeholder={`Câu trả lời ${idx + 1}`}
                 value={localOptions[idx]}
                 onChange={e => handleOptionChange(idx, e.target.value)}

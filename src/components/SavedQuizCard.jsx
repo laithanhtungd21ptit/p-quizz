@@ -29,8 +29,18 @@ const SavedQuizCard = ({
 
   const handleShareClick = (e) => {
     e.stopPropagation()
-    // TODO: Handle share functionality
-    console.log('Share clicked')
+    // Implement share functionality similar to QuestionSetDetail
+    if (navigator.share) {
+      navigator.share({
+        title: title,
+        text: subtitle,
+        url: `${window.location.origin}/question-set/${id}`
+      })
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(`${window.location.origin}/question-set/${id}`)
+      alert('Đã sao chép link vào clipboard!')
+    }
   }
 
   const handleAuthorClick = (e) => {

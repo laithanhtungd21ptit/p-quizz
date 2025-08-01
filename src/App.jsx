@@ -3,7 +3,9 @@ import React, { useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, Outlet, useNavigate } from 'react-router-dom'
 
 import Sidebar from './components/Sidebar'
+import AdminSidebar from './components/AdminSidebar'
 import TopControls from './components/TopControls'
+import AdminTopControls from './components/AdminTopControls'
 import HeaderForController from './components/HeaderForController'
 import CreatePageLayout from './components/CreatePageLayout'
 
@@ -34,7 +36,11 @@ import HistoryDetail from './pages/HistoryDetail'
 import PreviewPage from './pages/PreviewPage'
 import EditPage from './pages/EditPage'
 import EditQuestionSet from './pages/EditQuestionSet'
-import PlayerGame from './pages/PlayerGame';
+import PlayerGame from './pages/PlayerGame'
+
+// Admin pages
+import AccountList from './pages/admin/AccountList'
+import ViolationList from './pages/admin/ViolationList'
 
 /**
  * Layout chung có Sidebar + full TopControls
@@ -49,7 +55,7 @@ function MainLayout({ sidebarCollapsed, setSidebarCollapsed }) {
       <Sidebar isCollapsed={sidebarCollapsed} />
       <div className="flex-1 flex flex-col min-w-0">
         <main
-          className={`main-content flex-1 mt-14 p-4 sm:p-6 lg:p-10 bg-gradient-to-br from-purple-900/20 via-pink-900/10 to-purple-900/20 relative overflow-x-hidden overflow-y-auto ${
+          className={`main-content flex-1 mt-14 p-4 sm:p-6 lg:p-10 relative overflow-x-hidden overflow-y-auto ${
             sidebarCollapsed ? 'sidebar-collapsed' : ''
           }`}
           style={{
@@ -61,7 +67,40 @@ function MainLayout({ sidebarCollapsed, setSidebarCollapsed }) {
           }}
         >
           {/* watermark */}
-          <div className="absolute inset-0 bg-[url('https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/55103466-9ca2-48f4-ad9a-d66952d336ce.png')] bg-center bg-cover opacity-5 pointer-events-none" />
+          <div className="absolute bg-center bg-cover opacity-5 pointer-events-none" />
+          <div className="relative z-10 w-full">
+            <Outlet />
+          </div>
+        </main>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Layout cho admin có AdminSidebar + AdminTopControls
+ */
+function AdminLayout({ sidebarCollapsed, setSidebarCollapsed }) {
+  return (
+    <div className="app-root flex h-screen text-white">
+      <AdminTopControls
+        sidebarCollapsed={sidebarCollapsed}
+        setSidebarCollapsed={setSidebarCollapsed}
+      />
+      <AdminSidebar isCollapsed={sidebarCollapsed} />
+      <div className="flex-1 flex flex-col min-w-0">
+        <main
+          className={`main-content flex-1 mt-14 p-4 sm:p-6 lg:p-10 relative overflow-x-hidden overflow-y-auto ${
+            sidebarCollapsed ? 'sidebar-collapsed' : ''
+          }`}
+          style={{
+            marginLeft: sidebarCollapsed ? 72 : 288,
+            transition: 'margin-left 0.2s cubic-bezier(.4,0,.2,1)',
+            height: 'calc(100vh - 56px)',
+            maxWidth: '100vw',
+            minWidth: 0,
+          }}
+        >
           <div className="relative z-10 w-full">
             <Outlet />
           </div>
@@ -78,7 +117,7 @@ function MainLayout({ sidebarCollapsed, setSidebarCollapsed }) {
 function SimpleHeaderLayout() {
   const navigate = useNavigate()
   return (
-    <div className="min-h-screen bg-dark-bg text-white">
+    <div className="min-h-screen text-white">
       <TopControls
         // ẩn các phần không cần thiết
         showMenu={false}
@@ -86,6 +125,8 @@ function SimpleHeaderLayout() {
         showSearch={false}
         showCreate={false}
         showBack={true}
+        sidebarCollapsed={true}
+        setSidebarCollapsed={() => {}}
       >
         {/* Nút quay lại, nằm ở vị trí bên trái
         <button
@@ -175,6 +216,19 @@ export default function App() {
           <Route path="/history-detail" element={<HistoryDetail />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
+        </Route>
+
+        {/* Admin routes với AdminLayout */}
+        <Route
+          element={
+            <AdminLayout
+              sidebarCollapsed={sidebarCollapsed}
+              setSidebarCollapsed={setSidebarCollapsed}
+            />
+          }
+        >
+          <Route path="/admin/accounts" element={<AccountList />} />
+          <Route path="/admin/violations" element={<ViolationList />} />
         </Route>
       </Routes>
     </Router>

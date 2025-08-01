@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { ChevronLeft, ChevronRight, Star, Eye, User, Calendar } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import StatsPanel from '../components/StatsPanel'
 import QuestionCard from '../components/QuestionCard'
 import WeeklyChart from '../components/WeeklyChart'
@@ -11,6 +12,7 @@ const Dashboard = () => {
   const [scrollPosition, setScrollPosition] = useState(0)
   const chartRef = useRef(null)
   const chartInstance = useRef(null)
+  const navigate = useNavigate()
 
   const weeks = [
     "01/07/2025 - 13/07/2025",
@@ -207,13 +209,23 @@ const Dashboard = () => {
           Xin chào, John!
         </p>
         <div className="flex-shrink-0 flex items-center h-12">
-          <a href="#" aria-label="Nhập mã phòng" className="room-code-img-link">
+          <button 
+            onClick={() => navigate('/enter-room-code')}
+            aria-label="Nhập mã phòng" 
+            className="room-code-img-link"
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer'
+            }}
+          >
             <img 
               src="./code.png" 
               alt="Nhập mã phòng" 
-              className="h-12 object-contain block transition-transform duration-150 cursor-pointer hover:scale-105" 
+              className="h-12 object-contain block transition-transform duration-150 hover:scale-105" 
             />
-          </a>
+          </button>
         </div>
       </div>
 

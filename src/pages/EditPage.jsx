@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import CreatePageTopControls from '../components/CreatePageTopControls'
 import { useNavigate } from 'react-router-dom'
+import ExplanationModal from '../components/ExplanationModal'
 
 const DROPDOWN_SCORE = [5, 10, 15];
 const DROPDOWN_TIME = [10, 20, 30];
@@ -65,20 +66,25 @@ const questionsData = [
   { score: '40 điểm', time: '20s', question: 'Thủ đô của Hàn Quốc là?', options: ['Seoul', 'Busan', 'Incheon', 'Daegu'], answer: 'Seoul' },
 ];
 
-const QuestionList = ({ onEditQuestion }) => {
+const QuestionList = ({ questions, onEditQuestion, onAddQuestion, onDeleteQuestion, onShowExplanation }) => {
   return (
     <div className="bg-white w-full max-w-2xl rounded-xl p-6 flex flex-col gap-4 shadow-lg max-h-[90vh] overflow-y-auto">
       <div className="flex justify-between items-center border-b border-gray-300 pb-3">
-        <h2 className="text-base font-medium text-gray-800">{questionsData.length} câu hỏi</h2>
-        <button type="button" className="text-pink-600 border border-pink-600 rounded-lg px-4 py-2 flex items-center gap-2 hover:bg-pink-50 transition" aria-label="Thêm câu hỏi">
+        <h2 className="text-base font-medium text-gray-800">{questions.length} câu hỏi</h2>
+        <button 
+          type="button" 
+          className="text-pink-600 border border-pink-600 rounded-lg px-4 py-2 flex items-center gap-2 hover:bg-pink-50 transition" 
+          aria-label="Thêm câu hỏi"
+          onClick={onAddQuestion}
+        >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
           </svg>
           Thêm câu hỏi
         </button>
       </div>
-      <div className="divide-y divide-gray-200">
-        {questionsData.map((q, idx) => (
+             <div className="divide-y divide-gray-200">
+         {questions.map((q, idx) => (
           <article key={idx} className={`py-6 flex flex-col gap-4${idx > 0 ? ' border-t border-gray-200' : ''}`}> 
             <header className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex gap-3">
@@ -109,12 +115,20 @@ const QuestionList = ({ onEditQuestion }) => {
                     <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"></path>
                   </svg>
                 </button>
-                <button aria-label="Nổi bật câu hỏi" className="bg-pink-100 text-pink-700 p-2 rounded-md hover:bg-pink-200 transition flex items-center justify-center">
+                <button 
+                  aria-label="Nổi bật câu hỏi" 
+                  className="bg-pink-100 text-pink-700 p-2 rounded-md hover:bg-pink-200 transition flex items-center justify-center"
+                  onClick={() => onShowExplanation(idx)}
+                >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 animate-spin-slow" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v1m0 14v1m7-7h1M4 12H3m16.364-4.364l.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707" />
                   </svg>
                 </button>
-                <button aria-label="Xóa câu hỏi" className="bg-pink-100 text-pink-700 p-2 rounded-md hover:bg-pink-200 transition flex items-center justify-center">
+                <button 
+                  aria-label="Xóa câu hỏi" 
+                  className="bg-pink-100 text-pink-700 p-2 rounded-md hover:bg-pink-200 transition flex items-center justify-center"
+                  onClick={() => onDeleteQuestion(idx)}
+                >
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
                     <polyline points="3 6 5 6 21 6"></polyline>
                     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -159,6 +173,11 @@ const QuestionList = ({ onEditQuestion }) => {
 const EditPage = () => {
   const [score, setScore] = useState('');
   const [time, setTime] = useState('');
+  const [questions, setQuestions] = useState(questionsData);
+  const [showExplanationModal, setShowExplanationModal] = useState(false);
+  const [selectedQuestionIndex, setSelectedQuestionIndex] = useState(null);
+  const [explanationValue, setExplanationValue] = useState('');
+  const [explanationImage, setExplanationImage] = useState(null);
   const navigate = useNavigate();
 
   // Chuẩn bị dữ liệu bộ câu hỏi để truyền sang trang chỉnh sửa chi tiết
@@ -166,7 +185,7 @@ const EditPage = () => {
     questionSetName: 'Bộ câu hỏi mẫu',
     description: '',
     category: 'general',
-    questions: questionsData.map((q, idx) => ({
+    questions: questions.map((q, idx) => ({
       id: idx + 1,
       question: q.question,
       options: q.options,
@@ -182,6 +201,95 @@ const EditPage = () => {
         { bold: false, italic: false, underline: false, align: 'left' },
       ],
     }))
+  };
+
+  const handleAddQuestion = () => {
+    // Tạo một câu hỏi mới với dữ liệu mặc định
+    const newQuestion = {
+      id: questionSetData.questions.length + 1,
+      question: '',
+      options: ['', '', '', ''],
+      correctAnswer: 0,
+      image: null,
+      time: 10,
+      score: 10,
+      questionFormat: { bold: false, italic: false, underline: false, align: 'left' },
+      optionFormats: [
+        { bold: false, italic: false, underline: false, align: 'left' },
+        { bold: false, italic: false, underline: false, align: 'left' },
+        { bold: false, italic: false, underline: false, align: 'left' },
+        { bold: false, italic: false, underline: false, align: 'left' },
+      ],
+    };
+
+    // Thêm câu hỏi mới vào cuối danh sách
+    const updatedQuestionSetData = {
+      ...questionSetData,
+      questions: [...questionSetData.questions, newQuestion]
+    };
+
+    // Chuyển đến trang EditQuestionSet với câu hỏi mới được thêm vào cuối
+    navigate('/edit-question-set/new', { 
+      state: { 
+        questionSetData: updatedQuestionSetData, 
+        selectedIdx: updatedQuestionSetData.questions.length - 1 // Chọn câu hỏi mới (cuối cùng)
+      } 
+    });
+  };
+
+  const handleDeleteQuestion = (idx) => {
+    // Xóa câu hỏi khỏi danh sách
+    setQuestions(prevQuestions => prevQuestions.filter((_, index) => index !== idx));
+  };
+
+  const handleShowExplanation = (idx) => {
+    setSelectedQuestionIndex(idx);
+    setShowExplanationModal(true);
+    // Load existing explanation if available
+    const question = questions[idx];
+    if (question.explanation) {
+      setExplanationValue(question.explanation);
+    } else {
+      setExplanationValue('');
+    }
+    if (question.explanationImage) {
+      setExplanationImage(question.explanationImage);
+    } else {
+      setExplanationImage(null);
+    }
+  };
+
+  const handleCloseExplanation = () => {
+    setShowExplanationModal(false);
+    setSelectedQuestionIndex(null);
+    setExplanationValue('');
+    setExplanationImage(null);
+  };
+
+  const handleSaveExplanation = () => {
+    if (selectedQuestionIndex !== null) {
+      setQuestions(prevQuestions => 
+        prevQuestions.map((q, idx) => 
+          idx === selectedQuestionIndex 
+            ? { ...q, explanation: explanationValue, explanationImage: explanationImage }
+            : q
+        )
+      );
+    }
+    handleCloseExplanation();
+  };
+
+  const handleDeleteExplanation = () => {
+    if (selectedQuestionIndex !== null) {
+      setQuestions(prevQuestions => 
+        prevQuestions.map((q, idx) => 
+          idx === selectedQuestionIndex 
+            ? { ...q, explanation: '', explanationImage: null }
+            : q
+        )
+      );
+    }
+    handleCloseExplanation();
   };
 
   return (
@@ -228,14 +336,32 @@ const EditPage = () => {
               </div>
             </div>
           </div>
-          <div className="w-full md:w-1/2 flex justify-center items-start">
-            {/* Sửa QuestionList: truyền hàm onEdit để chuyển trang */}
-            <QuestionList onEditQuestion={idx => navigate(`/edit-question-set/${idx}`, { state: { questionSetData, selectedIdx: idx } })} />
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+                     <div className="w-full md:w-1/2 flex justify-center items-start">
+             {/* Sửa QuestionList: truyền hàm onEdit, onAddQuestion và onDeleteQuestion để chuyển trang */}
+             <QuestionList 
+               questions={questions}
+               onEditQuestion={idx => navigate(`/edit-question-set/${idx}`, { state: { questionSetData, selectedIdx: idx } })}
+               onAddQuestion={handleAddQuestion}
+               onDeleteQuestion={handleDeleteQuestion}
+               onShowExplanation={handleShowExplanation}
+             />
+           </div>
+                 </div>
+       </div>
+       
+       {/* Explanation Modal */}
+       <ExplanationModal
+         open={showExplanationModal}
+         onClose={handleCloseExplanation}
+         onSave={handleSaveExplanation}
+         onDelete={handleDeleteExplanation}
+         value={explanationValue}
+         image={explanationImage}
+         onValueChange={setExplanationValue}
+         onImageChange={setExplanationImage}
+       />
+     </div>
+   )
+ }
 
 export default EditPage 

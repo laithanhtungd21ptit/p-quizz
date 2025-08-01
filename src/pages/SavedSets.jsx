@@ -1,9 +1,11 @@
 import React from 'react'
 import { Search, Filter, Heart, Clock, Users } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import SavedQuizCard from '../components/SavedQuizCard'
 import { mockQuestions } from '../data/mockData'
 
 const SavedSets = () => {
+  const navigate = useNavigate()
   const savedSets = mockQuestions.map(q => ({
     ...q,
     savedAt: "2 ngày trước",
@@ -16,13 +18,23 @@ const SavedSets = () => {
       <div className="flex items-center justify-between mb-4">
         <img src="/saved-sets-title.png" alt="Bộ câu hỏi đã lưu" className="h-12 object-contain" />
         <div className="flex-shrink-0 flex items-center h-12">
-          <a href="#" aria-label="Nhập mã phòng" className="room-code-img-link">
+          <button 
+            onClick={() => navigate('/enter-room-code')}
+            aria-label="Nhập mã phòng" 
+            className="room-code-img-link"
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer'
+            }}
+          >
             <img 
               src="./code.png" 
               alt="Nhập mã phòng" 
-              className="h-12 object-contain block transition-transform duration-150 cursor-pointer hover:scale-105" 
+              className="h-12 object-contain block transition-transform duration-150 hover:scale-105" 
             />
-          </a>
+          </button>
         </div>
       </div>
 

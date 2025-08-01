@@ -33,13 +33,7 @@ const EditQuestionSet = () => {
   const [category, setCategory] = useState(initialData.category);
   const [questions, setQuestions] = useState(initialData.questions);
   const [selectedField, setSelectedField] = useState({ questionId: questions[initialIdx]?.id || 1, type: 'question' });
-  const [explanationModal, setExplanationModal] = useState({ open: false, optionIndex: null });
-  const [explanations, setExplanations] = useState([
-    { text: '', image: null },
-    { text: '', image: null },
-    { text: '', image: null },
-    { text: '', image: null },
-  ]);
+  const [explanationModal, setExplanationModal] = useState({ open: false, questionId: null });
   const [selectedIdx, setSelectedIdx] = useState(initialIdx);
   const [explanationValue, setExplanationValue] = useState('');
   const [explanationImage, setExplanationImage] = useState(null);
@@ -63,6 +57,7 @@ const EditQuestionSet = () => {
         { ...defaultFormat },
         { ...defaultFormat },
       ],
+      explanation: { text: '', image: null }, // Thêm explanation cho câu hỏi mới
     };
     setQuestions([...questions, newQuestion]);
   };
@@ -133,49 +128,48 @@ const EditQuestionSet = () => {
   };
 
   const handleAddExplanation = () => {
-    if (selectedField.type === 'option') {
-      setExplanationModal({ open: true, optionIndex: selectedField.optionIndex });
-    }
+    setExplanationModal({ open: true, questionId: questions[selectedIdx]?.id });
   };
 
   const handleSaveExplanation = () => {
-    if (explanationModal.optionIndex !== null) {
-      setExplanations(expls => expls.map((ex, idx) =>
-        idx === explanationModal.optionIndex
-          ? { text: explanationValue, image: explanationImage }
-          : ex
+    if (explanationModal.questionId !== null) {
+      setQuestions(qs => qs.map(q => 
+        q.id === explanationModal.questionId
+          ? { ...q, explanation: { text: explanationValue, image: explanationImage } }
+          : q
       ));
     }
-    setExplanationModal({ open: false, optionIndex: null });
+    setExplanationModal({ open: false, questionId: null });
     setExplanationValue('');
     setExplanationImage(null);
   };
 
   const handleDeleteExplanation = () => {
-    if (explanationModal.optionIndex !== null) {
-      setExplanations(expls => expls.map((ex, idx) =>
-        idx === explanationModal.optionIndex
-          ? { text: '', image: null }
-          : ex
+    if (explanationModal.questionId !== null) {
+      setQuestions(qs => qs.map(q => 
+        q.id === explanationModal.questionId
+          ? { ...q, explanation: { text: '', image: null } }
+          : q
       ));
     }
-    setExplanationModal({ open: false, optionIndex: null });
+    setExplanationModal({ open: false, questionId: null });
     setExplanationValue('');
     setExplanationImage(null);
   };
 
   const handleCloseExplanation = () => {
-    setExplanationModal({ open: false, optionIndex: null });
+    setExplanationModal({ open: false, questionId: null });
     setExplanationValue('');
     setExplanationImage(null);
   };
 
   useEffect(() => {
-    if (explanationModal.open && explanationModal.optionIndex !== null) {
-      setExplanationValue(explanations[explanationModal.optionIndex]?.text || '');
-      setExplanationImage(explanations[explanationModal.optionIndex]?.image || null);
+    if (explanationModal.open && explanationModal.questionId !== null) {
+      const currentQuestion = questions.find(q => q.id === explanationModal.questionId);
+      setExplanationValue(currentQuestion?.explanation?.text || '');
+      setExplanationImage(currentQuestion?.explanation?.image || null);
     }
-  }, [explanationModal, explanations]);
+  }, [explanationModal, questions]);
 
   const handleOpenPreview = () => {
     localStorage.setItem('previewQuestions', JSON.stringify(questions));
