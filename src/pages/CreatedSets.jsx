@@ -43,6 +43,11 @@ const CreatedSets = () => {
           questionCount="10"
           playCount="2"
           author="Bạn"
+          isSaved={false} // Mặc định chưa được lưu
+          onToggleSave={(quizTitle, isSaved) => {
+            console.log(`Quiz "${quizTitle}" ${isSaved ? 'đã được lưu' : 'đã bỏ lưu'}`)
+            // TODO: Gọi API để lưu/bỏ lưu quiz
+          }}
         />
         <QuizCard 
           title="TOÁN HỌC"
@@ -50,6 +55,11 @@ const CreatedSets = () => {
           questionCount="15"
           playCount="5"
           author="Bạn"
+          isSaved={false}
+          onToggleSave={(quizTitle, isSaved) => {
+            console.log(`Quiz "${quizTitle}" ${isSaved ? 'đã được lưu' : 'đã bỏ lưu'}`)
+            // TODO: Gọi API để lưu/bỏ lưu quiz
+          }}
         />
         <QuizCard 
           title="VẬT LÝ"
@@ -57,6 +67,11 @@ const CreatedSets = () => {
           questionCount="20"
           playCount="3"
           author="Bạn"
+          isSaved={false}
+          onToggleSave={(quizTitle, isSaved) => {
+            console.log(`Quiz "${quizTitle}" ${isSaved ? 'đã được lưu' : 'đã bỏ lưu'}`)
+            // TODO: Gọi API để lưu/bỏ lưu quiz
+          }}
         />
         <QuizCard 
           title="HÓA HỌC"
@@ -64,6 +79,11 @@ const CreatedSets = () => {
           questionCount="18"
           playCount="7"
           author="Bạn"
+          isSaved={false}
+          onToggleSave={(quizTitle, isSaved) => {
+            console.log(`Quiz "${quizTitle}" ${isSaved ? 'đã được lưu' : 'đã bỏ lưu'}`)
+            // TODO: Gọi API để lưu/bỏ lưu quiz
+          }}
         />
         <QuizCard 
           title="LỊCH SỬ"
@@ -71,6 +91,11 @@ const CreatedSets = () => {
           questionCount="14"
           playCount="4"
           author="Bạn"
+          isSaved={false}
+          onToggleSave={(quizTitle, isSaved) => {
+            console.log(`Quiz "${quizTitle}" ${isSaved ? 'đã được lưu' : 'đã bỏ lưu'}`)
+            // TODO: Gọi API để lưu/bỏ lưu quiz
+          }}
         />
       </div>
     </div>

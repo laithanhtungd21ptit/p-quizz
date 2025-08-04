@@ -43,8 +43,8 @@ const WaitingRoomForController = () => {
               </div>
               <div className="flex-1 flex items-center justify-between bg-gray-100 border border-[var(--pink)] rounded-md px-4 py-2 ml-4 relative">
                 <div className="flex items-center space-x-2 whitespace-nowrap leading-tight">
-                  <span className="text-gray-500 text-base">Truy cập</span>
-                  <span ref={websiteRef} className="text-black text-lg">pquizz.com</span>
+                  <span className="text-gray-500 text-base font-content">Truy cập</span>
+                  <span ref={websiteRef} className="text-black text-lg font-content">pquizz.com</span>
                 </div>
                 <div className="relative flex items-center">
                   {copiedField === "website" && (
@@ -69,8 +69,8 @@ const WaitingRoomForController = () => {
               </div>
               <div className="flex-1 flex items-center justify-between bg-gray-100 border border-[var(--pink)] rounded-md px-4 py-2 ml-4 relative">
                 <div className="flex items-center space-x-2 whitespace-nowrap leading-tight">
-                  <span className="text-gray-500 text-base">Nhập mã tham gia</span>
-                  <span ref={codeRef} className="text-black text-lg">682868</span>
+                  <span className="text-gray-500 text-base font-content">Nhập mã tham gia</span>
+                  <span ref={codeRef} className="text-black text-lg font-content">682868</span>
                 </div>
                 <div className="relative flex items-center">
                   {copiedField === "code" && (

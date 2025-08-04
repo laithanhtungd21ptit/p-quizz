@@ -32,20 +32,20 @@ const SentActivateLink = () => {
         />
 
         {/* Thông báo thành công */}
-        <p className="text-xl font-bold text-[var(--pink)] mb-4">
+        <p className="text-xl font-bold text-[var(--pink)] mb-4 font-content">
           GỬI LINK KÍCH HOẠT THÀNH CÔNG
         </p>
 
         {/* Nội dung chi tiết */}
         <p className="text-base text-black font-content mb-6">
           Link kích hoạt đã được gửi tới email{" "}
-          <span className="font-semibold">{masked}</span>.<br />
+          <span className="font-semibold font-content">{masked}</span>.<br />
           Vui lòng kiểm tra email để kích hoạt tài khoản.
         </p>
 
         {/* Quay lại Đăng nhập */}
         <div className="mt-6 text-center">
-          <p className="text-black text-base inline-flex items-center">
+          <p className="text-black text-base inline-flex items-center font-content">
             Quay lại{" "}
             <Link
               to="/login"

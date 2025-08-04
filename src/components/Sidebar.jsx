@@ -31,7 +31,7 @@ const Sidebar = ({ isCollapsed }) => {
       ]
     },
     { icon: Clock, label: 'Lịch sử chơi', path: '/history' },
-    { icon: User, label: 'Hồ sơ', path: '/profile' },
+    // { icon: User, label: 'Hồ sơ', path: '/profile' },
   ]
 
   return (

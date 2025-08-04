@@ -1,4 +1,5 @@
 import React from 'react'
+import AdminSearchInput from '../../components/AdminSearchInput'
 
 const ViolationList = () => {
   return (
@@ -21,7 +22,7 @@ const ViolationList = () => {
       </div>
       
       {/* Breadcrumb */}
-      <div className="text-sm text-white font-bold mb-4">
+      <div className="text-sm text-white font-bold mb-4 font-content">
         <span className="font-bold">QUẢN LÍ TÀI KHOẢN</span>
         <span className="mx-2">{'>'}</span>
         <span className="font-bold">Danh sách vi phạm</span>
@@ -33,19 +34,32 @@ const ViolationList = () => {
       <div className="p-6 bg-white min-h-screen rounded-lg">
         {/* Search */}
         <div className="mb-4 flex justify-start">
-          <div className="relative w-80">
-            <input
-              type="text"
+          <div className="relative w-80 z-[9998]">
+            <AdminSearchInput
               placeholder="Tìm kiếm theo tên/ Tài khoản"
-              className="pl-10 pr-4 py-2 rounded-md border border-gray-300 w-full"
+              suggestions={[
+                "Nguyễn Thị Quỳnh - Vi phạm spam",
+                "Trần Văn An - Vi phạm nội dung",
+                "Lê Thị Bình - Vi phạm quy tắc",
+                "Phạm Hoàng Cường - Vi phạm bảo mật",
+                "Hoàng Thị Dung - Vi phạm spam",
+                "Vũ Minh Đức - Vi phạm nội dung",
+                "Đặng Thị Em - Vi phạm quy tắc",
+                "Ngô Văn Phúc - Vi phạm bảo mật",
+                "Lý Thị Giang - Vi phạm spam",
+                "Bùi Hoàng Hải - Vi phạm nội dung"
+              ]}
+              onSearch={(value) => {
+                console.log('Searching for violation:', value)
+                // Thêm logic tìm kiếm vi phạm ở đây
+              }}
             />
-            <i className="fas fa-search absolute left-3 top-2.5 text-gray-500"></i>
           </div>
         </div>
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-gray-700 border border-gray-200 rounded-lg">
+          <table className="min-w-full text-left text-gray-700 border border-gray-200 rounded-lg font-content">
             <thead>
               <tr className="bg-gray-100 border-b border-gray-200">
                 <th className="py-3 px-4">STT</th>

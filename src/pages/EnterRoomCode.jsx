@@ -34,7 +34,7 @@ const EnterRoomCode = () => {
       <div className="w-full max-w-md" style={{ marginTop: '-10%' }}>
         {/* P-QUIZZ Logo ở giữa */}
         <div className="text-center mb-8">
-          <h1 className="text-6xl font-black text-[#ED005D] tracking-wider mb-2">
+          <h1 className="text-6xl font-black text-[#ED005D] tracking-wider mb-2 font-title">
             P-QUIZZ
           </h1>
         </div>

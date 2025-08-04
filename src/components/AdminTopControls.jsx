@@ -18,7 +18,7 @@ const AdminTopControls = ({ sidebarCollapsed, setSidebarCollapsed }) => {
           </svg>
         </button>
         
-        <div className="text-[#ED005D] font-bold text-lg">P-QUIZZ</div>
+        <div className="text-[#ED005D] font-bold text-lg font-title">P-QUIZZ</div>
       </div>
 
       {/* Right side - User menu */}

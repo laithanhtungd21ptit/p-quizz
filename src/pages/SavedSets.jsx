@@ -41,40 +41,76 @@ const SavedSets = () => {
       {/* Saved Quiz Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 justify-items-center">
         <SavedQuizCard 
+          id={1}
           title="TIẾNG NHẬT"
           subtitle="Từ vựng Mina no Nihongo bài 25"
           questionCount="10"
           author="Ngô Quốc Anh"
+          isSaved={true}
+          onToggleSave={(quizId, isSaved) => {
+            console.log(`Quiz ${quizId} ${isSaved ? 'đã được lưu' : 'đã bỏ lưu'}`)
+            // TODO: Gọi API để lưu/bỏ lưu quiz
+          }}
         />
         <SavedQuizCard 
+          id={2}
           title="TOÁN HỌC"
-          subtitle="Đại số cơ bản lớp 10"
+          subtitle="Đại số cơ bản lớp 10 cccccccccc xxxxx cccccccccc eeqw aada gsghasajj hhhhhss  hshshhs hshshhsahjajiaid  hysuaua dhja"
           questionCount="15"
-          author="Trần Thị Mai"
+          author="Trần Thị Mai ccsss ss"
+          isSaved={true}
+          onToggleSave={(quizId, isSaved) => {
+            console.log(`Quiz ${quizId} ${isSaved ? 'đã được lưu' : 'đã bỏ lưu'}`)
+            // TODO: Gọi API để lưu/bỏ lưu quiz
+          }}
         />
         <SavedQuizCard 
+          id={3}
           title="TIẾNG ANH"
           subtitle="Grammar Practice - Present Perfect"
           questionCount="12"
           author="Lê Văn Nam"
+          isSaved={true}
+          onToggleSave={(quizId, isSaved) => {
+            console.log(`Quiz ${quizId} ${isSaved ? 'đã được lưu' : 'đã bỏ lưu'}`)
+            // TODO: Gọi API để lưu/bỏ lưu quiz
+          }}
         />
         <SavedQuizCard 
+          id={4}
           title="VẬT LÝ"
           subtitle="Cơ học Newton - Chương 1"
           questionCount="20"
           author="Phạm Thị Hoa"
+          isSaved={true}
+          onToggleSave={(quizId, isSaved) => {
+            console.log(`Quiz ${quizId} ${isSaved ? 'đã được lưu' : 'đã bỏ lưu'}`)
+            // TODO: Gọi API để lưu/bỏ lưu quiz
+          }}
         />
         <SavedQuizCard 
+          id={5}
           title="HÓA HỌC"
           subtitle="Bảng tuần hoàn và liên kết hóa học"
           questionCount="18"
           author="Nguyễn Văn Tuấn"
+          isSaved={true}
+          onToggleSave={(quizId, isSaved) => {
+            console.log(`Quiz ${quizId} ${isSaved ? 'đã được lưu' : 'đã bỏ lưu'}`)
+            // TODO: Gọi API để lưu/bỏ lưu quiz
+          }}
         />
         <SavedQuizCard 
+          id={6}
           title="LỊCH SỬ"
           subtitle="Lịch sử Việt Nam thời kỳ phong kiến"
           questionCount="14"
           author="Hoàng Thị Lan"
+          isSaved={true}
+          onToggleSave={(quizId, isSaved) => {
+            console.log(`Quiz ${quizId} ${isSaved ? 'đã được lưu' : 'đã bỏ lưu'}`)
+            // TODO: Gọi API để lưu/bỏ lưu quiz
+          }}
         />
       </div>
 
@@ -82,8 +118,8 @@ const SavedSets = () => {
       {savedSets.length === 0 && (
         <div className="text-center py-12">
           <Heart className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-          <h3 className="text-xl font-medium text-gray-400 mb-2">Chưa có bộ câu hỏi nào được lưu</h3>
-          <p className="text-gray-500">Lưu các bộ câu hỏi yêu thích để học sau</p>
+          <h3 className="text-xl font-medium text-gray-400 mb-2 font-content">Chưa có bộ câu hỏi nào được lưu</h3>
+          <p className="text-gray-500 font-content">Lưu các bộ câu hỏi yêu thích để học sau</p>
         </div>
       )}
     </div>

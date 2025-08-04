@@ -60,8 +60,8 @@ const Settings = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-white">Cài đặt</h1>
-          <p className="text-gray-400 mt-1">Tùy chỉnh trải nghiệm sử dụng của bạn</p>
+          <h1 className="text-2xl font-semibold text-white font-content">Cài đặt</h1>
+          <p className="text-gray-400 mt-1 font-content">Tùy chỉnh trải nghiệm sử dụng của bạn</p>
         </div>
       </div>
 
@@ -71,14 +71,14 @@ const Settings = () => {
         <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
           <div className="flex items-center gap-3 mb-4">
             <Bell className="w-6 h-6 text-pink-500" />
-            <h3 className="text-lg font-semibold text-white">Thông báo</h3>
+            <h3 className="text-lg font-semibold text-white font-content">Thông báo</h3>
           </div>
           
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-white font-medium">Thông báo đẩy</p>
-                <p className="text-sm text-gray-400">Nhận thông báo về bài quiz mới</p>
+                <p className="text-white font-medium font-content">Thông báo đẩy</p>
+                <p className="text-sm text-gray-400 font-content">Nhận thông báo về bài quiz mới</p>
               </div>
               <button
                 onClick={() => setNotifications(!notifications)}
@@ -96,8 +96,8 @@ const Settings = () => {
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-white font-medium">Email thông báo</p>
-                <p className="text-sm text-gray-400">Nhận email về hoạt động</p>
+                <p className="text-white font-medium font-content">Email thông báo</p>
+                <p className="text-sm text-gray-400 font-content">Nhận email về hoạt động</p>
               </div>
               <button className="relative inline-flex h-6 w-11 items-center rounded-full bg-pink-500">
                 <span className="inline-block h-4 w-4 transform rounded-full bg-white translate-x-6" />
@@ -110,14 +110,14 @@ const Settings = () => {
         <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
           <div className="flex items-center gap-3 mb-4">
             <Palette className="w-6 h-6 text-pink-500" />
-            <h3 className="text-lg font-semibold text-white">Giao diện</h3>
+            <h3 className="text-lg font-semibold text-white font-content">Giao diện</h3>
           </div>
           
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-white font-medium">Chế độ tối</p>
-                <p className="text-sm text-gray-400">Sử dụng giao diện tối</p>
+                <p className="text-white font-medium font-content">Chế độ tối</p>
+                <p className="text-sm text-gray-400 font-content">Sử dụng giao diện tối</p>
               </div>
               <button
                 onClick={() => setDarkMode(!darkMode)}
@@ -135,13 +135,13 @@ const Settings = () => {
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-white font-medium">Ngôn ngữ</p>
-                <p className="text-sm text-gray-400">Chọn ngôn ngữ hiển thị</p>
+                <p className="text-white font-medium font-content">Ngôn ngữ</p>
+                <p className="text-sm text-gray-400 font-content">Chọn ngôn ngữ hiển thị</p>
               </div>
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
-                className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-pink-500"
+                className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-pink-500 font-content"
               >
                 <option value="vi">Tiếng Việt</option>
                 <option value="en">English</option>
@@ -155,14 +155,14 @@ const Settings = () => {
         <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
           <div className="flex items-center gap-3 mb-4">
             <Volume2 className="w-6 h-6 text-pink-500" />
-            <h3 className="text-lg font-semibold text-white">Âm thanh</h3>
+            <h3 className="text-lg font-semibold text-white font-content">Âm thanh</h3>
           </div>
           
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-white font-medium">Hiệu ứng âm thanh</p>
-                <p className="text-sm text-gray-400">Bật/tắt âm thanh khi tương tác</p>
+                <p className="text-white font-medium font-content">Hiệu ứng âm thanh</p>
+                <p className="text-sm text-gray-400 font-content">Bật/tắt âm thanh khi tương tác</p>
               </div>
               <button
                 onClick={() => setSoundEnabled(!soundEnabled)}
@@ -180,8 +180,8 @@ const Settings = () => {
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-white font-medium">Âm lượng</p>
-                <p className="text-sm text-gray-400">Điều chỉnh âm lượng</p>
+                <p className="text-white font-medium font-content">Âm lượng</p>
+                <p className="text-sm text-gray-400 font-content">Điều chỉnh âm lượng</p>
               </div>
               <input
                 type="range"
@@ -198,14 +198,14 @@ const Settings = () => {
         <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
           <div className="flex items-center gap-3 mb-4">
             <Shield className="w-6 h-6 text-pink-500" />
-            <h3 className="text-lg font-semibold text-white">Bảo mật</h3>
+            <h3 className="text-lg font-semibold text-white font-content">Bảo mật</h3>
           </div>
           
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-white font-medium">Xác thực 2 yếu tố</p>
-                <p className="text-sm text-gray-400">Bảo vệ tài khoản tốt hơn</p>
+                <p className="text-white font-medium font-content">Xác thực 2 yếu tố</p>
+                <p className="text-sm text-gray-400 font-content">Bảo vệ tài khoản tốt hơn</p>
               </div>
               <button className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-600">
                 <span className="inline-block h-4 w-4 transform rounded-full bg-white translate-x-1" />
@@ -214,8 +214,8 @@ const Settings = () => {
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-white font-medium">Tự động đăng xuất</p>
-                <p className="text-sm text-gray-400">Sau 30 phút không hoạt động</p>
+                <p className="text-white font-medium font-content">Tự động đăng xuất</p>
+                <p className="text-sm text-gray-400 font-content">Sau 30 phút không hoạt động</p>
               </div>
               <button className="relative inline-flex h-6 w-11 items-center rounded-full bg-pink-500">
                 <span className="inline-block h-4 w-4 transform rounded-full bg-white translate-x-6" />
@@ -228,14 +228,14 @@ const Settings = () => {
         <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
           <div className="flex items-center gap-3 mb-4">
             <Download className="w-6 h-6 text-pink-500" />
-            <h3 className="text-lg font-semibold text-white">Dữ liệu</h3>
+            <h3 className="text-lg font-semibold text-white font-content">Dữ liệu</h3>
           </div>
           
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-white font-medium">Tự động lưu</p>
-                <p className="text-sm text-gray-400">Lưu tiến độ tự động</p>
+                <p className="text-white font-medium font-content">Tự động lưu</p>
+                <p className="text-sm text-gray-400 font-content">Lưu tiến độ tự động</p>
               </div>
               <button
                 onClick={() => setAutoSave(!autoSave)}
@@ -253,10 +253,10 @@ const Settings = () => {
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-white font-medium">Xuất dữ liệu</p>
-                <p className="text-sm text-gray-400">Tải xuống dữ liệu cá nhân</p>
+                <p className="text-white font-medium font-content">Xuất dữ liệu</p>
+                <p className="text-sm text-gray-400 font-content">Tải xuống dữ liệu cá nhân</p>
               </div>
-              <button className="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white text-sm rounded-lg transition-colors">
+              <button className="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white text-sm rounded-lg transition-colors font-content">
                 Xuất
               </button>
             </div>
@@ -267,16 +267,16 @@ const Settings = () => {
         <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
           <div className="flex items-center gap-3 mb-4">
             <User className="w-6 h-6 text-pink-500" />
-            <h3 className="text-lg font-semibold text-white">Tài khoản</h3>
+            <h3 className="text-lg font-semibold text-white font-content">Tài khoản</h3>
           </div>
           
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-white font-medium">Xóa tài khoản</p>
-                <p className="text-sm text-gray-400">Xóa vĩnh viễn tài khoản</p>
+                <p className="text-white font-medium font-content">Xóa tài khoản</p>
+                <p className="text-sm text-gray-400 font-content">Xóa vĩnh viễn tài khoản</p>
               </div>
-              <button className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm rounded-lg transition-colors flex items-center gap-2">
+              <button className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm rounded-lg transition-colors flex items-center gap-2 font-content">
                 <Trash2 className="w-4 h-4" />
                 Xóa
               </button>
@@ -284,10 +284,10 @@ const Settings = () => {
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-white font-medium">Đăng xuất</p>
-                <p className="text-sm text-gray-400">Đăng xuất khỏi tất cả thiết bị</p>
+                <p className="text-white font-medium font-content">Đăng xuất</p>
+                <p className="text-sm text-gray-400 font-content">Đăng xuất khỏi tất cả thiết bị</p>
               </div>
-              <button className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white text-sm rounded-lg transition-colors">
+              <button className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white text-sm rounded-lg transition-colors font-content">
                 Đăng xuất
               </button>
             </div>
@@ -299,31 +299,31 @@ const Settings = () => {
       <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
         <div className="flex items-center gap-3 mb-4">
           <HelpCircle className="w-6 h-6 text-pink-500" />
-          <h3 className="text-lg font-semibold text-white">Trợ giúp & Hỗ trợ</h3>
+          <h3 className="text-lg font-semibold text-white font-content">Trợ giúp & Hỗ trợ</h3>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button className="flex items-center gap-3 p-4 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors">
             <Info className="w-5 h-5 text-pink-500" />
             <div className="text-left">
-              <p className="text-white font-medium">Hướng dẫn sử dụng</p>
-              <p className="text-sm text-gray-400">Tìm hiểu cách sử dụng</p>
+              <p className="text-white font-medium font-content">Hướng dẫn sử dụng</p>
+              <p className="text-sm text-gray-400 font-content">Tìm hiểu cách sử dụng</p>
             </div>
           </button>
           
           <button className="flex items-center gap-3 p-4 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors">
             <Mail className="w-5 h-5 text-pink-500" />
             <div className="text-left">
-              <p className="text-white font-medium">Liên hệ hỗ trợ</p>
-              <p className="text-sm text-gray-400">Gửi email cho chúng tôi</p>
+              <p className="text-white font-medium font-content">Liên hệ hỗ trợ</p>
+              <p className="text-sm text-gray-400 font-content">Gửi email cho chúng tôi</p>
             </div>
           </button>
           
           <button className="flex items-center gap-3 p-4 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors">
             <Globe className="w-5 h-5 text-pink-500" />
             <div className="text-left">
-              <p className="text-white font-medium">Trang web</p>
-              <p className="text-sm text-gray-400">Truy cập trang chủ</p>
+              <p className="text-white font-medium font-content">Trang web</p>
+              <p className="text-sm text-gray-400 font-content">Truy cập trang chủ</p>
             </div>
           </button>
         </div>

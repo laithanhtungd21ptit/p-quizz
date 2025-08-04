@@ -1,4 +1,5 @@
 import React from 'react'
+import AdminSearchInput from '../../components/AdminSearchInput'
 
 const AccountList = () => {
   return (
@@ -33,13 +34,26 @@ const AccountList = () => {
       <div className="p-6 bg-white min-h-screen rounded-lg">
         {/* Search */}
         <div className="mb-4 flex justify-start">
-          <div className="relative w-80">
-            <input
-              type="text"
+          <div className="relative w-80 z-[9998]">
+            <AdminSearchInput
               placeholder="Tìm kiếm theo tên/ Tài khoản"
-              className="pl-10 pr-4 py-2 rounded-md border border-gray-300 w-full"
+              suggestions={[
+                "Nguyễn Thị Quỳnh",
+                "Trần Văn An",
+                "Lê Thị Bình",
+                "Phạm Hoàng Cường",
+                "Hoàng Thị Dung",
+                "Vũ Minh Đức",
+                "Đặng Thị Em",
+                "Ngô Văn Phúc",
+                "Lý Thị Giang",
+                "Bùi Hoàng Hải"
+              ]}
+              onSearch={(value) => {
+                console.log('Searching for account:', value)
+                // Thêm logic tìm kiếm tài khoản ở đây
+              }}
             />
-            <i className="fas fa-search absolute left-3 top-2.5 text-gray-500"></i>
           </div>
         </div>
 

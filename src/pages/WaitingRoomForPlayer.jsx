@@ -63,7 +63,7 @@ const WaitingRoomForPlayer = ({
   return (
     <div className="h-[calc(100vh-56px)] flex flex-col items-center pt-8 px-4 font-content space-y-6">
       {/* Mã tham gia */}
-      <div className="bg-white border-2 border-[var(--pink)] rounded-lg px-4 py-2 text-black text-2xl font-base text-center">
+              <div className="bg-white border-2 border-[var(--pink)] rounded-lg px-4 py-2 text-black text-2xl font-base text-center font-content">
         {joinCode}
       </div>
 
@@ -137,7 +137,7 @@ const WaitingRoomForPlayer = ({
         </div>
       </div>
 
-      <div className="text-white text-center mt-10 text-base">
+              <div className="text-white text-center mt-10 text-base font-content">
         Đang chờ người điều khiển bắt đầu...
       </div>
       

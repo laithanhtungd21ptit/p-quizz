@@ -52,7 +52,7 @@ const PQuizzCard = ({
               <div className="max-w-lg bg-white border-2 border-pink-600 rounded-xl shadow-lg flex p-5 gap-4">
                 {/* Left block */}
                 <div className="flex flex-col justify-center items-center min-w-[160px] max-w-md bg-gray-200 rounded-lg relative select-none" style={{aspectRatio: '3 / 2'}}>
-                  <span className="font-extrabold text-pink-600 text-3xl">P-QUIZZ</span>
+                  <span className="font-extrabold text-pink-600 text-3xl font-title">P-QUIZZ</span>
                   <button title="Số câu hỏi" className="flex items-center gap-1 bg-pink-600 text-white text-xs rounded-full px-3 py-1 mt-6">
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M12 14c0-1.5 2-1.5 2-3a2 2 0 10-4 0"/>
@@ -122,7 +122,7 @@ const PQuizzCard = ({
       <div className="max-w-lg bg-white border-2 border-pink-600 rounded-xl shadow-lg flex p-5 gap-4">
         {/* Left block */}
         <div className="flex flex-col justify-center items-center min-w-[160px] max-w-md bg-gray-200 rounded-lg relative select-none" style={{aspectRatio: '3 / 2'}}>
-          <span className="font-extrabold text-pink-600 text-3xl">P-QUIZZ</span>
+          <span className="font-extrabold text-pink-600 text-3xl font-title">P-QUIZZ</span>
           <button title="Số câu hỏi" className="flex items-center gap-1 bg-pink-600 text-white text-xs rounded-full px-3 py-1 mt-6">
             {/* Icon dấu hỏi */}
             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">

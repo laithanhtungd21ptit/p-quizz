@@ -70,10 +70,10 @@ const QuestionList = ({ questions, onEditQuestion, onAddQuestion, onDeleteQuesti
   return (
     <div className="bg-white w-full max-w-2xl rounded-xl p-6 flex flex-col gap-4 shadow-lg max-h-[90vh] overflow-y-auto">
       <div className="flex justify-between items-center border-b border-gray-300 pb-3">
-        <h2 className="text-base font-medium text-gray-800">{questions.length} câu hỏi</h2>
+        <h2 className="text-base font-medium text-gray-800 font-content">{questions.length} câu hỏi</h2>
         <button 
           type="button" 
-          className="text-pink-600 border border-pink-600 rounded-lg px-4 py-2 flex items-center gap-2 hover:bg-pink-50 transition" 
+          className="text-pink-600 border border-pink-600 rounded-lg px-4 py-2 flex items-center gap-2 hover:bg-pink-50 transition font-content" 
           aria-label="Thêm câu hỏi"
           onClick={onAddQuestion}
         >
@@ -139,10 +139,10 @@ const QuestionList = ({ questions, onEditQuestion, onAddQuestion, onDeleteQuesti
               </div>
             </header>
             <div>
-              <p className="font-medium text-gray-900 mb-2">{idx+1}. {q.question}</p>
+              <p className="font-medium text-gray-900 mb-2 font-content">{idx+1}. {q.question}</p>
               <form className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {q.options.map(opt => (
-                  <label key={opt} className="flex items-center gap-2 text-gray-700 cursor-pointer">
+                  <label key={opt} className="flex items-center gap-2 text-gray-700 cursor-pointer font-content">
                     {opt === q.answer ? (
                       <span className="inline-block w-5 h-5 rounded-full border border-gray-400 flex items-center justify-center bg-green-600 text-white">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
@@ -336,7 +336,7 @@ const EditPage = () => {
               </div>
             </div>
           </div>
-                     <div className="w-full md:w-1/2 flex justify-center items-start">
+          <div className="w-full md:w-1/2 flex justify-center items-start">
              {/* Sửa QuestionList: truyền hàm onEdit, onAddQuestion và onDeleteQuestion để chuyển trang */}
              <QuestionList 
                questions={questions}

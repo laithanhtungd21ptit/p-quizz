@@ -1,15 +1,18 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Star, Share2, ChevronDown } from 'lucide-react'
 
 const SavedQuizCard = ({ 
   id = 1,
   title = "TIẾNG NHẬT",
-  subtitle = "Từ vựng Mina no Nihongo bài 25",
+  subtitle = "Từ vựng Mina no Nihongo bài 25 xin chao viet nam",
   questionCount = "10",
   author = "Ngô Quốc Anh",
-  authorAvatar = "https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/8fb5f33e-5e67-4591-8df0-33e231a368c9.png"
+  authorAvatar = "https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/8fb5f33e-5e67-4591-8df0-33e231a368c9.png",
+  isSaved = false,
+  onToggleSave
 }) => {
+  const [isStarred, setIsStarred] = useState(isSaved)
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -23,8 +26,14 @@ const SavedQuizCard = ({
 
   const handleStarClick = (e) => {
     e.stopPropagation()
-    // TODO: Handle star functionality
-    console.log('Star clicked')
+    setIsStarred(!isStarred)
+    
+    // Gọi callback nếu có
+    if (onToggleSave) {
+      onToggleSave(id, !isStarred)
+    }
+    
+    console.log('Star clicked, isStarred:', !isStarred)
   }
 
   const handleShareClick = (e) => {
@@ -67,9 +76,11 @@ const SavedQuizCard = ({
           <button 
             onClick={handleStarClick}
             aria-label="Yêu thích" 
-            className="focus:outline-none hover:text-[#ED005D] text-[#ED005D]"
+            className={`focus:outline-none hover:text-[#ED005D] transition-colors duration-200 ${
+              isStarred ? 'text-[#ED005D]' : 'text-gray-400'
+            }`}
           >
-            <Star className="w-6 h-6 fill-current" />
+            <Star className={`w-6 h-6 ${isStarred ? 'fill-current' : 'fill-none'}`} />
           </button>
           {/* Icon chia sẻ */}
           <button 
@@ -84,7 +95,7 @@ const SavedQuizCard = ({
       </div>
 
       {/* Mô tả */}
-      <p className="text-gray-700 text-sm leading-relaxed">{subtitle}</p>
+      <p className="text-gray-700 text-sm leading-relaxed line-clamp-2 overflow-hidden">{subtitle}</p>
 
       {/* Thông tin và tác giả */}
       <div className="flex flex-wrap items-center gap-4 justify-start sm:justify-between">
@@ -107,7 +118,7 @@ const SavedQuizCard = ({
                 e.target.src = 'https://placehold.co/40x40/ef4444/ffffff/png?text=?';
               }}
             />
-            <span className="text-gray-800 font-medium text-sm">{author}</span>
+            <span className="text-gray-800 font-medium text-sm truncate max-w-[120px]" title={author}>{author}</span>
           </div>
         </div>
       </div>

@@ -29,7 +29,7 @@ const FormatToolbar = ({
   }, [showMath]);
 
   return (
-    <div className="w-full flex items-center pt-2 justify-center space-x-3 text-sm text-black font-medium flex-wrap bg-white h-12 border-b border-gray-200 sticky top-14 z-20 p-0 m-0 min-h-0">
+    <div className="w-full flex items-center pt-2 justify-center space-x-3 text-sm text-black font-medium flex-wrap bg-white h-12 border-b border-gray-200 sticky top-14 z-20 p-0 m-0 min-h-0 font-content">
       {/* Định dạng văn bản */}
       <button
         className={`px-2 py-1 border rounded ${format.bold ? 'bg-gray-200' : ''}`}
@@ -61,7 +61,7 @@ const FormatToolbar = ({
       <div className="relative" ref={mathRef}>
         <button
           onClick={() => setShowMath(s => !s)}
-          className="border border-pink-500 rounded-lg px-3 py-1 min-w-[180px] text-left text-black"
+          className="border border-pink-500 rounded-lg px-3 py-1 min-w-[180px] text-left text-black font-content"
           type="button"
         >
           Chèn kí hiệu toán học ▼
@@ -89,7 +89,7 @@ const FormatToolbar = ({
           placeholder="Điểm" 
           value={score}
           onChange={(e) => onScoreChange && onScoreChange(parseInt(e.target.value) || 10)}
-          className="border border-pink-500 rounded-lg px-3 py-1 w-[100px] bg-white text-black" 
+          className="border border-pink-500 rounded-lg px-3 py-1 w-[100px] bg-white text-black font-content" 
         />
         <datalist id="scoreList">
           <option value="5" />
@@ -107,7 +107,7 @@ const FormatToolbar = ({
           placeholder="Thời gian (s)" 
           value={time}
           onChange={(e) => onTimeChange && onTimeChange(parseInt(e.target.value) || 10)}
-          className="border border-pink-500 rounded-lg px-3 py-1 w-[120px] bg-white text-black" 
+          className="border border-pink-500 rounded-lg px-3 py-1 w-[120px] bg-white text-black font-content" 
         />
         <datalist id="timeList">
           <option value="5" />
@@ -125,7 +125,7 @@ const FormatToolbar = ({
       <div className="w-px h-6 bg-gray-300 mx-2"></div>
       {/* Nút giải thích */}
       <button 
-        className="bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-full px-4 py-2 flex items-center space-x-2" 
+        className="bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-full px-4 py-2 flex items-center space-x-2 font-content" 
         type="button"
         onClick={() => onAddExplanation && onAddExplanation()}
       >

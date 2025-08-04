@@ -8,13 +8,16 @@ const QuizCard = ({
   questionCount = "10",
   playCount = "2",
   author = "Bạn",
-  authorAvatar = "https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/e6aad9ee-7272-4c1d-a2a9-a273e9bdda28.png"
+  authorAvatar = "https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/e6aad9ee-7272-4c1d-a2a9-a273e9bdda28.png",
+  isSaved = false,
+  onToggleSave
 }) => {
   const navigate = useNavigate()
   const [showPopup, setShowPopup] = useState(false)
   const [showAccessModal, setShowAccessModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [accessLevel, setAccessLevel] = useState('private') // 'private' or 'public'
+  const [isStarred, setIsStarred] = useState(isSaved)
   const popupRef = useRef(null)
   const modalRef = useRef(null)
   const deleteModalRef = useRef(null)
@@ -97,6 +100,18 @@ const QuizCard = ({
   const handleCancelAccess = () => {
     setShowAccessModal(false)
   }
+
+  const handleStarClick = (e) => {
+    e.stopPropagation()
+    setIsStarred(!isStarred)
+    
+    // Gọi callback nếu có
+    if (onToggleSave) {
+      onToggleSave(title, !isStarred)
+    }
+    
+    console.log('Star clicked, isStarred:', !isStarred)
+  }
   return (
     <>
       <div className="max-w-xl w-full bg-white rounded-lg shadow-lg flex gap-6 p-6 relative mx-auto mt-8 border-2 border-[#ED005D]"
@@ -104,7 +119,7 @@ const QuizCard = ({
 
         {/* Left block */}
         <div className="flex-shrink-0 w-40 h-28 bg-gray-300 rounded-md relative flex flex-col justify-center items-center select-none">
-          <span className="text-4xl font-extrabold text-[#ED005D] mb-1" style={{fontFamily: 'Poppins, sans-serif'}}>P-QUIZZ</span>
+          <span className="text-4xl font-extrabold text-[#ED005D] mb-1 font-title">P-QUIZZ</span>
           <div className="bg-[#ED005D] text-white rounded-full text-xs px-3 py-1 flex items-center gap-1 select-none">
             <FileText className="h-4 w-4" />
             {questionCount} câu hỏi
@@ -129,8 +144,14 @@ const QuizCard = ({
                 <Edit className="h-5 w-5" />
               </button>
               {/* Star */}
-              <button aria-label="Yêu thích bài quiz" className="hover:text-[#ED005D] focus-visible:outline-[#ED005D]">
-                <Star className="h-5 w-5" />
+              <button 
+                onClick={handleStarClick}
+                aria-label="Yêu thích bài quiz" 
+                className={`hover:text-[#ED005D] focus-visible:outline-[#ED005D] transition-colors duration-200 ${
+                  isStarred ? 'text-[#ED005D]' : 'text-gray-400'
+                }`}
+              >
+                <Star className={`h-5 w-5 ${isStarred ? 'fill-current' : 'fill-none'}`} />
               </button>
               {/* More */}
               <div className="relative" ref={popupRef}>

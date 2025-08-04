@@ -36,14 +36,14 @@ const Register = () => {
       </h1>
 
       <div className="w-full max-w-xl bg-[var(--white)] border-8 border-[var(--pink)] shadow-[0_0_30px_var(--shadow-pink)] px-10 py-6 rounded-lg relative">
-        <h2 className="text-center text-3xl font-bold text-[var(--pink)] mb-6">
+        <h2 className="text-center text-3xl font-bold text-[var(--pink)] mb-6 font-content">
           ĐĂNG KÝ
         </h2>
 
         <form onSubmit={handleRegister} className="space-y-6">
           {/* Email */}
           <div>
-            <label htmlFor="email" className="block text-xl font-semibold text-[var(--pink)] mb-1">
+            <label htmlFor="email" className="block text-xl font-semibold text-[var(--pink)] mb-1 font-content">
               Email
             </label>
             <div className="relative bg-[#f7f8f9] rounded-lg border border-[var(--pink)] h-12">
@@ -61,7 +61,7 @@ const Register = () => {
 
           {/* Password */}
           <div>
-            <label htmlFor="password" className="block text-xl font-semibold text-[var(--pink)] mb-1">
+            <label htmlFor="password" className="block text-xl font-semibold text-[var(--pink)] mb-1 font-content">
               Mật khẩu
             </label>
             <div className="relative bg-[#f7f8f9] rounded-lg border border-[var(--pink)] h-12">
@@ -91,7 +91,7 @@ const Register = () => {
 
           {/* Confirm Password */}
           <div>
-            <label htmlFor="confirm" className="block text-xl font-semibold text-[var(--pink)] mb-1">
+            <label htmlFor="confirm" className="block text-xl font-semibold text-[var(--pink)] mb-1 font-content">
               Xác nhận mật khẩu
             </label>
             <div className="relative bg-[#f7f8f9] rounded-lg border border-[var(--pink)] h-12">
@@ -130,7 +130,7 @@ const Register = () => {
 
         {/* Link to Login */}
         <div className="mt-6 flex justify-center items-center gap-2">
-          <p className="text-black text-base">Đã có tài khoản?</p>
+          <p className="text-black text-base font-content">Đã có tài khoản?</p>
           <Link
             to="/login"
             className="text-base font-semibold text-[var(--pink)] hover:underline hover:scale-105 transition-transform ease-in-out"

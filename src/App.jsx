@@ -37,6 +37,7 @@ import PreviewPage from './pages/PreviewPage'
 import EditPage from './pages/EditPage'
 import EditQuestionSet from './pages/EditQuestionSet'
 import PlayerGame from './pages/PlayerGame'
+import SearchResults from './pages/SearchResults'
 
 // Admin pages
 import AccountList from './pages/admin/AccountList'
@@ -47,7 +48,7 @@ import ViolationList from './pages/admin/ViolationList'
  */
 function MainLayout({ sidebarCollapsed, setSidebarCollapsed }) {
   return (
-    <div className="app-root flex h-screen bg-dark-bg text-white">
+    <div className="app-root flex h-screen bg-dark-bg text-white font-content">
       <TopControls
         sidebarCollapsed={sidebarCollapsed}
         setSidebarCollapsed={setSidebarCollapsed}
@@ -82,7 +83,7 @@ function MainLayout({ sidebarCollapsed, setSidebarCollapsed }) {
  */
 function AdminLayout({ sidebarCollapsed, setSidebarCollapsed }) {
   return (
-    <div className="app-root flex h-screen text-white">
+    <div className="app-root flex h-screen text-white font-content">
       <AdminTopControls
         sidebarCollapsed={sidebarCollapsed}
         setSidebarCollapsed={setSidebarCollapsed}
@@ -117,7 +118,7 @@ function AdminLayout({ sidebarCollapsed, setSidebarCollapsed }) {
 function SimpleHeaderLayout() {
   const navigate = useNavigate()
   return (
-    <div className="min-h-screen text-white">
+    <div className="min-h-screen text-white font-content">
       <TopControls
         // ẩn các phần không cần thiết
         showMenu={false}
@@ -147,7 +148,7 @@ function SimpleHeaderLayout() {
 
 function HeaderForControllerLayout() {
   return (
-    <div className="min-h-screen bg-dark-bg text-white">
+    <div className="min-h-screen bg-dark-bg text-white font-content">
       <HeaderForController />
       <div className="pt-14">
         <Outlet />
@@ -216,6 +217,7 @@ export default function App() {
           <Route path="/history-detail" element={<HistoryDetail />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/search" element={<SearchResults />} />
         </Route>
 
         {/* Admin routes với AdminLayout */}

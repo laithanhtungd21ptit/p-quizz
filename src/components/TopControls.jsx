@@ -1,8 +1,9 @@
 // src/components/TopControls.jsx
 import React, { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Search, Plus, ChevronDown, LogOut, Settings, User, Menu, Trello, FileText } from 'lucide-react'
+import { Plus, ChevronDown, LogOut, Settings, User, Menu, Trello, FileText } from 'lucide-react'
 import CreateRoom from '../pages/CreateRoom'
+import SearchInput from './SearchInput'
 
 /**
  * Props mới:
@@ -42,7 +43,7 @@ const TopControls = ({
   }, [])
 
   return (
-    <div className="topcontrols-bar fixed top-0 left-0 w-full h-14 bg-black/90 border-b border-gray-700 px-6 py-3 flex items-center gap-5 shadow-lg z-30">
+    <div className="topcontrols-bar fixed top-0 left-0 w-full h-14 bg-black/90 border-b border-gray-700 px-6 py-3 flex items-center gap-5 shadow-lg z-[9997]">
       {/* Back button */}
       {showBack && (
         <button
@@ -67,19 +68,32 @@ const TopControls = ({
 
       {/* Logo */}
       {showLogo && (
-        <div className="logo text-[#ED005D] font-black text-2xl tracking-wider select-none cursor-pointer mr-6">
+        <div className="logo text-[#ED005D] font-black text-2xl tracking-wider select-none cursor-pointer mr-6 font-title">
           P-QUIZZ
         </div>
       )}
 
       {/* Search Bar */}
       {showSearch && (
-        <div className="flex-1 relative">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input
-            type="text"
+        <div className="flex-1 relative z-[9998]">
+          <SearchInput
             placeholder="Tìm kiếm bộ câu hỏi..."
-            className="w-full pl-12 pr-4 py-2.5 bg-white/10 border border-gray-600 rounded-full text-white placeholder-gray-400 focus:outline-none focus:border-[#ED005D] focus:ring-2 focus:ring-[#ED005D]/20 transition-all duration-300"
+            suggestions={[
+              "Toán học cơ bản",
+              "Văn học Việt Nam", 
+              "Lịch sử thế giới",
+              "Địa lý Việt Nam",
+              "Tiếng Anh giao tiếp",
+              "Vật lý cơ học",
+              "Hóa học vô cơ",
+              "Sinh học tế bào",
+              "Công nghệ thông tin",
+              "Kinh tế học"
+            ]}
+            onSearch={(value) => {
+              console.log('Searching for:', value)
+              // Thêm logic tìm kiếm ở đây
+            }}
           />
         </div>
       )}
@@ -95,7 +109,7 @@ const TopControls = ({
           </button>
           {/* Create Dropdown Menu */}
           {isCreateDropdownOpen && (
-            <div className="absolute left-1/2 transform -translate-x-1/2 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-xl z-50">
+            <div className="absolute left-1/2 transform -translate-x-1/2 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-xl z-[9999]">
               <div className="py-2">
                 <button 
                   onClick={() => {
@@ -145,7 +159,7 @@ const TopControls = ({
           />
         </button>
         {isDropdownOpen && (
-          <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-xl z-50">
+          <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-xl z-[9999]">
             <div className="py-2">
               <Link
                 to="/profile"
