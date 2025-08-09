@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
-  const navigate = useNavigate(); // ← khởi tạo useNavigate
+  const navigate = useNavigate();
 
   const handleEmailChange = (e) => setEmail(e.target.value);
 

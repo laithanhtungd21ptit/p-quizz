@@ -25,9 +25,9 @@ const Register = () => {
   };
 
   // Remove any global background class on mount
-  useEffect(() => {
-    document.body.classList.remove("bg-[url('/background2.png')]");
-  }, []);
+  // useEffect(() => {
+  //   document.body.classList.remove("bg-[url('/background2.png')]");
+  // }, []);
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center px-4 font-content">
