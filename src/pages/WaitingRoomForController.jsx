@@ -187,7 +187,7 @@ const WaitingRoomForController = () => {
   }
 
   return (
-    <div className="h-[calc(100vh-56px)] flex flex-col items-center pt-8 px-4 font-content">
+    <div className="h-[calc(100vh-56px)] flex flex-col items-center pt-8 px-4 font-content space-y-6">
       {/* Tiêu đề */}
       <h1 className="text-[var(--pink)] text-5xl md:text-7xl font-title font-bold text-center mb-8">
         P-QUIZZ
