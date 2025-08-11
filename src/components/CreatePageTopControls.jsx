@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { ArrowLeft, Settings, Eye, Save, SkipForward } from 'lucide-react'
+import React, { useState } from 'react'
+import { ArrowLeft, Settings, Eye, Save, SkipForward, Lock } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import QuizSettingsModal from './QuizSettingsModal'
 
@@ -8,36 +8,24 @@ const CreatePageTopControls = ({
   onTitleChange, 
   onSave,
   onPreview,
-  showPreview = true 
+  showPreview = true,
+  onTopicChange,
+  onVisibilityChange,
+  onDescriptionChange,
+  onImageUrlChange,
+  onBack,
+  initialTopic = '',
+  initialVisibility = true,
+  isSaving = false
 }) => {
   const navigate = useNavigate()
-  const [isEditing, setIsEditing] = useState(false)
-  const [tempTitle, setTempTitle] = useState(title)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
-  // Update tempTitle when title prop changes
-  useEffect(() => {
-    setTempTitle(title)
-  }, [title])
-
   const handleBack = () => {
-    navigate(-1)
-  }
-
-  const handleTitleClick = () => {
-    setIsEditing(true)
-  }
-
-  const handleTitleBlur = () => {
-    setIsEditing(false)
-    if (onTitleChange) {
-      onTitleChange(tempTitle)
-    }
-  }
-
-  const handleTitleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handleTitleBlur()
+    if (onBack) {
+      onBack()
+    } else {
+      navigate(-1)
     }
   }
 
@@ -58,11 +46,36 @@ const CreatePageTopControls = ({
   const handleSettingsSave = (settingsData) => {
     // Handle settings save logic here
     console.log('Settings saved:', settingsData)
-    // You can pass this data up to parent component if needed
+    
+    // Cập nhật title nếu có
     if (onTitleChange && settingsData.quizName) {
       onTitleChange(settingsData.quizName)
-      // Also update the tempTitle to keep it in sync
-      setTempTitle(settingsData.quizName)
+    }
+    
+    // Cập nhật topic
+    if (onTopicChange) {
+      let finalTopic = ''
+      if (settingsData.topic === 'khac') {
+        finalTopic = settingsData.customTopic || ''
+      } else {
+        finalTopic = settingsData.topic
+      }
+      onTopicChange(finalTopic)
+    }
+    
+    // Cập nhật visibility
+    if (onVisibilityChange) {
+      onVisibilityChange(settingsData.visibility === 'public')
+    }
+
+    // Cập nhật description
+    if (onDescriptionChange && settingsData.description !== undefined) {
+      onDescriptionChange(settingsData.description)
+    }
+
+    // Cập nhật image URL
+    if (onImageUrlChange && settingsData.coverImage) {
+      onImageUrlChange(settingsData.coverImage)
     }
   }
 
@@ -78,48 +91,18 @@ const CreatePageTopControls = ({
           <ArrowLeft className="w-5 h-5 text-gray-800" />
         </button>
 
-        {/* Ô chọn/nhập chủ đề */}
+        {/* Hiển thị chủ đề (chỉ đọc) */}
         <div className="w-60">
-          <input
-            type="text"
-            placeholder="Chọn/nhập chủ đề"
-            className="bg-gray-200 rounded-[10px] p-2 w-full focus:outline-none focus:ring-2 focus:ring-[#ED005D] text-gray-800"
-            list="topics"
-          />
-          <datalist id="topics">
-            <option value="Toán học" />
-            <option value="Văn học" />
-            <option value="Tiếng Anh" />
-            <option value="Vật lý" />
-            <option value="Hóa học" />
-            <option value="Sinh học" />
-            <option value="Lịch sử" />
-            <option value="Địa lý" />
-            <option value="GDCD" />
-            <option value="Khác" />
-          </datalist>
+          <div className="bg-gray-200 rounded-[10px] p-2 w-full text-gray-800">
+            {initialTopic || "Chưa chọn chủ đề"}
+          </div>
         </div>
 
-        {/* Textbox tiêu đề */}
+        {/* Hiển thị tiêu đề (chỉ đọc) */}
         <div className="w-80">
-          {isEditing ? (
-            <input
-              type="text"
-              value={tempTitle}
-              onChange={(e) => setTempTitle(e.target.value)}
-              onBlur={handleTitleBlur}
-              onKeyPress={handleTitleKeyPress}
-              className="bg-gray-200 rounded-[10px] p-2 w-full focus:outline-none focus:ring-2 focus:ring-[#ED005D] text-gray-800"
-              autoFocus
-            />
-          ) : (
-            <button
-              onClick={handleTitleClick}
-              className="bg-gray-200 rounded-[10px] p-2 w-full text-left text-gray-800 hover:bg-gray-300 transition-colors duration-200"
-            >
-              {title || "Bộ câu hỏi không có tiêu đề"}
-            </button>
-          )}
+          <div className="bg-gray-200 rounded-[10px] p-2 w-full text-gray-800">
+            {title || "Bộ câu hỏi không có tiêu đề"}
+          </div>
         </div>
       </div>
 
@@ -134,23 +117,55 @@ const CreatePageTopControls = ({
           <span className="text-gray-400">Cài đặt</span>
         </button>
 
-        {/* Nút xem trước */}
+        {/* Nút toggle visibility */}
         <button 
-          onClick={onPreview}
+          onClick={() => onVisibilityChange && onVisibilityChange(!initialVisibility)}
           className="bg-transparent text-white flex items-center space-x-1 hover:bg-gray-800/50 rounded-lg p-2 transition-colors duration-200"
         >
-          <SkipForward className="w-5 h-5 text-gray-400" />
-          <span className="text-gray-400">Xem trước</span>
+          {initialVisibility ? (
+            <>
+              <Eye className="w-5 h-5 text-green-400" />
+              <span className="text-green-400">Công khai</span>
+            </>
+          ) : (
+            <>
+              <Lock className="w-5 h-5 text-yellow-400" />
+              <span className="text-yellow-400">Riêng tư</span>
+            </>
+          )}
         </button>
+
+        {/* Nút xem trước */}
+        {showPreview && (
+          <button 
+            onClick={onPreview}
+            className="bg-transparent text-white flex items-center space-x-1 hover:bg-gray-800/50 rounded-lg p-2 transition-colors duration-200"
+          >
+            <SkipForward className="w-5 h-5" />
+            <span className="text-gray-400">Xem trước</span>
+          </button>
+        )}
 
         {/* Nút lưu thay đổi */}
         <button 
           onClick={handleSave}
-          className="bg-[#ED005D] hover:bg-[#d10052] text-white rounded-[10px] px-4 py-2 font-medium transition-all duration-300 shadow-lg hover:shadow-[#ED005D]/25"
+          disabled={isSaving}
+          className={`bg-[#ED005D] hover:bg-[#d10052] text-white rounded-[10px] px-4 py-2 font-medium transition-all duration-300 shadow-lg hover:shadow-[#ED005D]/25 ${
+            isSaving ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
         >
           <div className="flex items-center gap-2">
-            <Save className="w-4 h-4" />
-            Lưu thay đổi
+            {isSaving ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>Đang lưu...</span>
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                <span>Lưu thay đổi</span>
+              </>
+            )}
           </div>
         </button>
       </div>
@@ -160,11 +175,25 @@ const CreatePageTopControls = ({
         isOpen={isSettingsOpen}
         onClose={handleSettingsClose}
         onSave={handleSettingsSave}
+        availableTopics={[
+          "Toán học",
+          "Văn học", 
+          "Tiếng Anh",
+          "Vật lý",
+          "Hóa học",
+          "Sinh học",
+          "Lịch sử",
+          "Địa lý",
+          "GDCD",
+          "Khác"
+        ]}
         initialData={{
           quizName: title,
-          topic: 'khac',
-          customTopic: '',
-          visibility: 'public'
+          topic: initialTopic || 'khac',
+          customTopic: initialTopic || '',
+          visibility: initialVisibility ? 'public' : 'private',
+          description: '', // Sẽ được cập nhật từ parent component
+          coverImage: null
         }}
       />
     </div>

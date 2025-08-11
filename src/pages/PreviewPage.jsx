@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import QuestionEditor from '../components/QuestionEditor';
+import indexedDBService from '../services/IndexedDBService';
 
 const PreviewPage = () => {
   const navigate = useNavigate();
@@ -8,18 +9,21 @@ const PreviewPage = () => {
   const [showCorrect, setShowCorrect] = useState(false);
   const [questions, setQuestions] = useState([]);
 
-  // Load dữ liệu từ localStorage khi component mount
+  // Load dữ liệu từ IndexedDB khi component mount
   useEffect(() => {
-    const savedQuestions = localStorage.getItem('previewQuestions');
-    if (savedQuestions) {
+    const loadQuestionsFromIndexedDB = async () => {
       try {
-        const parsedQuestions = JSON.parse(savedQuestions);
-        setQuestions(parsedQuestions);
+        const savedQuestions = await indexedDBService.getPreviewQuestions();
+        if (savedQuestions) {
+          setQuestions(savedQuestions);
+        }
       } catch (error) {
-        console.error('Error parsing questions:', error);
+        console.error('Error loading questions from IndexedDB:', error);
         setQuestions([]);
       }
-    }
+    };
+
+    loadQuestionsFromIndexedDB();
   }, []);
 
   const handlePrevQuestion = () => {
@@ -35,13 +39,35 @@ const PreviewPage = () => {
   };
 
   const handleBack = () => {
+    // Không xóa previewQuestions khi quay lại để dữ liệu không bị mất
+    // Dữ liệu sẽ được xóa khi quay về CreateQuestionSet
     navigate(-1); // Quay về trang trước đó
   };
 
   const currentQuestion = questions[currentIndex] || {
-    question: '',
-    options: ['', '', '', ''],
-    correctAnswer: 0,
+    content: '',
+    answerA: '',
+    answerB: '',
+    answerC: '',
+    answerD: '',
+    imageUrl: null,
+    correctAnswer: 'A',
+    limitedTime: 10,
+    score: 10
+  };
+
+  // Chuyển đổi cấu trúc dữ liệu để tương thích với QuestionEditor
+  const questionForEditor = {
+    question: currentQuestion.content || '',
+    options: [
+      currentQuestion.answerA || '',
+      currentQuestion.answerB || '',
+      currentQuestion.answerC || '',
+      currentQuestion.answerD || ''
+    ],
+    correctAnswer: ['A', 'B', 'C', 'D'].indexOf(currentQuestion.correctAnswer) >= 0 
+      ? ['A', 'B', 'C', 'D'].indexOf(currentQuestion.correctAnswer) 
+      : 0,
     questionFormat: { bold: false, italic: false, underline: false, align: 'left' },
     optionFormats: [
       { bold: false, italic: false, underline: false, align: 'left' },
@@ -49,7 +75,7 @@ const PreviewPage = () => {
       { bold: false, italic: false, underline: false, align: 'left' },
       { bold: false, italic: false, underline: false, align: 'left' },
     ],
-    image: null
+    image: currentQuestion.imageUrl
   };
 
   // Nếu không có câu hỏi nào, hiển thị thông báo
@@ -93,12 +119,12 @@ const PreviewPage = () => {
       <div className="flex items-center justify-center h-full">
         <div className="transform scale-90">
           <QuestionEditor
-            question={currentQuestion.question}
-            options={currentQuestion.options}
-            correctAnswer={currentQuestion.correctAnswer}
-            questionFormat={currentQuestion.questionFormat}
-            optionFormats={currentQuestion.optionFormats}
-            image={currentQuestion.image}
+            question={questionForEditor.question}
+            options={questionForEditor.options}
+            correctAnswer={questionForEditor.correctAnswer}
+            questionFormat={questionForEditor.questionFormat}
+            optionFormats={questionForEditor.optionFormats}
+            image={questionForEditor.image}
             readOnly={true}
             showCorrect={showCorrect}
           />

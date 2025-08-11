@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import SupportCard from "../components/SupportCard";
 import Chat from "../components/Chat"
 
@@ -28,16 +29,131 @@ function getRandomPair() {
   return [SUPPORT_OPTIONS[indices[0]], SUPPORT_OPTIONS[indices[1]]];
 }
 
-const WaitingRoomForPlayer = ({
-  joinCode = "682868",
-  name = "Ngô Quốc Anh",
-  avatar: initialAvatar = "/avatar/avatar_1.png",
-}) => {
-  const [avatar, setAvatar] = useState(initialAvatar);
+const WaitingRoomForPlayer = () => {
+  const { roomId } = useParams();
+  const navigate = useNavigate();
+  
+  // States cho dữ liệu từ API
+  const [roomData, setRoomData] = useState(null);
+  const [userData, setUserData] = useState(null);
+  const [participants, setParticipants] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  
+  // States cho UI
+  const [avatar, setAvatar] = useState("/avatar/avatar_1.png");
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const popupRef = useRef(null);
   const buttonRef = useRef(null);
   const [supportPair, setSupportPair] = useState(() => getRandomPair());
+
+  // Load dữ liệu từ localStorage và API
+  useEffect(() => {
+    const initData = async () => {
+      try {
+        setLoading(true);
+        
+        // Lấy thông tin user từ localStorage
+        const token = localStorage.getItem('token');
+        const userStr = localStorage.getItem('user');
+        
+        if (!token || !userStr) {
+          setError('Vui lòng đăng nhập lại');
+          navigate('/login');
+          return;
+        }
+        
+        const user = JSON.parse(userStr);
+        setUserData(user);
+        setAvatar(user.avatar || "/avatar/avatar_1.png");
+        
+        // Validate roomId
+        if (!roomId) {
+          setError('Room ID không hợp lệ');
+          return;
+        }
+        
+        // Fetch room data và participants
+        await Promise.all([
+          fetchRoomData(token),
+          fetchParticipants(token)
+        ]);
+        
+      } catch (error) {
+        console.error('Error initializing data:', error);
+        setError('Không thể tải dữ liệu phòng');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    initData();
+    
+    // Poll participants mỗi 3 giây
+    const interval = setInterval(() => {
+      const token = localStorage.getItem('token');
+      if (token && !error) {
+        fetchParticipants(token);
+      }
+    }, 3000);
+    
+    return () => clearInterval(interval);
+  }, [roomId, navigate, error]);
+  
+  // Fetch room data (pin code, QR code)
+  const fetchRoomData = async (token) => {
+    try {
+      const response = await fetch(`http://localhost:8080/rooms/${roomId}/qrcode`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setRoomData(data);
+      } else if (response.status === 404) {
+        // Phòng không tồn tại (có thể đã bị xóa)
+        setError('Phòng này không tồn tại hoặc đã bị xóa');
+        setLoading(false);
+      } else if (response.status === 403) {
+        setError('Phòng này không tồn tại hoặc đã bị xóa');
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('Error fetching room data:', error);
+      setError('Không thể kết nối đến phòng');
+      setLoading(false);
+    }
+  };
+  
+  // Fetch participants
+  const fetchParticipants = async (token) => {
+    try {
+      const response = await fetch(`http://localhost:8080/rooms/participants?roomId=${roomId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setParticipants(data);
+      } else if (response.status === 404) {
+        // Phòng không tồn tại (có thể đã bị xóa)
+        setError('Phòng này không tồn tại hoặc đã bị xóa');
+        setLoading(false);
+      } else {
+        console.error('Error fetching participants:', response.status);
+      }
+    } catch (error) {
+      console.error('Error fetching participants:', error);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -60,11 +176,52 @@ const WaitingRoomForPlayer = ({
   };
   const swapSupport = () => setSupportPair(getRandomPair());
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="h-[calc(100vh-56px)] flex flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--pink)]"></div>
+        <p className="mt-4 text-white">Đang tải thông tin phòng...</p>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="h-[calc(100vh-56px)] flex flex-col items-center justify-center px-4">
+        <div className="bg-red-100 border border-red-300 text-red-700 px-6 py-4 rounded-lg text-center max-w-md">
+          <div className="mb-3">
+            <svg className="mx-auto h-12 w-12 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold mb-2">Phòng không khả dụng</h3>
+          <p className="text-sm mb-4">{error}</p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="px-4 py-2 bg-[var(--pink)] text-white rounded-lg hover:bg-opacity-80 transition-colors"
+            >
+              Về trang chủ
+            </button>
+            <button
+              onClick={() => navigate('/enter-room-code')}
+              className="px-4 py-2 border border-[var(--pink)] text-[var(--pink)] rounded-lg hover:bg-[var(--pink)] hover:text-white transition-colors"
+            >
+              Tham gia phòng khác
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-[calc(100vh-56px)] flex flex-col items-center pt-8 px-4 font-content space-y-6">
       {/* Mã tham gia */}
-              <div className="bg-white border-2 border-[var(--pink)] rounded-lg px-4 py-2 text-black text-2xl font-base text-center font-content">
-        {joinCode}
+      <div className="bg-white border-2 border-[var(--pink)] rounded-lg px-4 py-2 text-black text-2xl font-base text-center font-content">
+        {roomData?.pinCode || 'Loading...'}
       </div>
 
       {/* Panel bao quanh */}
@@ -73,7 +230,7 @@ const WaitingRoomForPlayer = ({
         <div className="w-full flex flex-col sm:flex-row gap-4 relative">
           <div className="flex-1 bg-[var(--pink)] rounded-[10px] p-6 flex items-center justify-start">
             <span className="text-lg text-white font-content font-medium">
-              {name}
+              {userData?.firstname || userData?.username || 'Player'}
             </span>
           </div>
           <div className="relative bg-[var(--pink)] rounded-[10px] p-6 w-40 h-32 flex-shrink-0">
@@ -135,9 +292,40 @@ const WaitingRoomForPlayer = ({
             </div>
           </button>
         </div>
+        
+        {/* Hiển thị số lượng người chơi */}
+        <div className="w-full bg-gray-50 rounded-lg p-4 mt-4">
+          <h3 className="text-lg font-semibold text-gray-800 mb-3">
+            Người chơi ({participants.length})
+          </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {participants.map((participant, index) => (
+              <div
+                key={participant.id || index}
+                className="flex items-center space-x-2 bg-white rounded-lg p-2 border"
+              >
+                <img
+                  src={participant.avatar || '/avatar/avatar_1.png'}
+                  alt="Avatar"
+                  className="w-8 h-8 rounded-full object-cover"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {participant.firstname || participant.username || 'Player'}
+                  </p>
+                  {participant.isHost && (
+                    <span className="text-xs text-[var(--pink)] font-semibold">
+                      Host ⭐
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-              <div className="text-white text-center mt-10 text-base font-content">
+      <div className="text-white text-center mt-10 text-base font-content">
         Đang chờ người điều khiển bắt đầu...
       </div>
       

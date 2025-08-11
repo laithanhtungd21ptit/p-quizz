@@ -1,14 +1,72 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { X, Plus, Eye, Lock } from 'lucide-react'
 
-const QuizSettingsModal = ({ isOpen, onClose, onSave, initialData = {} }) => {
+const QuizSettingsModal = ({ isOpen, onClose, onSave, initialData = {}, availableTopics = [] }) => {
+  // Danh sách topics mặc định nếu không có availableTopics
+  const defaultTopics = [
+    "Toán học",
+    "Văn học", 
+    "Tiếng Anh",
+    "Vật lý",
+    "Hóa học",
+    "Sinh học",
+    "Lịch sử",
+    "Địa lý",
+    "GDCD"
+  ]
+  
+  const topics = availableTopics.length > 0 ? availableTopics : defaultTopics
+
   const [formData, setFormData] = useState({
     quizName: initialData.quizName || 'Bộ câu hỏi không có tiêu đề',
     topic: initialData.topic || 'khac',
     customTopic: initialData.customTopic || '',
     visibility: initialData.visibility || 'public',
+    description: initialData.description || '',
     coverImage: null
   })
+
+  // Cập nhật formData khi initialData thay đổi
+  useEffect(() => {
+    console.log('QuizSettingsModal: initialData changed:', initialData)
+    
+    // Xác định topic và customTopic dựa trên initialData
+    let topicValue = 'khac'
+    let customTopicValue = ''
+    
+    if (initialData.topic && initialData.topic !== 'khac') {
+      // Kiểm tra xem topic có trong danh sách topics có sẵn không
+      if (topics.includes(initialData.topic)) {
+        topicValue = initialData.topic
+      } else {
+        topicValue = 'khac'
+        customTopicValue = initialData.topic
+      }
+    } else if (initialData.customTopic) {
+      customTopicValue = initialData.customTopic
+    }
+    
+    const newFormData = {
+      quizName: initialData.quizName || 'Bộ câu hỏi không có tiêu đề',
+      topic: topicValue,
+      customTopic: customTopicValue,
+      visibility: initialData.visibility || 'public',
+      description: initialData.description || '',
+      coverImage: null
+    }
+    console.log('QuizSettingsModal: Setting new formData:', newFormData)
+    setFormData(newFormData)
+  }, [initialData, topics])
+
+  // Debug khi modal mở
+  useEffect(() => {
+    if (isOpen) {
+      console.log('QuizSettingsModal: Modal opened with:')
+      console.log('- initialData:', initialData)
+      console.log('- availableTopics:', availableTopics)
+      console.log('- formData:', formData)
+    }
+  }, [isOpen, initialData, availableTopics, formData])
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -81,6 +139,20 @@ const QuizSettingsModal = ({ isOpen, onClose, onSave, initialData = {} }) => {
             />
           </div>
 
+          {/* Mô tả */}
+          <div className="flex flex-col space-y-1 max-w-sm">
+            <label htmlFor="description" className="font-semibold text-[#ED005D]">Mô tả</label>
+            <input
+              id="description"
+              name="description"
+              type="text"
+              value={formData.description}
+              onChange={(e) => handleInputChange('description', e.target.value)}
+              placeholder="Mô tả bộ câu hỏi (tùy chọn)"
+              className="border border-[#ED005D] rounded-md px-3 py-2 text-gray-500 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ED005D] focus:ring-opacity-40"
+            />
+          </div>
+
           {/* Chủ đề */}
           <div className="flex flex-col space-y-1 max-w-sm">
             <label htmlFor="topic" className="font-semibold flex items-center space-x-2 text-[#ED005D]">
@@ -94,10 +166,13 @@ const QuizSettingsModal = ({ isOpen, onClose, onSave, initialData = {} }) => {
                 onChange={(e) => handleTopicChange(e.target.value)}
                 className="appearance-none w-full px-3 pl-10 py-2 pr-10 text-gray-600 placeholder-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-[#ED005D] focus:ring-opacity-40"
               >
+                <option value="">Chọn chủ đề</option>
+                {topics.map((topic, index) => (
+                  <option key={index} value={topic}>
+                    {topic}
+                  </option>
+                ))}
                 <option value="khac">Khác</option>
-                <option value="toan">Toán học</option>
-                <option value="van">Văn học</option>
-                <option value="khoa-hoc">Khoa học</option>
               </select>
               <div className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[#ED005D]">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 stroke-current" fill="none" viewBox="0 0 24 24" strokeWidth="2">

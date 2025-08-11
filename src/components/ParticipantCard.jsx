@@ -6,7 +6,7 @@ const ParticipantCard = ({ avatar, name }) => {
     <div className="flex items-center bg-white rounded-lg px-4 py-2 shadow">
       {/* Avatar: giữ tỉ lệ gốc, width cố định, height tự động */}
       <img
-        src={`/avatar/${avatar}`}
+        src={avatar || "/avatar/avatar_1.png"}
         alt={name}
         className="w-6 h-auto object-contain mr-3"
       />

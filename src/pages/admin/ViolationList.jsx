@@ -1,7 +1,422 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import AdminSearchInput from '../../components/AdminSearchInput'
 
 const ViolationList = () => {
+  // State management
+  const [violations, setViolations] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [pageSize] = useState(5)
+  const [message, setMessage] = useState('')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [bannedUsers, setBannedUsers] = useState(new Set()) // Track banned usernames
+  const [userDetails, setUserDetails] = useState(new Map()) // Cache user details for firstname display
+
+  // Lấy token từ localStorage
+  const getToken = () => {
+    return localStorage.getItem('token')
+  }
+
+  // API calls
+  const fetchViolations = async (page = 0, size = 5) => {
+    try {
+      const token = getToken()
+      if (!token) {
+        console.error('No token found')
+        return
+      }
+
+      const response = await fetch(`http://localhost:8080/admin/violations?page=${page}&size=${size}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Raw violation data from backend:', data.content) // Debug log
+        setViolations(data.content || [])
+        setTotalPages(data.totalPages || 0)
+        setCurrentPage(page)
+      } else {
+        console.error('Failed to fetch violations')
+        setMessage('Có lỗi xảy ra khi tải danh sách vi phạm')
+      }
+    } catch (error) {
+      console.error('Error fetching violations:', error)
+      setMessage('Có lỗi xảy ra khi tải danh sách vi phạm')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Get user ID from username
+  const getUserIdFromUsername = async (username) => {
+    try {
+      const token = getToken()
+      if (!token) return null
+
+      // We need to get user ID from the users list API since ViolationDTO doesn't include userId
+      const response = await fetch(`http://localhost:8080/admin/users?page=0&size=1000`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const user = (data.content || []).find(u => u.username === username)
+        return user?.id
+      }
+      return null
+    } catch (error) {
+      console.error('Error getting user ID:', error)
+      return null
+    }
+  }
+
+  // Handle warning user (from violation list)
+  const handleWarning = async (username) => {
+    try {
+      const userId = await getUserIdFromUsername(username)
+      if (!userId) {
+        setMessage('Không tìm thấy user ID để cảnh báo')
+        return
+      }
+
+      const token = getToken()
+      if (!token) return
+
+      const response = await fetch(`http://localhost:8080/admin/warning/${userId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        setMessage('Gửi cảnh báo thành công!')
+        setTimeout(() => setMessage(''), 3000)
+      } else {
+        const errorText = await response.text()
+        console.error('Warning error response:', response.status, errorText)
+        setMessage(`Có lỗi xảy ra khi gửi cảnh báo: ${response.status}`)
+        setTimeout(() => setMessage(''), 5000)
+      }
+    } catch (error) {
+      console.error('Error warning user:', error)
+      setMessage('Có lỗi xảy ra khi gửi cảnh báo')
+    }
+  }
+
+  // Load all user details for violations display
+  const loadUserDetailsForViolations = async () => {
+    try {
+      const token = getToken()
+      if (!token) return
+
+      const response = await fetch(`http://localhost:8080/admin/users?page=0&size=1000`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const users = data.content || []
+        const detailsMap = new Map()
+        users.forEach(user => {
+          detailsMap.set(user.username, user)
+        })
+        setUserDetails(detailsMap)
+        console.log('👥 Loaded user details for violations:', users.length, 'users')
+        
+        // Update ban status now that we have userDetails
+        setTimeout(() => updateBanStatusFromUserDetails(), 100)
+      }
+    } catch (error) {
+      console.error('Error loading user details:', error)
+    }
+  }
+
+  // Ban user (from violation list)
+  const handleBan = async (username) => {
+    try {
+      const userId = await getUserIdFromUsername(username)
+      if (!userId) {
+        setMessage('Không tìm thấy user ID để ban')
+        return
+      }
+
+      const token = getToken()
+      if (!token) return
+
+      const response = await fetch(`http://localhost:8080/admin/ban/${userId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        setMessage('Ban người dùng thành công!')
+        setTimeout(() => setMessage(''), 3000)
+        // Add username to banned set
+        setBannedUsers(prev => new Set([...prev, username]))
+        
+        // Save to localStorage for persistence
+        const cached = JSON.parse(localStorage.getItem('bannedUsers') || '{}')
+        cached[userId] = {
+          userId: userId,
+          username: username,
+          bannedAt: new Date().toISOString()
+        }
+        localStorage.setItem('bannedUsers', JSON.stringify(cached))
+        
+        // Refresh violation list
+        fetchViolations(currentPage, pageSize)
+      } else {
+        const errorText = await response.text()
+        console.error('Ban error response:', response.status, errorText)
+        setMessage(`Có lỗi xảy ra khi ban người dùng: ${response.status}`)
+        setTimeout(() => setMessage(''), 5000)
+      }
+    } catch (error) {
+      console.error('Error banning user:', error)
+      setMessage('Có lỗi xảy ra khi ban người dùng')
+    }
+  }
+
+  // Unban user (from violation list)
+  const handleUnban = async (username) => {
+    try {
+      const userId = await getUserIdFromUsername(username)
+      if (!userId) {
+        setMessage('Không tìm thấy user ID để unban')
+        return
+      }
+
+      const token = getToken()
+      if (!token) return
+
+      const response = await fetch(`http://localhost:8080/admin/unban/${userId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        setMessage('Mở khóa người dùng thành công!')
+        setTimeout(() => setMessage(''), 3000)
+        // Remove username from banned set
+        setBannedUsers(prev => {
+          const newSet = new Set(prev)
+          newSet.delete(username)
+          return newSet
+        })
+        
+        // Remove from localStorage
+        const cached = JSON.parse(localStorage.getItem('bannedUsers') || '{}')
+        delete cached[userId]
+        localStorage.setItem('bannedUsers', JSON.stringify(cached))
+        
+        // Refresh violation list
+        fetchViolations(currentPage, pageSize)
+      } else {
+        const errorText = await response.text()
+        console.error('Unban error response:', response.status, errorText)
+        setMessage(`Có lỗi xảy ra khi mở khóa người dùng: ${response.status}`)
+        setTimeout(() => setMessage(''), 5000)
+      }
+    } catch (error) {
+      console.error('Error unbanning user:', error)
+      setMessage('Có lỗi xảy ra khi mở khóa người dùng')
+    }
+  }
+
+  // Delete user (from violation list)
+  const handleDeleteUser = async (username) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa người dùng này?')) {
+      return
+    }
+
+    try {
+      const userId = await getUserIdFromUsername(username)
+      if (!userId) {
+        setMessage('Không tìm thấy user ID để xóa')
+        return
+      }
+
+      const token = getToken()
+      if (!token) return
+
+      const response = await fetch(`http://localhost:8080/admin/delete-user/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        setMessage('Xóa người dùng thành công!')
+        setTimeout(() => setMessage(''), 3000)
+        // Refresh violation list
+        fetchViolations(currentPage, pageSize)
+      } else {
+        const errorText = await response.text()
+        console.error('Delete error response:', response.status, errorText)
+        setMessage(`Có lỗi xảy ra khi xóa người dùng: ${response.status}`)
+        setTimeout(() => setMessage(''), 5000)
+      }
+    } catch (error) {
+      console.error('Error deleting user:', error)
+      setMessage('Có lỗi xảy ra khi xóa người dùng')
+    }
+  }
+
+  // Handle search
+  const handleSearch = (value) => {
+    setSearchTerm(value)
+    // Implement search logic here if needed
+    console.log('Searching for violation:', value)
+  }
+
+  // Handle pagination
+  const handlePageChange = (page) => {
+    fetchViolations(page, pageSize)
+  }
+
+  // Get violation severity color
+  const getSeverityColor = (severity) => {
+    switch (severity?.toLowerCase()) {
+      case 'high':
+      case 'nặng':
+        return 'bg-red-100 text-red-800'
+      case 'medium':
+      case 'vừa':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'low':
+      case 'nhẹ':
+        return 'bg-green-100 text-green-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  // Get violation severity text
+  const getSeverityText = (severity) => {
+    switch (severity?.toLowerCase()) {
+      case 'high':
+        return 'Nặng'
+      case 'medium':
+        return 'Vừa'
+      case 'low':
+        return 'Nhẹ'
+      default:
+        return severity || 'N/A'
+    }
+  }
+
+  // Load ban status from localStorage cache
+  const loadBanStatusFromCache = () => {
+    try {
+      const cached = localStorage.getItem('bannedUsers')
+      if (cached) {
+        const bannedData = JSON.parse(cached)
+        console.log('📦 ViolationList - Raw bannedData from localStorage:', bannedData)
+        
+        // Extract usernames from the cached data
+        const bannedUsernames = new Set()
+        Object.values(bannedData).forEach(userData => {
+          if (userData.username) {
+            bannedUsernames.add(userData.username)
+          }
+        })
+        
+        setBannedUsers(bannedUsernames)
+        console.log('📦 ViolationList loaded ban status from cache:', Array.from(bannedUsernames))
+        
+        // Also check if current violations should be marked as banned
+        if (userDetails.size > 0) {
+          updateBanStatusFromUserDetails()
+        }
+      }
+    } catch (error) {
+      console.error('Error loading ban status from cache:', error)
+    }
+  }
+
+  // Update ban status based on userDetails and localStorage
+  const updateBanStatusFromUserDetails = () => {
+    try {
+      const cached = localStorage.getItem('bannedUsers')
+      if (cached && userDetails.size > 0) {
+        const bannedData = JSON.parse(cached)
+        const bannedUsernames = new Set()
+        
+        // Check each user in userDetails against localStorage
+        userDetails.forEach((user, username) => {
+          // Check if this user is banned (by userId or username)
+          const isBannedById = bannedData[user.id]
+          const isBannedByName = Object.values(bannedData).some(data => data.username === username)
+          
+          if (isBannedById || isBannedByName) {
+            bannedUsernames.add(username)
+          }
+        })
+        
+        setBannedUsers(bannedUsernames)
+        console.log('🔄 ViolationList updated ban status from userDetails:', Array.from(bannedUsernames))
+      }
+    } catch (error) {
+      console.error('Error updating ban status from userDetails:', error)
+    }
+  }
+
+  // Load data when component mounts
+  useEffect(() => {
+    fetchViolations(0, pageSize)
+    loadUserDetailsForViolations()
+    loadBanStatusFromCache()
+    
+    // Listen for localStorage changes (for cross-tab sync)
+    const handleStorageChange = (e) => {
+      if (e.key === 'bannedUsers') {
+        console.log('📢 ViolationList storage change detected, reloading ban status...')
+        loadBanStatusFromCache()
+        // Also update from userDetails if available
+        if (userDetails.size > 0) {
+          setTimeout(() => updateBanStatusFromUserDetails(), 100)
+        }
+      }
+    }
+    
+    window.addEventListener('storage', handleStorageChange)
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+    }
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-pink-600 text-lg">Đang tải danh sách vi phạm...</div>
+      </div>
+    )
+  }
+
   return (
     <div className="w-full">
       {/* Header with image and button */}
@@ -27,8 +442,13 @@ const ViolationList = () => {
         <span className="mx-2">{'>'}</span>
         <span className="font-bold">Danh sách vi phạm</span>
       </div>
-      
-            {/* Content will be added later */}
+
+      {/* Message */}
+      {message && (
+        <div className={`text-center p-3 rounded mb-4 ${message.includes('thành công') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+          {message}
+        </div>
+      )}
       
       {/* White background container */}
       <div className="p-6 bg-white min-h-screen rounded-lg">
@@ -49,10 +469,7 @@ const ViolationList = () => {
                 "Lý Thị Giang - Vi phạm spam",
                 "Bùi Hoàng Hải - Vi phạm nội dung"
               ]}
-              onSearch={(value) => {
-                console.log('Searching for violation:', value)
-                // Thêm logic tìm kiếm vi phạm ở đây
-              }}
+              onSearch={handleSearch}
             />
           </div>
         </div>
@@ -69,61 +486,114 @@ const ViolationList = () => {
                   Thời gian tạo 
                   <i className="fas fa-arrow-up ml-1"></i>
                 </th>
+
                 <th className="py-3 px-4">Mức độ vi phạm</th>
                 <th className="py-3 px-4">Thao tác</th>
               </tr>
             </thead>
             <tbody>
-              {Array(10).fill().map((_, i) => (
-                <tr key={i} className="border-b border-gray-200 hover:bg-gray-100">
-                  <td className="py-3 px-4">{i + 1}</td>
-                  <td className="py-3 px-4 flex items-center gap-2">
-                    <img 
-                      src="https://randomuser.me/api/portraits/women/44.jpg" 
-                      className="w-6 h-6 rounded-full" 
-                      alt="Avatar"
-                    />
-                    Nguyễn Thị Quỳnh
-                  </td>
-                  <td className="py-3 px-4">ntq@gmail.com</td>
-                  <td className="py-3 px-4">2025-01-01</td>
-                  <td className="py-3 px-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      i % 3 === 0 ? 'bg-red-100 text-red-800' : 
-                      i % 3 === 1 ? 'bg-yellow-100 text-yellow-800' : 
-                      'bg-green-100 text-green-800'
-                    }`}>
-                      {i % 3 === 0 ? 'Nặng' : i % 3 === 1 ? 'Vừa' : 'Nhẹ'}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 flex gap-5">
-                    <button className="text-green-600 bg-gray-100 hover:bg-gray-200 rounded transition">
-                      <i className="fas fa-pen-to-square"></i>
-                    </button>
-                    <button className="text-red-600 bg-gray-100 hover:bg-gray-200 rounded transition">
-                      <i className="fas fa-trash"></i>
-                    </button>
-                    <button className="text-red-600 bg-gray-100 hover:bg-gray-200 rounded transition">
-                      <i className="fas fa-lock"></i>
-                    </button>
+              {violations.length > 0 ? (
+                violations.map((violation, index) => (
+                  <tr key={violation.id || index} className="border-b border-gray-200 hover:bg-gray-100">
+                    <td className="py-3 px-4">{currentPage * pageSize + index + 1}</td>
+                    <td className="py-3 px-4 flex items-center gap-2">
+                      <img 
+                        src={violation.user?.avatar || "https://randomuser.me/api/portraits/women/44.jpg"} 
+                        className="w-6 h-6 rounded-full" 
+                        alt="Avatar"
+                      />
+                      {userDetails.get(violation.username)?.firstname || violation.username || 'N/A'}
+                    </td>
+                    <td className="py-3 px-4">{userDetails.get(violation.username)?.email || violation.email || 'N/A'}</td>
+                    <td className="py-3 px-4">
+                      {violation.createdAt ? new Date(violation.createdAt).toLocaleDateString('vi-VN') : 'N/A'}
+                    </td>
+
+                    <td className="py-3 px-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSeverityColor(violation.severity)}`}>
+                        {getSeverityText(violation.severity)}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 flex gap-2">
+                      <button 
+                        onClick={() => handleWarning(violation.username)}
+                        className="text-yellow-600 bg-gray-100 hover:bg-gray-200 rounded p-1 transition"
+                        title="Cảnh báo"
+                      >
+                        <i className="fas fa-exclamation-triangle"></i>
+                      </button>
+                      {bannedUsers.has(violation.username) ? (
+                        <button 
+                          onClick={() => handleUnban(violation.username)}
+                          className="text-green-600 bg-gray-100 hover:bg-gray-200 rounded p-1 transition"
+                          title="Mở khóa"
+                        >
+                          <i className="fas fa-unlock"></i>
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={() => handleBan(violation.username)}
+                          className="text-red-600 bg-gray-100 hover:bg-gray-200 rounded p-1 transition"
+                          title="Ban người dùng"
+                        >
+                          <i className="fas fa-lock"></i>
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="7" className="py-8 text-center text-gray-500">
+                    Không có vi phạm nào
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
 
         {/* Pagination */}
-        <div className="mt-4 flex justify-end space-x-2">
-          <button className="px-3 py-1 rounded border border-gray-300 hover:bg-gray-200 text-black">&lt;</button>
-          <button className="px-3 py-1 rounded border bg-pink-500 text-white">1</button>
-          <button className="px-3 py-1 rounded border border-gray-300 hover:bg-gray-200 text-black">2</button>
-          <button className="px-3 py-1 rounded border border-gray-300 hover:bg-gray-200 text-black">3</button>
-          <span className="px-3 py-1 text-black">...</span>
-          <button className="px-3 py-1 rounded border border-gray-300 hover:bg-gray-200 text-black">10</button>
-          <button className="px-3 py-1 rounded border border-gray-300 hover:bg-gray-200 text-black">&gt;</button>
-        </div>
-      </div>    </div>
+        {totalPages > 1 && (
+          <div className="mt-4 flex justify-end space-x-2">
+            <button 
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 0}
+              className="px-3 py-1 rounded border border-gray-300 hover:bg-gray-200 text-black disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              &lt;
+            </button>
+            
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              const page = i + Math.max(0, currentPage - 2)
+              if (page >= totalPages) return null
+              
+              return (
+                <button 
+                  key={page}
+                  onClick={() => handlePageChange(page)}
+                  className={`px-3 py-1 rounded border ${
+                    page === currentPage 
+                      ? 'bg-pink-500 text-white' 
+                      : 'border-gray-300 hover:bg-gray-200 text-black'
+                  }`}
+                >
+                  {page + 1}
+                </button>
+              )
+            })}
+            
+            <button 
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages - 1}
+              className="px-3 py-1 rounded border border-gray-300 hover:bg-gray-200 text-black disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              &gt;
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 

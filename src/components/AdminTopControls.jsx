@@ -1,9 +1,79 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 const AdminTopControls = ({ sidebarCollapsed, setSidebarCollapsed }) => {
   const navigate = useNavigate()
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [adminInfo, setAdminInfo] = useState({
+    username: 'Admin',
+    email: 'admin@example.com',
+    avatar: null
+  })
+
+  // Get admin info from JWT token
+  const getAdminInfoFromToken = () => {
+    try {
+      const token = localStorage.getItem('token')
+      if (token) {
+        const base64Url = token.split('.')[1]
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+        const jsonPayload = decodeURIComponent(
+          atob(base64)
+            .split('')
+            .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+            .join('')
+        )
+        const decodedToken = JSON.parse(jsonPayload)
+        
+        console.log('👤 Decoded admin token:', decodedToken)
+        
+        // Update admin info from token
+        setAdminInfo({
+          username: decodedToken.sub || decodedToken.username || 'Admin',
+          email: decodedToken.email || decodedToken.sub || 'admin@example.com'
+        })
+      }
+    } catch (error) {
+      console.error('Error decoding token:', error)
+    }
+  }
+
+  // Fetch admin profile from API
+  const fetchAdminProfile = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) return
+      
+      const response = await fetch('http://localhost:8080/user/profile', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (response.ok) {
+        const profile = await response.json()
+        console.log('👤 Admin profile from API:', profile)
+        setAdminInfo({
+          username: profile.firstname || profile.username || 'Admin',
+          email: profile.email && profile.email !== 'null' ? profile.email : 'admin@example.com',
+          avatar: profile.avatar && profile.avatar !== 'null' ? profile.avatar : null
+        })
+      } else {
+        console.log('❌ Failed to fetch admin profile, using token data')
+        getAdminInfoFromToken()
+      }
+    } catch (error) {
+      console.error('Error fetching admin profile:', error)
+      getAdminInfoFromToken()
+    }
+  }
+
+  // Load admin info when component mounts
+  useEffect(() => {
+    fetchAdminProfile()
+  }, [])
 
   return (
     <div className="fixed top-0 left-0 right-0 h-14 bg-black border-b border-white/10 z-50 flex items-center justify-between px-4">
@@ -40,11 +110,14 @@ const AdminTopControls = ({ sidebarCollapsed, setSidebarCollapsed }) => {
           >
             <img
               className="w-8 h-8 rounded-full"
-              src="/public/avatar/avatar_1.png"
+              src={adminInfo.avatar || "/public/avatar/avatar_1.png"}
               alt="Admin"
+              onError={(e) => {
+                e.target.src = "/public/avatar/avatar_1.png"
+              }}
             />
             <div className="hidden sm:block text-left">
-              <div className="text-sm font-medium">Admin</div>
+              <div className="text-sm font-medium">{adminInfo.username}</div>
               <div className="text-xs text-gray-300">Quản trị viên</div>
             </div>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -56,8 +129,8 @@ const AdminTopControls = ({ sidebarCollapsed, setSidebarCollapsed }) => {
            {showUserMenu && (
              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-2 z-50">
                <div className="px-4 py-2 border-b border-gray-200">
-                 <div className="text-sm font-medium text-gray-900">Admin</div>
-                 <div className="text-xs text-gray-500">admin@example.com</div>
+                 <div className="text-sm font-medium text-gray-900">{adminInfo.username}</div>
+                 <div className="text-xs text-gray-500">{adminInfo.email}</div>
                </div>
                
                <button
@@ -84,6 +157,10 @@ const AdminTopControls = ({ sidebarCollapsed, setSidebarCollapsed }) => {
                  <button
                    onClick={() => {
                      setShowUserMenu(false)
+                     // Clear auth data
+                     localStorage.removeItem('token')
+                     localStorage.removeItem('user')
+                     localStorage.removeItem('bannedUsers')
                      navigate('/login')
                    }}
                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"

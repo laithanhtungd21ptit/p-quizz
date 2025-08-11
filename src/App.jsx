@@ -181,15 +181,15 @@ export default function App() {
         {/* Những trang chỉ cần header thu gọn */}
         <Route element={<SimpleHeaderLayout />}>
           <Route path="/enter-room-code" element={<EnterRoomCode />} />
-          <Route path="/waiting-room-for-player" element={<WaitingRoomForPlayer />} />
+          <Route path="/waiting-room-for-player/:roomId" element={<WaitingRoomForPlayer />} />
           <Route path="/chat-test" element={<ChatTest />} />
         </Route>
 
         {/* Trang cần layout điều khiển (quay lại + kết thúc) */}
         <Route element={<HeaderForControllerLayout />}>
           <Route path="/support-card-button" element={<SupportCardButtonTest />} />
-          <Route path="/waiting-room-for-controller" element={<WaitingRoomForController />} />
-          <Route path="/play-room-for-controller" element={<PlayRoomForController />} />
+          <Route path="/waiting-room-for-controller/:roomId" element={<WaitingRoomForController />} />
+          <Route path="/play-room-for-controller/:roomId" element={<PlayRoomForController />} />
 
         </Route>
 

@@ -94,15 +94,25 @@ const QuestionEditor = ({
 
   // Sync image state với props khi props thay đổi
   React.useEffect(() => {
+    console.log('QuestionEditor: image prop changed:', image);
+    console.log('QuestionEditor: image type:', typeof image);
+    console.log('QuestionEditor: image instanceof File:', image instanceof File);
+    console.log('QuestionEditor: image instanceof Blob:', image instanceof Blob);
+    
     setMedia(image);
     if (image) {
       // Kiểm tra nếu image là File/Blob thì tạo URL, nếu là string thì dùng trực tiếp
       if (image instanceof File || image instanceof Blob) {
-        setMediaUrl(URL.createObjectURL(image));
-      } else {
-        setMediaUrl(image); // Nếu là string URL thì dùng trực tiếp
+        const url = URL.createObjectURL(image);
+        console.log('QuestionEditor: Created object URL:', url);
+        setMediaUrl(url);
+      } else if (typeof image === 'string') {
+        // Nếu là string (base64 hoặc URL), dùng trực tiếp
+        console.log('QuestionEditor: Using string image directly:', image.substring(0, 50) + '...');
+        setMediaUrl(image);
       }
     } else {
+      console.log('QuestionEditor: No image, setting mediaUrl to null');
       setMediaUrl(null);
     }
     // Reset file input
@@ -110,6 +120,11 @@ const QuestionEditor = ({
       fileInputRef.current.value = '';
     }
   }, [image]);
+
+  // Debug mediaUrl changes
+  React.useEffect(() => {
+    console.log('QuestionEditor: mediaUrl changed:', mediaUrl);
+  }, [mediaUrl]);
 
   const handleQuestionChange = (e) => {
     setLocalQuestion(e.target.value);
@@ -173,53 +188,70 @@ const QuestionEditor = ({
         </div>
         {/* Giao diện thêm hình ảnh - chỉ hiển thị khi có ảnh hoặc không ở chế độ readOnly */}
         <div className="flex items-center justify-center w-full my-6" style={{ minHeight: '300px' }}>
-          {(mediaUrl || !readOnly) && (
-            <div className="bg-white rounded-xl glow-pink p-6 max-w-md w-full">
-              {mediaUrl ? (
-                <div className="bg-gray-100 rounded border border-gray-300 text-center relative max-w-2xl w-full group/preview" style={{ marginTop: 0, marginBottom: 0, height: 263, width: 400, display: 'block', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
-                  {!readOnly && (
-                    <button
-                      type="button"
-                      className="absolute top-2.5 right-2.5 bg-white/90 border-none rounded-full p-1 cursor-pointer opacity-0 group-hover/preview:opacity-100 transition z-20 text-black"
-                      onClick={handleRemoveMedia}
-                      style={{ pointerEvents: 'auto' }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="black" className="w-7 h-7"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                  )}
-                  {media && (media.type ? media.type.startsWith('image/') : mediaUrl) ? (
-                    <img src={mediaUrl} alt="preview" className="rounded-xl w-full h-full object-contain pointer-events-none" />
-                  ) : media && media.type && media.type.startsWith('video/') ? (
-                    <video src={mediaUrl} controls className="rounded-xl w-full h-full object-contain" />
-                  ) : (
-                    <p className="text-red-600">File không hỗ trợ xem trước.</p>
-                  )}
-                </div>
-              ) : !readOnly ? (
-                <div
-                  className="bg-gray-100 rounded border border-gray-300 p-20 text-center hover:border-pink-600 transition relative max-w-2xl w-full"
-                  onDrop={handleDrop}
-                  onDragOver={e => e.preventDefault()}
-                  id="uploadZone"
-                  style={{}}
-                >
-                  <p className="text-gray-600 mb-1">Tải lên hoặc thả hình ảnh ở đây</p>
-                  {/* <p className="text-gray-400 text-sm mb-4">.PNG, .JPG, .JPEG, .GIF</p> */}
-                  <label htmlFor="fileUpload" className="inline-block border border-pink-600 text-pink-600 px-4 py-2 rounded cursor-pointer text-sm font-medium hover:bg-pink-50 transition">
-                    Tải lên từ thiết bị
-                  </label>
-                  <input
-                    type="file"
-                    id="fileUpload"
-                    accept=".png,.jpg,.jpeg,.gif,.mp4,.webm,.ogg"
-                    className="hidden"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                  />
-                </div>
-              ) : null}
-            </div>
-          )}
+          {(() => {
+            console.log('QuestionEditor: mediaUrl exists:', !!mediaUrl);
+            console.log('QuestionEditor: readOnly:', readOnly);
+            console.log('QuestionEditor: Should show image area:', mediaUrl || (!readOnly && !mediaUrl));
+            return (mediaUrl || (!readOnly && !mediaUrl)) && (
+              <div className="bg-white rounded-xl glow-pink p-6 max-w-md w-full">
+                {mediaUrl ? (
+                  <div className="bg-gray-100 rounded border border-gray-300 text-center relative max-w-2xl w-full group/preview" style={{ marginTop: 0, marginBottom: 0, height: 263, width: 400, display: 'block', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
+                    {console.log('QuestionEditor: Rendering image with mediaUrl:', mediaUrl)}
+                    {console.log('QuestionEditor: media type:', media?.type)}
+                    {console.log('QuestionEditor: mediaUrl type:', typeof mediaUrl)}
+                    {!readOnly && (
+                      <button
+                        type="button"
+                        className="absolute top-2.5 right-2.5 bg-white/90 border-none rounded-full p-1 cursor-pointer opacity-0 group-hover/preview:opacity-100 transition z-20 text-black"
+                        onClick={handleRemoveMedia}
+                        style={{ pointerEvents: 'auto' }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="black" className="w-7 h-7"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
+                    )}
+                    {media && (media.type ? media.type.startsWith('image/') : mediaUrl) ? (
+                      <img src={mediaUrl} alt="preview" className="rounded-xl w-full h-full object-contain pointer-events-none" />
+                    ) : media && media.type && media.type.startsWith('video/') ? (
+                      <video src={mediaUrl} controls className="rounded-xl w-full h-full object-contain" />
+                    ) : mediaUrl && typeof mediaUrl === 'string' ? (
+                      // Nếu có mediaUrl là string (base64 hoặc URL) thì hiển thị ảnh
+                      (() => {
+                        console.log('QuestionEditor: Rendering string image (base64/URL):', mediaUrl.substring(0, 50) + '...');
+                        return <img src={mediaUrl} alt="preview" className="rounded-xl w-full h-full object-contain pointer-events-none" />;
+                      })()
+                    ) : (
+                      (() => {
+                        console.log('QuestionEditor: No image to display, showing error message');
+                        return <p className="text-red-600">File không hỗ trợ xem trước.</p>;
+                      })()
+                    )}
+                  </div>
+                ) : !readOnly ? (
+                  <div
+                    className="bg-gray-100 rounded border border-gray-300 p-20 text-center hover:border-pink-600 transition relative max-w-2xl w-full"
+                    onDrop={handleDrop}
+                    onDragOver={e => e.preventDefault()}
+                    id="uploadZone"
+                    style={{}}
+                  >
+                    <p className="text-gray-600 mb-1">Tải lên hoặc thả hình ảnh ở đây</p>
+                    {/* <p className="text-gray-400 text-sm mb-4">.PNG, .JPG, .JPEG, .GIF</p> */}
+                    <label htmlFor="fileUpload" className="inline-block border border-pink-600 text-pink-600 px-4 py-2 rounded cursor-pointer text-sm font-medium hover:bg-pink-50 transition">
+                      Tải lên từ thiết bị
+                    </label>
+                    <input
+                      type="file"
+                      id="fileUpload"
+                      accept=".png,.jpg,.jpeg,.gif,.mp4,.webm,.ogg"
+                      className="hidden"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            );
+          })()}
         </div>
         {/* Các câu trả lời */}
         <div className="grid grid-cols-4 gap-4 mt-4">

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Star, Share2, ChevronDown } from 'lucide-react'
+import { Star, Share2, ChevronDown, Clock } from 'lucide-react'
 
 const SavedQuizCard = ({ 
   id = 1,
@@ -10,9 +10,11 @@ const SavedQuizCard = ({
   author = "Ngô Quốc Anh",
   authorAvatar = "https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/8fb5f33e-5e67-4591-8df0-33e231a368c9.png",
   isSaved = false,
+  savedAt = null,
   onToggleSave
 }) => {
   const [isStarred, setIsStarred] = useState(isSaved)
+  const [isToggling, setIsToggling] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -24,16 +26,26 @@ const SavedQuizCard = ({
     }
   }
 
-  const handleStarClick = (e) => {
+  const handleStarClick = async (e) => {
     e.stopPropagation()
-    setIsStarred(!isStarred)
     
-    // Gọi callback nếu có
-    if (onToggleSave) {
-      onToggleSave(id, !isStarred)
+    if (isToggling) return // Tránh click nhiều lần
+    
+    try {
+      setIsToggling(true)
+      
+      // Gọi callback nếu có
+      if (onToggleSave) {
+        await onToggleSave(id, !isStarred)
+        // Cập nhật state local sau khi API thành công
+        setIsStarred(!isStarred)
+      }
+    } catch (error) {
+      console.error('Lỗi khi toggle favorite:', error)
+      // Giữ nguyên state nếu có lỗi
+    } finally {
+      setIsToggling(false)
     }
-    
-    console.log('Star clicked, isStarred:', !isStarred)
   }
 
   const handleShareClick = (e) => {
@@ -57,6 +69,7 @@ const SavedQuizCard = ({
     // TODO: Navigate to author profile page
     console.log('Author clicked:', author)
   }
+
   return (
     <div 
       className="bg-white rounded-xl p-6 space-y-5 relative flex-shrink-0 cursor-pointer hover:shadow-lg transition-shadow duration-300"
@@ -75,10 +88,11 @@ const SavedQuizCard = ({
           {/* Icon yêu thích */}
           <button 
             onClick={handleStarClick}
+            disabled={isToggling}
             aria-label="Yêu thích" 
             className={`focus:outline-none hover:text-[#ED005D] transition-colors duration-200 ${
               isStarred ? 'text-[#ED005D]' : 'text-gray-400'
-            }`}
+            } ${isToggling ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <Star className={`w-6 h-6 ${isStarred ? 'fill-current' : 'fill-none'}`} />
           </button>
@@ -96,6 +110,14 @@ const SavedQuizCard = ({
 
       {/* Mô tả */}
       <p className="text-gray-700 text-sm leading-relaxed line-clamp-2 overflow-hidden">{subtitle}</p>
+
+      {/* Thông tin thời gian đã lưu */}
+      {savedAt && (
+        <div className="flex items-center gap-2 text-gray-500 text-xs">
+          <Clock className="w-4 h-4" />
+          <span>Đã lưu {savedAt}</span>
+        </div>
+      )}
 
       {/* Thông tin và tác giả */}
       <div className="flex flex-wrap items-center gap-4 justify-start sm:justify-between">

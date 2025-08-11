@@ -5,6 +5,7 @@ import CreateSidebar from '../components/CreateSidebar';
 import FormatToolbar from '../components/FormatToolbar';
 import QuestionEditor from '../components/QuestionEditor';
 import ExplanationModal from '../components/ExplanationModal';
+import indexedDBService from '../services/IndexedDBService';
 
 const defaultFormat = { bold: false, italic: false, underline: false, align: 'left' };
 
@@ -171,8 +172,12 @@ const EditQuestionSet = () => {
     }
   }, [explanationModal, questions]);
 
-  const handleOpenPreview = () => {
-    localStorage.setItem('previewQuestions', JSON.stringify(questions));
+  const handleOpenPreview = async () => {
+    try {
+      await indexedDBService.savePreviewQuestions(questions);
+    } catch (error) {
+      console.error('Lỗi khi lưu previewQuestions vào IndexedDB:', error);
+    }
     navigate('/preview');
   };
 

@@ -1,22 +1,193 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './profile.css'
 
-const user = {
-  name: 'Nguyễn Quỳnh',
-  email: 'quynh@example.com',
-  avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&h=300&fit=crop&crop=face',
-  badge: 'Premium',
-  info: [
-    { label: 'Ngày sinh', value: '01/01/2000' },
-    { label: 'Giới tính', value: 'Nữ' },
-    { label: 'Trường', value: 'PTIT' },
-    { label: 'Thành tích', value: 'Top 1 tuần này' },
-  ]
-}
-
 const Profile = () => {
   const navigate = useNavigate()
+  
+  // State cho profile và level
+  const [profile, setProfile] = useState({
+    firstname: '',
+    email: '',
+    socialLinks: '',
+    avatar: ''
+  })
+  
+  const [level, setLevel] = useState({
+    level: 0,
+    exp: 0
+  })
+  
+  const [loading, setLoading] = useState(true)
+  const [updating, setUpdating] = useState(false)
+  const [message, setMessage] = useState('')
+  
+  // Lấy token từ localStorage
+  const getToken = () => {
+    return localStorage.getItem('token')
+  }
+  
+  // API calls
+  const fetchProfile = async () => {
+    try {
+      const token = getToken()
+      if (!token) {
+        navigate('/login')
+        return
+      }
+      
+      const response = await fetch('http://localhost:8080/user/profile', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setProfile(data)
+      } else {
+        console.error('Failed to fetch profile')
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error)
+    }
+  }
+  
+  const fetchLevel = async () => {
+    try {
+      const token = getToken()
+      if (!token) return
+      
+      const response = await fetch('http://localhost:8080/user/level', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setLevel(data)
+      } else {
+        console.error('Failed to fetch level')
+      }
+    } catch (error) {
+      console.error('Error fetching level:', error)
+    }
+  }
+  
+  // Load data khi component mount
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true)
+      await Promise.all([fetchProfile(), fetchLevel()])
+      setLoading(false)
+    }
+    
+    loadData()
+  }, [])
+  
+  // Handle form submission
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setUpdating(true)
+    setMessage('')
+    
+    try {
+      const token = getToken()
+      if (!token) {
+        navigate('/login')
+        return
+      }
+      
+      const formData = new FormData()
+      formData.append('firstname', profile.firstname)
+      formData.append('email', profile.email)
+      formData.append('socialLinks', profile.socialLinks)
+      
+      // Nếu có avatar mới được chọn
+      const avatarInput = document.getElementById('avatar-input')
+      if (avatarInput && avatarInput.files[0]) {
+        formData.append('avatar', avatarInput.files[0])
+      }
+      
+      const response = await fetch('http://localhost:8080/user/profile', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      })
+      
+      if (response.ok) {
+        // Kiểm tra content-type để xử lý response phù hợp
+        const contentType = response.headers.get("content-type")
+        
+        if (contentType && contentType.includes("application/json")) {
+          // Nếu server trả về JSON (profile data mới)
+          const updatedProfile = await response.json()
+          setProfile(updatedProfile)
+        } else {
+          // Nếu server chỉ trả về text message
+          const textResponse = await response.text()
+          console.log('Profile update response:', textResponse)
+          // Fetch lại profile data mới từ API
+          await fetchProfile()
+        }
+        
+        setMessage('Cập nhật profile thành công!')
+        setTimeout(() => setMessage(''), 3000)
+        
+        // Dispatch custom event để thông báo TopControls cập nhật
+        window.dispatchEvent(new CustomEvent('profileUpdated'))
+      } else {
+        const errorText = await response.text()
+        console.error('Profile update error:', errorText)
+        setMessage('Có lỗi xảy ra khi cập nhật profile')
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error)
+      setMessage('Có lỗi xảy ra khi cập nhật profile')
+    } finally {
+      setUpdating(false)
+    }
+  }
+  
+  // Handle input changes
+  const handleInputChange = (e) => {
+    const { name, value } = e.target
+    setProfile(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+  
+  // Handle avatar change
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setProfile(prev => ({
+          ...prev,
+          avatar: e.target.result
+        }))
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+  
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-pink-600 text-lg">Đang tải thông tin...</div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Greeting + Room Code (giống Dashboard) */}
@@ -45,6 +216,22 @@ const Profile = () => {
         </div>
       </div>
       
+      {/* Message */}
+      {message && (
+        <div className={`text-center p-3 rounded ${message.includes('thành công') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+          {message}
+        </div>
+      )}
+      
+      {/* Level Info */}
+      <div className="bg-white border-4 border-pink-600 p-4 shadow-lg max-w-md mx-auto">
+        <h3 className="text-pink-600 font-bold text-lg mb-2">Thông tin cấp độ</h3>
+        <div className="space-y-2">
+          <p><span className="font-semibold">Cấp độ:</span> {level.level}</p>
+          <p><span className="font-semibold">EXP:</span> {level.exp}</p>
+        </div>
+      </div>
+      
       {/* Two Sections Container */}
       <div className="flex flex-col gap-12 justify-center items-center">
         {/* Personal Info Section */}
@@ -61,7 +248,7 @@ const Profile = () => {
               <div className="flex justify-center mb-4">
                 <div className="relative">
                   <img 
-                    src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/8bdfa6d4-4e32-4fb3-9bb4-fd481caffea7.png" 
+                    src={profile.avatar || "https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/8bdfa6d4-4e32-4fb3-9bb4-fd481caffea7.png"} 
                     alt="Avatar người dùng" 
                     className="w-20 h-20 object-cover border-4 border-pink-600"
                     onError={(e) => {
@@ -69,36 +256,38 @@ const Profile = () => {
                       e.target.src = 'https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/eee6c775-effe-4ac7-8113-2f7615934a37.png';
                     }}
                   />
-                  <div className="absolute bottom-0 right-0 bg-pink-600 p-1 cursor-pointer" title="Chỉnh sửa ảnh đại diện">
+                  <label htmlFor="avatar-input" className="absolute bottom-0 right-0 bg-pink-600 p-1 cursor-pointer" title="Chỉnh sửa ảnh đại diện">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 11l5 5L20.5 9.5a2.121 2.121 0 00-3-3L9 11z" />
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 21v-3a4 4 0 014-4h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01-1.414 1.414l-5.414-5.414A1 1 0 0012 14.586V19a4 4 0 01-4 4H3z" />
                     </svg>
-                  </div>
+                  </label>
+                  <input 
+                    id="avatar-input"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarChange}
+                    className="hidden"
+                  />
                 </div>
               </div>
 
-              <form className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Username */}
                 <div>
-                  <label htmlFor="username" className="inline-flex items-center text-pink-600 font-semibold text-sm mb-1 select-none">
+                  <label htmlFor="firstname" className="inline-flex items-center text-pink-600 font-semibold text-sm mb-1 select-none">
                     <span className="text-pink-600 font-bold text-base mr-2">+</span>
                     Tên người dùng
                   </label>
                   <div className="relative">
                     <input 
-                      id="username" 
-                      name="username" 
+                      id="firstname" 
+                      name="firstname" 
                       type="text" 
-                      defaultValue="Nguyễn Quỳnh"
+                      value={profile.firstname || ''}
+                      onChange={handleInputChange}
                       className="w-full px-3 py-1.5 border border-pink-600 text-gray-900 font-medium caret-pink-600 tracking-wide focus:ring-0 focus:outline-none focus:border-pink-600 focus:shadow-[0_0_0_2px_rgb(230_0_86_/_0.3)]"
                     />
-                    <button 
-                      type="button" 
-                      className="absolute right-2 top-1/2 transform -translate-y-1/2 text-black hover:text-pink-600 transition-colors"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536M9 11l5 5L20.5 9.5a2.121 2.121 0 00-3-3L9 11z"/></svg>
-                    </button>
                   </div>
                 </div>
 
@@ -113,16 +302,41 @@ const Profile = () => {
                       id="email" 
                       name="email" 
                       type="email" 
-                      defaultValue="ntq2003@gmail.com"
+                      value={profile.email || ''}
+                      onChange={handleInputChange}
                       className="w-full px-3 py-1.5 border border-pink-600 text-gray-900 font-medium caret-pink-600 tracking-wide focus:ring-0 focus:outline-none focus:border-pink-600 focus:shadow-[0_0_0_2px_rgb(230_0_86_/_0.3)]"
                     />
-                    <button 
-                      type="button" 
-                      className="absolute right-2 top-1/2 transform -translate-y-1/2 text-black hover:text-pink-600 transition-colors"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536M9 11l5 5L20.5 9.5a2.121 2.121 0 00-3-3L9 11z"/></svg>
-                    </button>
                   </div>
+                </div>
+
+                {/* Social Links */}
+                <div>
+                  <label htmlFor="socialLinks" className="inline-flex items-center text-pink-600 font-semibold text-sm mb-1 select-none">
+                    <span className="text-pink-600 font-bold text-base mr-2">+</span>
+                    Liên kết mạng xã hội
+                  </label>
+                  <div className="relative">
+                    <input 
+                      id="socialLinks" 
+                      name="socialLinks" 
+                      type="url" 
+                      value={profile.socialLinks || ''}
+                      onChange={handleInputChange}
+                      placeholder="https://www.facebook.com/your-profile"
+                      className="w-full px-3 py-1.5 border border-pink-600 text-gray-900 font-medium caret-pink-600 tracking-wide focus:ring-0 focus:outline-none focus:border-pink-600 focus:shadow-[0_0_0_2px_rgb(230_0_86_/_0.3)]"
+                    />
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <div className="flex justify-end pt-4">
+                  <button 
+                    type="submit"
+                    disabled={updating}
+                    className="bg-pink-600 text-white px-6 py-2 rounded hover:bg-pink-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {updating ? 'Đang cập nhật...' : 'Cập nhật thông tin'}
+                  </button>
                 </div>
               </form>
             </section>

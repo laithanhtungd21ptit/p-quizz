@@ -3,32 +3,230 @@ import { ChevronLeft, ChevronRight, Star, Eye, User, Calendar } from 'lucide-rea
 import { useNavigate } from 'react-router-dom'
 import StatsPanel from '../components/StatsPanel'
 import QuestionCard from '../components/QuestionCard'
-import WeeklyChart from '../components/WeeklyChart'
 import SavedQuizCard from '../components/SavedQuizCard'
 import { mockStats, mockQuestions, mockWeeklyData } from '../data/mockData'
+import { getUserProfile, getDailyStats, getTopQuizCreators } from '../services/api'
 
 const Dashboard = () => {
-  const [currentWeekIndex, setCurrentWeekIndex] = useState(0)
   const [scrollPosition, setScrollPosition] = useState(0)
+  const [userFirstname, setUserFirstname] = useState('')
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true)
+  const [profileError, setProfileError] = useState('')
+  const [dailyStats, setDailyStats] = useState([])
+  const [isLoadingStats, setIsLoadingStats] = useState(true)
+  const [topCreators, setTopCreators] = useState([])
+  const [isLoadingCreators, setIsLoadingCreators] = useState(true)
   const chartRef = useRef(null)
   const chartInstance = useRef(null)
   const navigate = useNavigate()
 
-  const weeks = [
-    "01/07/2025 - 13/07/2025",
-    "14/07/2025 - 20/07/2025", 
-    "21/07/2025 - 27/07/2025"
-  ]
+  // Function để tính toán tuần hiện tại và các tuần xung quanh
+  const getCurrentWeekInfo = () => {
+    const today = new Date()
+    const currentDay = today.getDay()
+    const daysToMonday = currentDay === 0 ? 6 : currentDay - 1 // 0 = Chủ nhật
+    const monday = new Date(today)
+    monday.setDate(today.getDate() - daysToMonday)
+    monday.setHours(0, 0, 0, 0)
+    
+    const sunday = new Date(monday)
+    sunday.setDate(monday.getDate() + 6)
+    sunday.setHours(23, 59, 59, 999)
+    
+    return { monday, sunday }
+  }
+
+  // Function để format ngày thành chuỗi hiển thị
+  const formatDateRange = (startDate, endDate) => {
+    const formatDate = (date) => {
+      return date.toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      })
+    }
+    return `${formatDate(startDate)} - ${formatDate(endDate)}`
+  }
+
+  // Tính toán tuần hiện tại
+  const { monday: currentMonday, sunday: currentSunday } = getCurrentWeekInfo()
+  
+  // Tạo mảng weeks động dựa trên tuần hiện tại
+  const generateWeeks = () => {
+    const weeks = []
+    // Tuần trước (3 tuần)
+    for (let i = 3; i >= 1; i--) {
+      const weekStart = new Date(currentMonday)
+      weekStart.setDate(currentMonday.getDate() - (i * 7))
+      const weekEnd = new Date(weekStart)
+      weekEnd.setDate(weekStart.getDate() + 6)
+      weeks.push({
+        startDate: weekStart,
+        endDate: weekEnd,
+        label: formatDateRange(weekStart, weekEnd)
+      })
+    }
+    // Tuần hiện tại
+    weeks.push({
+      startDate: currentMonday,
+      endDate: currentSunday,
+      label: formatDateRange(currentMonday, currentSunday)
+    })
+    // Tuần sau (3 tuần)
+    for (let i = 1; i <= 3; i++) {
+      const weekStart = new Date(currentMonday)
+      weekStart.setDate(currentMonday.getDate() + (i * 7))
+      const weekEnd = new Date(weekStart)
+      weekEnd.setDate(weekStart.getDate() + 6)
+      weeks.push({
+        startDate: weekStart,
+        endDate: weekEnd,
+        label: formatDateRange(weekStart, weekEnd)
+      })
+    }
+    return weeks
+  }
+
+  const weeks = generateWeeks()
+  // Tìm index của tuần hiện tại và khởi tạo state
+  const initialWeekIndex = weeks.findIndex(week => 
+    week.startDate.getTime() === currentMonday.getTime()
+  )
+  const [currentWeekIndex, setCurrentWeekIndex] = useState(initialWeekIndex)
+
+  // Fetch user profile khi component mount
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        // Kiểm tra token trước khi gọi API
+        const token = localStorage.getItem('token')
+        if (!token) {
+          console.log('Không có token, chuyển đến trang login')
+          navigate('/login')
+          return
+        }
+
+        setIsLoadingProfile(true)
+        setProfileError('') // Clear error trước khi fetch
+        const userData = await getUserProfile()
+        if (userData && userData.firstname) {
+          setUserFirstname(userData.firstname)
+          setProfileError('') // Clear error nếu thành công
+        } else {
+          // Fallback nếu không có firstname
+          setUserFirstname('User')
+          setProfileError('Không thể lấy tên người dùng')
+        }
+      } catch (error) {
+        console.error('Không thể lấy thông tin user profile:', error)
+        // Nếu lỗi 401/403, có thể token hết hạn
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          console.log('Token hết hạn hoặc không hợp lệ, chuyển đến trang login')
+          navigate('/login')
+          return
+        }
+        // Fallback về tên mặc định nếu có lỗi khác
+        setUserFirstname('User')
+        setProfileError('Lỗi khi tải thông tin người dùng')
+      } finally {
+        setIsLoadingProfile(false)
+      }
+    }
+
+    fetchUserProfile()
+  }, [navigate])
+
+  // Fetch daily statistics khi component mount
+  useEffect(() => {
+    fetchDailyStats()
+  }, [])
+
+  // Fetch top quiz creators khi component mount
+  useEffect(() => {
+    fetchTopCreators()
+  }, [])
+
+  // Function để fetch daily statistics
+  const fetchDailyStats = async () => {
+    try {
+      setIsLoadingStats(true)
+      // Lấy ngày đầu tuần hiện tại (Thứ 2)
+      const today = new Date()
+      const currentDay = today.getDay()
+      const daysToMonday = currentDay === 0 ? 6 : currentDay - 1 // 0 = Chủ nhật
+      const monday = new Date(today)
+      monday.setDate(today.getDate() - daysToMonday)
+      monday.setHours(0, 0, 0, 0)
+      
+      const stats = await getDailyStats(monday)
+      setDailyStats(stats)
+    } catch (error) {
+      console.error('Lỗi khi lấy thống kê hàng ngày:', error)
+      // Fallback về mock data nếu có lỗi
+      setDailyStats(mockWeeklyData.map((item, index) => ({
+        date: new Date(Date.now() - (6 - index) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        users: item.users,
+        quizzes: item.questions
+      })))
+    } finally {
+      setIsLoadingStats(false)
+    }
+  }
+
+  // Function để fetch daily statistics cho tuần cụ thể
+  const fetchDailyStatsForWeek = async (startDate) => {
+    try {
+      setIsLoadingStats(true)
+      const stats = await getDailyStats(startDate)
+      setDailyStats(stats)
+    } catch (error) {
+      console.error('Lỗi khi lấy thống kê hàng ngày cho tuần:', error)
+      // Fallback về mock data nếu có lỗi
+      setDailyStats(mockWeeklyData.map((item, index) => ({
+        date: new Date(startDate.getTime() + index * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        users: item.users,
+        quizzes: item.questions
+      })))
+    } finally {
+      setIsLoadingStats(false)
+    }
+  }
+
+  // Function để fetch top quiz creators
+  const fetchTopCreators = async () => {
+    try {
+      setIsLoadingCreators(true)
+      const creators = await getTopQuizCreators()
+      setTopCreators(creators)
+    } catch (error) {
+      console.error('Lỗi khi lấy top quiz creators:', error)
+      // Fallback về mock data nếu có lỗi
+      setTopCreators([
+        { username: 'Ngô Quốc Anh', totalQuiz: 98, avatar: 'https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/e69efc41-e613-4cc4-8775-3f1e74bfe878.png' },
+        { username: 'Lại Thanh Tùng', totalQuiz: 90, avatar: 'https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/b40eb9e-0381-479e-8d5a-977dacf706ec.png' },
+        { username: 'Vũ Văn Toản', totalQuiz: 86, avatar: 'https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/73041618-0a8e-43ac-8ee7-0b898d3a9c20.png' },
+        { username: 'Nguyễn Tùng', totalQuiz: 80, avatar: 'https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/60549c4f-441e-47db-b3d0-65a6f47bd140.png' },
+        { username: 'Trần Văn Minh', totalQuiz: 75, avatar: 'https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/e69efc41-e613-4cc4-8775-3f1e74bfe878.png' },
+        { username: 'Lê Thị Hương', totalQuiz: 72, avatar: 'https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/b40eb9e-0381-479e-8d5a-977dacf706ec.png' }
+      ])
+    } finally {
+      setIsLoadingCreators(false)
+    }
+  }
 
   const featuredQuestions = mockQuestions.slice(0, 3)
 
   // Mock data for the chart
   const chartData = {
-    labels: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
+    labels: dailyStats.length > 0 ? dailyStats.map(stat => {
+      const date = new Date(stat.date);
+      const days = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+      return days[date.getDay()];
+    }) : ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
     datasets: [
       {
         label: 'Số bộ câu hỏi',
-        data: [12, 19, 15, 25, 22, 30, 28],
+        data: dailyStats.length > 0 ? dailyStats.map(stat => stat.quizzes) : [0, 0, 0, 0, 0, 0, 0],
         borderColor: '#3182ce',
         backgroundColor: 'rgba(49, 130, 206, 0.1)',
         tension: 0.4,
@@ -36,7 +234,7 @@ const Dashboard = () => {
       },
       {
         label: 'Số người đăng kí',
-        data: [8, 15, 12, 20, 18, 25, 22],
+        data: dailyStats.length > 0 ? dailyStats.map(stat => stat.users) : [0, 0, 0, 0, 0, 0, 0],
         borderColor: '#38a169',
         backgroundColor: 'rgba(56, 161, 105, 0.1)',
         tension: 0.4,
@@ -88,9 +286,17 @@ const Dashboard = () => {
 
   const handleWeekNavigation = (direction) => {
     if (direction === 'prev' && currentWeekIndex > 0) {
-      setCurrentWeekIndex(currentWeekIndex - 1)
+      const newWeekIndex = currentWeekIndex - 1
+      setCurrentWeekIndex(newWeekIndex)
+      // Lấy startDate từ tuần mới
+      const newWeek = weeks[newWeekIndex]
+      fetchDailyStatsForWeek(newWeek.startDate)
     } else if (direction === 'next' && currentWeekIndex < weeks.length - 1) {
-      setCurrentWeekIndex(currentWeekIndex + 1)
+      const newWeekIndex = currentWeekIndex + 1
+      setCurrentWeekIndex(newWeekIndex)
+      // Lấy startDate từ tuần mới
+      const newWeek = weeks[newWeekIndex]
+      fetchDailyStatsForWeek(newWeek.startDate)
     }
   }
 
@@ -165,7 +371,7 @@ const Dashboard = () => {
         chartInstance.current = null
       }
     }
-  }, [])
+  }, [dailyStats]) // Thêm dailyStats vào dependency
 
   // Check scroll buttons visibility
   useEffect(() => {
@@ -206,8 +412,21 @@ const Dashboard = () => {
       {/* Main Header Row - giống layout gốc */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
         <p className="greeting text-xl sm:text-2xl font-semibold text-gray-100 tracking-wide m-0">
-          Xin chào, John!
+          Xin chào, {isLoadingProfile ? (
+            <span className="inline-flex items-center">
+              <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Đang tải...
+            </span>
+          ) : userFirstname || 'User'}!
         </p>
+        {profileError && (
+          <p className="text-sm text-red-400 mt-1">
+            {profileError}
+          </p>
+        )}
         <div className="flex-shrink-0 flex items-center h-12">
           <button 
             onClick={() => navigate('/enter-room-code')}
@@ -287,7 +506,7 @@ const Dashboard = () => {
                 fontWeight: '600',
                 letterSpacing: '0.5px'
               }}>
-                {weeks[currentWeekIndex]}
+                {weeks[currentWeekIndex].label}
               </span>
             </div>
             <button 
@@ -329,7 +548,16 @@ const Dashboard = () => {
             </button>
           </div>
           <div className="chart-container" style={{flex: '1', minHeight: '160px', height: '160px', backgroundColor: '#f8f9fa', borderRadius: '8px', padding: '15px', border: '1px solid #ED005D'}}>
-            <canvas ref={chartRef} style={{width: '100% !important', height: '100% !important', display: 'block'}} role="img" aria-label="Biểu đồ số bộ câu hỏi và số người đăng kí hàng ngày trong tuần"></canvas>
+            {isLoadingStats ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ED005D] mx-auto mb-2"></div>
+                  <p className="text-sm text-gray-600">Đang tải dữ liệu...</p>
+                </div>
+              </div>
+            ) : (
+              <canvas ref={chartRef} style={{width: '100% !important', height: '100% !important', display: 'block'}} role="img" aria-label="Biểu đồ số bộ câu hỏi và số người đăng kí hàng ngày trong tuần"></canvas>
+            )}
           </div>
           <div className="legend flex justify-center gap-8 mt-4 select-none" aria-hidden="true" style={{marginTop: '15px'}}>
             <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -344,118 +572,43 @@ const Dashboard = () => {
         <div className="panel author-panel" aria-label="Tác giả hàng đầu" style={{flex: '1', minWidth: 'auto', display: 'flex', flexDirection: 'column', minHeight: '140px', backgroundColor: '#ffffff', border: '2px solid #ED005D', borderRadius: '12px', padding: '20px', boxShadow: '0 0 20px rgba(237, 0, 93, 0.3)', marginRight: '20px'}}>
           <h3 style={{color: '#ED005D', fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '15px', textAlign: 'center'}}>Tác giả hàng đầu</h3>
           <div className="author-list" id="authorList" style={{flex: '1', overflowY: 'auto', maxHeight: '300px', paddingRight: '8px'}}>
-            <article className="author-item" tabIndex="0" role="listitem" aria-label="Ngô Quốc Anh, 98 bộ câu hỏi">
-              <div className="author-info">
-                <img 
-                  src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/e69efc41-e613-4cc4-8775-3f1e74bfe878.png" 
-                  alt="Ảnh chân dung Ngô Quốc Anh, người đàn ông trẻ với áo đen và kính tròn" 
-                />
-                <span className="author-name">Ngô Quốc Anh</span>
+            {isLoadingCreators ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ED005D] mx-auto mb-2"></div>
+                  <p className="text-sm text-gray-600">Đang tải dữ liệu...</p>
+                </div>
               </div>
-              <div className="author-badge">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M9 17v-6M13 17v-4M16 17v-10"></path>
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                </svg>
-                <span>98 bộ câu hỏi</span>
+            ) : topCreators.length > 0 ? (
+              topCreators.map((creator, index) => (
+                <article 
+                  key={index}
+                  className="author-item" 
+                  tabIndex="0" 
+                  role="listitem" 
+                                     aria-label={`${creator.username}, ${creator.totalQuiz} bộ câu hỏi`}
+                >
+                  <div className="author-info">
+                    <img 
+                      src={creator.avatar || "https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/e69efc41-e613-4cc4-8775-3f1e74bfe878.png"} 
+                      alt={`Ảnh chân dung ${creator.username}`} 
+                    />
+                    <span className="author-name">{creator.username}</span>
+                  </div>
+                  <div className="author-badge">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M9 17v-6M13 17v-4M16 17v-10"></path>
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    </svg>
+                                         <span>{creator.totalQuiz} bộ câu hỏi</span>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="text-center text-gray-500 py-8">
+                <p>Không có dữ liệu tác giả</p>
               </div>
-            </article>
-            <article className="author-item" tabIndex="0" role="listitem" aria-label="Lại Thanh Tùng, 90 bộ câu hỏi">
-              <div className="author-info">
-                <img 
-                  src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/b40ebf9e-0381-479e-8d5a-977dacf706ec.png" 
-                  alt="Ảnh chân dung Lại Thanh Tùng, người đàn ông đeo kính gọng đen tóc ngắn" 
-                />
-                <span className="author-name">Lại Thanh Tùng</span>
-              </div>
-              <div className="author-badge">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M9 17v-6M13 17v-4M16 17v-10"></path>
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                </svg>
-                <span>90 bộ câu hỏi</span>
-              </div>
-            </article>
-            <article className="author-item" tabIndex="0" role="listitem" aria-label="Vũ Văn Toản, 86 bộ câu hỏi">
-              <div className="author-info">
-                <img 
-                  src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/73041618-0a8e-43ac-8ee7-0b898d3a9c20.png" 
-                  alt="Ảnh chân dung Vũ Văn Toản, người đàn ông trẻ mặc áo đen với nụ cười nhẹ" 
-                />
-                <span className="author-name">Vũ Văn Toản</span>
-              </div>
-              <div className="author-badge">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M9 17v-6M13 17v-4M16 17v-10"></path>
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                </svg>
-                <span>86 bộ câu hỏi</span>
-              </div>
-            </article>
-            <article className="author-item" tabIndex="0" role="listitem" aria-label="Nguyễn Tùng, 80 bộ câu hỏi">
-              <div className="author-info">
-                <img 
-                  src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/60549c4f-441e-47db-b3d0-65a6f47bd140.png" 
-                  alt="Ảnh chân dung Nguyễn Tùng, chàng trai trẻ tóc tối màu, mặc áo đen" 
-                />
-                <span className="author-name">Nguyễn Tùng</span>
-              </div>
-              <div className="author-badge">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M9 17v-6M13 17v-4M16 17v-10"></path>
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                </svg>
-                <span>80 bộ câu hỏi</span>
-              </div>
-            </article>
-            <article className="author-item" tabIndex="0" role="listitem" aria-label="Trần Văn Minh, 75 bộ câu hỏi">
-              <div className="author-info">
-                <img 
-                  src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/e69efc41-e613-4cc4-8775-3f1e74bfe878.png" 
-                  alt="Ảnh chân dung Trần Văn Minh" 
-                />
-                <span className="author-name">Trần Văn Minh</span>
-              </div>
-              <div className="author-badge">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M9 17v-6M13 17v-4M16 17v-10"></path>
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                </svg>
-                <span>75 bộ câu hỏi</span>
-              </div>
-            </article>
-            <article className="author-item" tabIndex="0" role="listitem" aria-label="Lê Thị Hương, 72 bộ câu hỏi">
-              <div className="author-info">
-                <img 
-                  src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/b40ebf9e-0381-479e-8d5a-977dacf706ec.png" 
-                  alt="Ảnh chân dung Lê Thị Hương" 
-                />
-                <span className="author-name">Lê Thị Hương</span>
-              </div>
-              <div className="author-badge">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M9 17v-6M13 17v-4M16 17v-10"></path>
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                </svg>
-                <span>72 bộ câu hỏi</span>
-              </div>
-            </article>
-            <article className="author-item" tabIndex="0" role="listitem" aria-label="Phạm Đức Anh, 68 bộ câu hỏi">
-              <div className="author-info">
-                <img 
-                  src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/73041618-0a8e-43ac-8ee7-0b898d3a9c20.png" 
-                  alt="Ảnh chân dung Phạm Đức Anh" 
-                />
-                <span className="author-name">Phạm Đức Anh</span>
-              </div>
-              <div className="author-badge">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M9 17v-6M13 17v-4M16 17v-10"></path>
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                </svg>
-                <span>68 bộ câu hỏi</span>
-              </div>
-            </article>
+            )}
           </div>
         </div>
       </section>

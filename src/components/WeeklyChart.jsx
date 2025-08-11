@@ -1,10 +1,7 @@
 import React from 'react'
-import { mockWeeklyData } from '../data/mockData'
 
-const WeeklyChart = () => {
-  const data = mockWeeklyData
-
-  const maxValue = Math.max(...data.map(d => Math.max(d.questions, d.users)))
+const WeeklyChart = ({ data = [] }) => {
+  const maxValue = data.length > 0 ? Math.max(...data.map(d => Math.max(d.quizzes || 0, d.users || 0))) : 1
 
   return (
     <div className="h-64">
@@ -16,21 +13,27 @@ const WeeklyChart = () => {
               <div 
                 className="flex-1 bg-blue-500/40 rounded-t"
                 style={{ 
-                  height: `${(item.questions / maxValue) * 100}%`,
+                  height: `${((item.quizzes || 0) / maxValue) * 100}%`,
                   minHeight: '4px'
                 }}
               />
               <div 
                 className="flex-1 bg-green-500/40 rounded-t"
                 style={{ 
-                  height: `${(item.users / maxValue) * 100}%`,
+                  height: `${((item.users || 0) / maxValue) * 100}%`,
                   minHeight: '4px'
                 }}
               />
             </div>
             
             {/* Day label */}
-            <span className="text-xs text-gray-400">{item.day}</span>
+            <span className="text-xs text-gray-400">
+              {(() => {
+                const date = new Date(item.date);
+                const days = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+                return days[date.getDay()];
+              })()}
+            </span>
           </div>
         ))}
       </div>

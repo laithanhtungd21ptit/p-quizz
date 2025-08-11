@@ -1,16 +1,149 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Search, Filter, Heart, Clock, Users } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import SavedQuizCard from '../components/SavedQuizCard'
-import { mockQuestions } from '../data/mockData'
+import { getUserFavorites, toggleFavorite } from '../services/api'
 
 const SavedSets = () => {
   const navigate = useNavigate()
-  const savedSets = mockQuestions.map(q => ({
-    ...q,
-    savedAt: "2 ngày trước",
-    lastPlayed: "1 tuần trước"
-  }))
+  const [favorites, setFavorites] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  // Lấy danh sách favorites từ API
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      try {
+        setLoading(true)
+        const data = await getUserFavorites()
+        setFavorites(data)
+        setError(null)
+      } catch (err) {
+        console.error('Lỗi khi lấy danh sách favorites:', err)
+        setError('Không thể tải danh sách yêu thích. Vui lòng thử lại sau.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchFavorites()
+  }, [])
+
+  // Xử lý toggle favorite
+  const handleToggleSave = async (quizId, isSaved) => {
+    try {
+      const result = await toggleFavorite(quizId)
+      if (result.success) {
+        // Cập nhật state local
+        if (result.action === 'removed') {
+          setFavorites(prev => prev.filter(fav => fav.quizId !== quizId))
+        } else if (result.action === 'added') {
+          // Nếu thêm mới, có thể cần fetch lại toàn bộ danh sách
+          const updatedData = await getUserFavorites()
+          setFavorites(updatedData)
+        }
+      }
+    } catch (err) {
+      console.error('Lỗi khi toggle favorite:', err)
+      // Có thể hiển thị thông báo lỗi cho user
+      alert('Có lỗi xảy ra khi cập nhật yêu thích. Vui lòng thử lại.')
+    }
+  }
+
+  // Format thời gian
+  const formatTimeAgo = (dateString) => {
+    try {
+      const date = new Date(dateString)
+      const now = new Date()
+      const diffInMs = now - date
+      const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24))
+      
+      if (diffInDays === 0) return 'Hôm nay'
+      if (diffInDays === 1) return '1 ngày trước'
+      if (diffInDays < 7) return `${diffInDays} ngày trước`
+      if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} tuần trước`
+      if (diffInDays < 365) return `${Math.floor(diffInDays / 30)} tháng trước`
+      return `${Math.floor(diffInDays / 365)} năm trước`
+    } catch (error) {
+      console.error('Lỗi khi format thời gian:', error)
+      return 'Không xác định'
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6 max-w-full">
+        <div className="flex items-center justify-between mb-4">
+          <img src="/saved-sets-title.png" alt="Bộ câu hỏi đã lưu" className="h-12 object-contain" />
+          <div className="flex-shrink-0 flex items-center h-12">
+            <button 
+              onClick={() => navigate('/enter-room-code')}
+              aria-label="Nhập mã phòng" 
+              className="room-code-img-link"
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer'
+              }}
+            >
+              <img 
+                src="./code.png" 
+                alt="Nhập mã phòng" 
+                className="h-12 object-contain block transition-transform duration-150 hover:scale-105" 
+              />
+            </button>
+          </div>
+        </div>
+        
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ED005D] mx-auto"></div>
+          <p className="text-gray-500 mt-4 font-content">Đang tải danh sách yêu thích...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6 max-w-full">
+        <div className="flex items-center justify-between mb-4">
+          <img src="/saved-sets-title.png" alt="Bộ câu hỏi đã lưu" className="h-12 object-contain" />
+          <div className="flex-shrink-0 flex items-center h-12">
+            <button 
+              onClick={() => navigate('/enter-room-code')}
+              aria-label="Nhập mã phòng" 
+              className="room-code-img-link"
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer'
+              }}
+            >
+              <img 
+                src="./code.png" 
+                alt="Nhập mã phòng" 
+                className="h-12 object-contain block transition-transform duration-150 hover:scale-105" 
+              />
+            </button>
+          </div>
+        </div>
+        
+        <div className="text-center py-12">
+          <div className="text-red-500 text-xl mb-4">⚠️</div>
+          <h3 className="text-xl font-medium text-gray-400 mb-2 font-content">Có lỗi xảy ra</h3>
+          <p className="text-gray-500 font-content">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 px-4 py-2 bg-[#ED005D] text-white rounded-lg hover:bg-[#ED005D]/80 transition-colors"
+          >
+            Thử lại
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6 max-w-full">
@@ -39,87 +172,39 @@ const SavedSets = () => {
       </div>
 
       {/* Saved Quiz Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 justify-items-center">
-        <SavedQuizCard 
-          id={1}
-          title="TIẾNG NHẬT"
-          subtitle="Từ vựng Mina no Nihongo bài 25"
-          questionCount="10"
-          author="Ngô Quốc Anh"
-          isSaved={true}
-          onToggleSave={(quizId, isSaved) => {
-            console.log(`Quiz ${quizId} ${isSaved ? 'đã được lưu' : 'đã bỏ lưu'}`)
-            // TODO: Gọi API để lưu/bỏ lưu quiz
-          }}
-        />
-        <SavedQuizCard 
-          id={2}
-          title="TOÁN HỌC"
-          subtitle="Đại số cơ bản lớp 10 cccccccccc xxxxx cccccccccc eeqw aada gsghasajj hhhhhss  hshshhs hshshhsahjajiaid  hysuaua dhja"
-          questionCount="15"
-          author="Trần Thị Mai ccsss ss"
-          isSaved={true}
-          onToggleSave={(quizId, isSaved) => {
-            console.log(`Quiz ${quizId} ${isSaved ? 'đã được lưu' : 'đã bỏ lưu'}`)
-            // TODO: Gọi API để lưu/bỏ lưu quiz
-          }}
-        />
-        <SavedQuizCard 
-          id={3}
-          title="TIẾNG ANH"
-          subtitle="Grammar Practice - Present Perfect"
-          questionCount="12"
-          author="Lê Văn Nam"
-          isSaved={true}
-          onToggleSave={(quizId, isSaved) => {
-            console.log(`Quiz ${quizId} ${isSaved ? 'đã được lưu' : 'đã bỏ lưu'}`)
-            // TODO: Gọi API để lưu/bỏ lưu quiz
-          }}
-        />
-        <SavedQuizCard 
-          id={4}
-          title="VẬT LÝ"
-          subtitle="Cơ học Newton - Chương 1"
-          questionCount="20"
-          author="Phạm Thị Hoa"
-          isSaved={true}
-          onToggleSave={(quizId, isSaved) => {
-            console.log(`Quiz ${quizId} ${isSaved ? 'đã được lưu' : 'đã bỏ lưu'}`)
-            // TODO: Gọi API để lưu/bỏ lưu quiz
-          }}
-        />
-        <SavedQuizCard 
-          id={5}
-          title="HÓA HỌC"
-          subtitle="Bảng tuần hoàn và liên kết hóa học"
-          questionCount="18"
-          author="Nguyễn Văn Tuấn"
-          isSaved={true}
-          onToggleSave={(quizId, isSaved) => {
-            console.log(`Quiz ${quizId} ${isSaved ? 'đã được lưu' : 'đã bỏ lưu'}`)
-            // TODO: Gọi API để lưu/bỏ lưu quiz
-          }}
-        />
-        <SavedQuizCard 
-          id={6}
-          title="LỊCH SỬ"
-          subtitle="Lịch sử Việt Nam thời kỳ phong kiến"
-          questionCount="14"
-          author="Hoàng Thị Lan"
-          isSaved={true}
-          onToggleSave={(quizId, isSaved) => {
-            console.log(`Quiz ${quizId} ${isSaved ? 'đã được lưu' : 'đã bỏ lưu'}`)
-            // TODO: Gọi API để lưu/bỏ lưu quiz
-          }}
-        />
-      </div>
-
-
-      {savedSets.length === 0 && (
+      {favorites.length > 0 ? (
+        <>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-700 font-content">
+              Tổng cộng {favorites.length} bộ câu hỏi yêu thích
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 justify-items-center">
+            {favorites.map((favorite) => (
+              <SavedQuizCard 
+                key={favorite.id}
+                id={favorite.quizId}
+                title={favorite.quizTitle}
+                subtitle={favorite.description || ''}
+                questionCount={favorite.questions?.length || 0}
+                author="Người dùng" // Có thể cập nhật sau khi có thông tin tác giả
+                isSaved={true}
+                onToggleSave={handleToggleSave}
+              />
+            ))}
+          </div>
+        </>
+      ) : (
         <div className="text-center py-12">
           <Heart className="w-16 h-16 text-gray-600 mx-auto mb-4" />
           <h3 className="text-xl font-medium text-gray-400 mb-2 font-content">Chưa có bộ câu hỏi nào được lưu</h3>
           <p className="text-gray-500 font-content">Lưu các bộ câu hỏi yêu thích để học sau</p>
+          <button 
+            onClick={() => navigate('/dashboard')} 
+            className="mt-4 px-6 py-2 bg-[#ED005D] text-white rounded-lg hover:bg-[#ED005D]/80 transition-colors font-content"
+          >
+            Khám phá bộ câu hỏi
+          </button>
         </div>
       )}
     </div>
