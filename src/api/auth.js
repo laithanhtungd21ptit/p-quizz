@@ -75,3 +75,59 @@ export async function logoutLocal() {
   // optional: call backend logout endpoint if exists:
   // await api.post('/auth/logout');
 }
+
+export async function registerApi({ username, email, password, confirmPassword }) {
+  try {
+    const res = await api.post('/auth/register', {
+      username,
+      email,
+      password,
+      confirmPassword,
+    });
+    return res.data;
+  } catch (err) {
+    const message =
+      err?.response?.data?.message ||
+      err?.response?.data ||
+      err.message ||
+      'Đăng ký thất bại';
+    throw new Error(typeof message === 'string' ? message : JSON.stringify(message));
+  }
+}
+
+/**
+ * Gửi yêu cầu quên mật khẩu (server sẽ gửi mã/ link về email).
+ * Backend của bạn có /auth/forgot-password nhận { username }.
+ */
+export async function forgotPasswordApi({ username }) {
+  try {
+    const res = await api.post('/auth/forgot-password', { username });
+    return res.data;
+  } catch (err) {
+    const message =
+      err?.response?.data?.message ||
+      err?.response?.data ||
+      err.message ||
+      'Yêu cầu quên mật khẩu thất bại';
+    throw new Error(typeof message === 'string' ? message : JSON.stringify(message));
+  }
+}
+
+/**
+ * Xác thực mã/OTP và đổi mật khẩu.
+ * Mặc định gửi { username, code, newPassword } — nếu backend dùng key khác (ví dụ `password`), đổi cho phù hợp.
+ */
+export async function verifyCodeApi({ username, code, newPassword }) {
+  try {
+    const payload = { username, code, newPassword };
+    const res = await api.post('/auth/verify-code', payload);
+    return res.data;
+  } catch (err) {
+    const message =
+      err?.response?.data?.message ||
+      err?.response?.data ||
+      err.message ||
+      'Xác thực thất bại';
+    throw new Error(typeof message === 'string' ? message : JSON.stringify(message));
+  }
+}

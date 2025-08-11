@@ -21,6 +21,7 @@ import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
 import SentActivateLink from './pages/SentActivateLink'
 import ActivatedSuccessfully from './pages/ActivatedSuccessfully'
+import VerifyCode from './pages/VerifyCode'
 import EnterRoomCode from './pages/EnterRoomCode'
 import WaitingRoomForController from './pages/WaitingRoomForController'
 import WaitingRoomForPlayer from './pages/WaitingRoomForPlayer'
@@ -160,6 +161,7 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/sent-activate-link" element={<SentActivateLink />} />
           <Route path="/activated-successfully" element={<ActivatedSuccessfully />} />
+          <Route path="/verify-code" element={<VerifyCode />} />
 
           {/* Routes không có Sidebar và TopControls */}
           <Route path="/create-question-set" element={<CreateQuestionSet />} />
