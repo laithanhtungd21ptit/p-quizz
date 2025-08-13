@@ -171,6 +171,8 @@ const CreateRoom = ({ onClose }) => {
 
       if (response.ok) {
         const data = await response.json()
+        console.log('Search API response:', data)
+        console.log('Question sets data:', data.data)
         setQuestionSets(data.data || [])
         setError('')
       } else {
@@ -192,6 +194,19 @@ const CreateRoom = ({ onClose }) => {
       return
     }
 
+    // Sử dụng quizId thay vì id vì API trả về quizId
+    const quizId = selectedQuiz.quizId || selectedQuiz.id
+    if (!quizId) {
+      console.error('Selected quiz structure:', selectedQuiz)
+      setError('Bộ câu hỏi được chọn không có ID hợp lệ. Vui lòng chọn lại.')
+      return
+    }
+
+    console.log('Creating room with quiz:', selectedQuiz)
+    console.log('Quiz ID:', quizId)
+    console.log('Quiz topic:', selectedQuiz.quizTopic || selectedQuiz.topic)
+    console.log('Quiz structure keys:', Object.keys(selectedQuiz))
+
     setLoading(true)
     setError('')
     
@@ -202,7 +217,7 @@ const CreateRoom = ({ onClose }) => {
         return
       }
 
-      const response = await fetch(`http://localhost:8080/rooms/create?quizId=${selectedQuiz.id}`, {
+      const response = await fetch(`http://localhost:8080/rooms/create?quizId=${quizId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -228,20 +243,20 @@ const CreateRoom = ({ onClose }) => {
         // Đóng modal và chuyển đến trang phòng chờ cho controller
         if (onClose) onClose()
         navigate(`/waiting-room-for-controller/${roomId}`)
-              } else {
-          console.log('Create room failed with status:', response.status)
-          const errorData = await response.text()
-          console.log('Error response from backend:', errorData)
-          
-          // Xử lý message cụ thể 
-          if (errorData.includes('Bạn đang ở trong một phòng khác')) {
-            setError(`❌ Bạn đang ở trong một phòng khác!\n\n🔹 Vui lòng thoát khỏi phòng hiện tại trước khi tạo phòng mới.\n🔹 Hoặc kiểm tra xem bạn có đang ở trong phòng chờ nào không.\n🔹 Có thể refresh trang để reset trạng thái.`)
-          } else if (errorData.includes('Quiz không tồn tại')) {
-            setError('❌ Bộ câu hỏi được chọn không tồn tại. Vui lòng chọn bộ câu hỏi khác.')
-          } else {
-            setError(errorData || '❌ Không thể tạo phòng')
-          }
+      } else {
+        console.log('Create room failed with status:', response.status)
+        const errorData = await response.text()
+        console.log('Error response from backend:', errorData)
+        
+        // Xử lý message cụ thể 
+        if (errorData.includes('Bạn đang ở trong một phòng khác')) {
+          setError(`❌ Bạn đang ở trong một phòng khác!\n\n🔹 Vui lòng thoát khỏi phòng hiện tại trước khi tạo phòng mới.\n🔹 Hoặc kiểm tra xem bạn có đang ở trong phòng chờ nào không.\n🔹 Có thể refresh trang để reset trạng thái.`)
+        } else if (errorData.includes('Quiz không tồn tại')) {
+          setError('❌ Bộ câu hỏi được chọn không tồn tại. Vui lòng chọn bộ câu hỏi khác.')
+        } else {
+          setError(errorData || '❌ Không thể tạo phòng')
         }
+      }
     } catch (error) {
       console.error('Error creating room:', error)
       setError('Lỗi kết nối khi tạo phòng')
@@ -260,7 +275,8 @@ const CreateRoom = ({ onClose }) => {
       if (search.trim()) {
         searchQuizzes(search, topic)
       } else {
-        setQuestionSets([])
+        // Nếu không có search term, vẫn giữ quiz đã chọn
+        // setQuestionSets([])
       }
     }, 500)
 
@@ -392,6 +408,9 @@ const CreateRoom = ({ onClose }) => {
           <label className="block text-sm font-semibold text-[#ED005D] mb-1">
             Nhập tên bộ câu hỏi <span className="text-red-500">*</span>
           </label>
+          <div className="text-xs text-gray-600 mb-2">
+            Gõ để tìm kiếm và chọn một bộ câu hỏi từ danh sách
+          </div>
           <input
             type="text"
             ref={searchInputRef}
@@ -399,11 +418,12 @@ const CreateRoom = ({ onClose }) => {
             onChange={e => { 
               setSearch(e.target.value); 
               setShowSuggestDropdown(e.target.value.trim() !== '');
-              setSelectedQuiz(null); // Reset selected quiz when typing
+              // Không reset selectedQuiz khi gõ để giữ quiz đã chọn
+              // setSelectedQuiz(null); 
             }}
             onFocus={() => { if (search.trim() !== '') setShowSuggestDropdown(true); }}
             onBlur={() => setTimeout(() => setShowSuggestDropdown(false), 100)}
-            placeholder="Từ vựng..."
+            placeholder={selectedQuiz ? "Đã chọn quiz, gõ để tìm quiz khác..." : "Tìm kiếm bộ câu hỏi..."}
             className="w-full border border-[#ED005D] rounded-md py-2 px-3 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#ED005D] text-black"
           />
           
@@ -420,27 +440,29 @@ const CreateRoom = ({ onClose }) => {
               {questionSets.length > 0 ? (
                 questionSets.map((quiz, i) => (
                   <div
-                    key={quiz.id || i}
+                    key={quiz.quizId || quiz.id || i}
                     className={`flex items-center justify-between px-4 py-2 hover:bg-gray-100 cursor-pointer text-black ${
-                      selectedQuiz?.id === quiz.id ? 'bg-blue-50 border-l-4 border-[#ED005D]' : ''
+                      selectedQuiz?.quizId === quiz.quizId || selectedQuiz?.id === quiz.id ? 'bg-blue-50 border-l-4 border-[#ED005D]' : ''
                     }`}
                     onMouseDown={e => { 
-                      setSearch(quiz.topic || 'Bộ câu hỏi'); 
+                      setSearch(quiz.quizTopic || quiz.topic || 'Bộ câu hỏi'); 
                       setSelectedQuiz(quiz);
                       setShowSuggestDropdown(false); 
                       setError('');
+                      // Clear search input để hiển thị quiz đã chọn
+                      setSearch('');
                       e.preventDefault(); 
                     }}
                   >
                     <div className="flex flex-col">
-                      <span className="font-medium">{quiz.topic || 'Bộ câu hỏi'}</span>
-                      <span className="text-xs text-gray-500">{quiz.questions?.length || 0} câu hỏi</span>
+                      <span className="font-medium">{quiz.quizTopic || quiz.topic || 'Bộ câu hỏi'}</span>
+                      <span className="text-xs text-gray-500">{quiz.quantityQuestion || quiz.questions?.length || 0} câu hỏi</span>
                     </div>
                     <div className="flex items-center gap-1 text-sm text-gray-600">
                       <div className="w-5 h-5 rounded-full bg-[#ED005D] text-white text-xs flex items-center justify-center">
                         Q
                       </div>
-                      Quiz #{quiz.id}
+                      Quiz #{quiz.quizId || quiz.id}
                     </div>
                   </div>
                 ))
@@ -460,10 +482,22 @@ const CreateRoom = ({ onClose }) => {
               <div className="w-6 h-6 rounded-full bg-green-500 text-white text-xs flex items-center justify-center">
                 ✓
               </div>
-              <div>
-                <div className="font-medium text-green-800">{selectedQuiz.topic}</div>
-                <div className="text-sm text-green-600">{selectedQuiz.questions?.length || 0} câu hỏi</div>
+              <div className="flex-1">
+                <div className="font-medium text-green-800">{selectedQuiz.quizTopic || selectedQuiz.topic}</div>
+                <div className="text-sm text-green-600">{selectedQuiz.quantityQuestion || selectedQuiz.questions?.length || 0} câu hỏi</div>
+                <div className="text-xs text-green-500">Quiz ID: {selectedQuiz.quizId || selectedQuiz.id}</div>
               </div>
+              <button
+                onClick={() => {
+                  setSelectedQuiz(null)
+                  setSearch('')
+                  setError('')
+                }}
+                className="text-red-500 hover:text-red-700 text-sm"
+                title="Bỏ chọn quiz này"
+              >
+                ✕
+              </button>
             </div>
           </div>
         )}

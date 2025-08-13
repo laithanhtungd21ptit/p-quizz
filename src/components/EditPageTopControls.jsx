@@ -3,7 +3,7 @@ import { ArrowLeft, Settings, Save, SkipForward } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import QuizSettingsModal from './QuizSettingsModal'
 
-const CreatePageTopControls = ({ 
+const EditPageTopControls = ({ 
   title = "Bộ câu hỏi không có tiêu đề", 
   onTitleChange, 
   onSave,
@@ -126,18 +126,9 @@ const CreatePageTopControls = ({
           </button>
         )}
 
-        {/* Nút lưu bản nháp */}
-        <button 
-          onClick={onSaveDraft}
-          className="bg-blue-600 hover:bg-blue-700 text-white rounded-[10px] px-4 py-2 font-medium transition-all duration-300 shadow-lg hover:shadow-blue-600/25"
-        >
-          <div className="flex items-center gap-2">
-            <Save className="w-4 h-4" />
-            <span>Lưu bản nháp</span>
-          </div>
-        </button>
 
-        {/* Nút tạo */}
+
+        {/* Nút lưu */}
         <button 
           onClick={handleSave}
           disabled={isSaving}
@@ -149,12 +140,12 @@ const CreatePageTopControls = ({
             {isSaving ? (
               <>
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>Đang tạo...</span>
+                <span>Đang lưu...</span>
               </>
             ) : (
               <>
                 <Save className="w-4 h-4" />
-                <span>Tạo</span>
+                <span>Lưu</span>
               </>
             )}
           </div>
@@ -190,4 +181,4 @@ const CreatePageTopControls = ({
   )
 }
 
-export default CreatePageTopControls 
+export default EditPageTopControls

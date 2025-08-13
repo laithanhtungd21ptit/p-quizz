@@ -10,7 +10,11 @@ const QuizCard = ({
   author = "Bạn",
   authorAvatar = "https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/e6aad9ee-7272-4c1d-a2a9-a273e9bdda28.png",
   isSaved = false,
-  onToggleSave
+  onToggleSave,
+  quizId,
+  questions = [],
+  imageUrl,
+  visibleTo = false
 }) => {
   const navigate = useNavigate()
   const [showPopup, setShowPopup] = useState(false)
@@ -57,7 +61,22 @@ const QuizCard = ({
 
   const handleEditClick = (e) => {
     e.stopPropagation()
-    navigate('/edit')
+    // Truyền dữ liệu quiz qua state navigation
+    const payload = {
+      id: quizId,
+      topic: title,
+      name: subtitle,
+      description: subtitle,
+      questions: questions || [],
+      imageUrl: imageUrl,
+      visibleTo: visibleTo
+    }
+    console.log('NAV -> /edit: quizData payload', payload)
+    navigate('/edit', { 
+      state: { 
+        quizData: payload
+      }
+    })
   }
 
   const handleMoreClick = (e) => {
@@ -214,11 +233,11 @@ const QuizCard = ({
               <div className="bg-gray-300 text-gray-700 text-xs px-3 py-1 rounded-full select-none">
                 {playCount} lượt chơi
               </div>
-              {accessLevel === 'private' ? (
-                <Users className="h-4 w-4 text-gray-600" />
-              ) : (
-                <Globe className="h-4 w-4 text-gray-600" />
-              )}
+                          {visibleTo ? (
+              <Globe className="h-4 w-4 text-gray-600" />
+            ) : (
+              <Users className="h-4 w-4 text-gray-600" />
+            )}
             </div>
           </div>
 

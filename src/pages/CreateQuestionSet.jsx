@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FileText, Plus, Trash2, Settings } from 'lucide-react'
 import CreatePageTopControls from '../components/CreatePageTopControls'
@@ -10,6 +10,23 @@ import indexedDBService from '../services/IndexedDBService';
 import { createQuiz } from '../services/api';
 
 const defaultFormat = { bold: false, italic: false, underline: false, align: 'left' };
+
+// Custom hook để debounce
+const useDebounce = (value, delay) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+};
 
 const CreateQuestionSet = () => {
   const navigate = useNavigate();
@@ -36,105 +53,186 @@ const CreateQuestionSet = () => {
         { ...defaultFormat },
         { ...defaultFormat },
       ],
-      explanation: { text: '', image: null }, // Thêm explanation cho từng câu hỏi
+      explanation: { text: ''}, // Thêm explanation cho từng câu hỏi
     }
   ])
   // selectedField: { questionId, type: 'question' | 'option', optionIndex? }
   const [selectedField, setSelectedField] = useState({ questionId: 1, type: 'question' })
   const [explanationModal, setExplanationModal] = useState({ open: false, questionId: null });
   const [isInitialized, setIsInitialized] = useState(false); // Thêm state để theo dõi đã khởi tạo chưa
+  const [isDataLoaded, setIsDataLoaded] = useState(false); // Theo dõi dữ liệu đã được load từ IndexedDB chưa
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [showBackConfirmModal, setShowBackConfirmModal] = useState(false); // State cho popup confirm back
   const [isSaving, setIsSaving] = useState(false); // State cho loading khi lưu
 
-  // Hàm tự động lưu vào IndexedDB
-  const autoSaveToIndexedDB = async () => {
-    // Hàm chuyển đổi File thành base64
-    const convertImageToBase64 = async (image) => {
-      if (!image) return ''
-      if (typeof image === 'string') return image // Nếu đã là string (base64 hoặc URL)
-      
+  // Debounce các state để tránh lưu quá nhiều
+  const debouncedQuestionSetName = useDebounce(questionSetName, 1000);
+  const debouncedDescription = useDebounce(description, 1000);
+  const debouncedTopic = useDebounce(topic, 1000);
+  const debouncedVisibleTo = useDebounce(visibleTo, 1000);
+  const debouncedImageUrl = useDebounce(imageUrl, 1000);
+  const debouncedQuestions = useDebounce(questions, 1000);
+
+  // Hàm chuyển đổi File thành base64
+  const convertFileToBase64 = useCallback(async (file) => {
+    if (!file) return '';
+    if (typeof file === 'string') return file; // Nếu đã là string (base64 hoặc URL)
+    if (file instanceof File) {
       return new Promise((resolve) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(reader.result)
-        reader.readAsDataURL(image)
-      })
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsDataURL(file);
+      });
     }
+    return '';
+  }, []);
 
-    // Hàm xử lý tất cả ảnh trong questions
-    const processQuestionsImages = async () => {
-      const processedQuestions = await Promise.all(
-        questions.map(async (q) => ({
-          content: q.question,
-          description: q.explanation?.text || '',
-          answerA: q.options[0] || '',
-          answerB: q.options[1] || '',
-          answerC: q.options[2] || '',
-          answerD: q.options[3] || '',
-          imageUrl: await convertImageToBase64(q.image),
-          correctAnswer: ['A', 'B', 'C', 'D'][q.correctAnswer] || 'A',
-          limitedTime: q.time,
-          score: q.score
-        }))
-      )
+  // Hàm lưu vào IndexedDB
+  const saveToIndexedDB = useCallback(async (data) => {
+    try {
+      // Chuyển đổi File objects thành base64 trước khi lưu
+      const processedData = { ...data };
+      
+      // Xử lý ảnh bìa
+      if (data.coverImage instanceof File) {
+        console.log('Converting coverImage File to base64...');
+        processedData.coverImage = await convertFileToBase64(data.coverImage);
+      } else if (data.imageUrl instanceof File) {
+        // Fallback cho dữ liệu cũ
+        console.log('Converting imageUrl File to base64 (fallback)...');
+        processedData.coverImage = await convertFileToBase64(data.imageUrl);
+      } else if (typeof data.coverImage === 'string' && data.coverImage.startsWith('data:')) {
+        // Nếu đã là base64 string, giữ nguyên
+        console.log('coverImage is already base64 string');
+        processedData.coverImage = data.coverImage;
+      } else if (typeof data.imageUrl === 'string' && data.imageUrl.startsWith('data:')) {
+        // Fallback cho dữ liệu cũ
+        console.log('imageUrl is already base64 string (fallback)');
+        processedData.coverImage = data.imageUrl;
+      } else {
+        // Nếu không có ảnh hoặc không phải File/base64
+        console.log('No valid image found, setting coverImage to empty string');
+        processedData.coverImage = '';
+      }
+      
+      // Xử lý câu hỏi và chuyển đổi sang format phù hợp cho IndexedDB
+      if (data.questions && data.questions.length > 0) {
+        console.log('Processing questions for IndexedDB:', data.questions.length);
+        processedData.questions = await Promise.all(
+          data.questions.map(async (q, index) => {
+            console.log(`Processing question ${index + 1}:`, {
+              question: q.question,
+              options: q.options,
+              correctAnswer: q.correctAnswer,
+              hasImage: !!q.image,
+              imageType: typeof q.image
+            });
+            
+            const processedQuestion = {
+              content: q.question || '',           // Nội dung câu hỏi
+              answerA: q.options[0] || '',        // Đáp án A
+              answerB: q.options[1] || '',        // Đáp án B
+              answerC: q.options[2] || '',        // Đáp án C
+              answerD: q.options[3] || '',        // Đáp án D
+              correctAnswer: ['A', 'B', 'C', 'D'][q.correctAnswer] || 'A', // Đáp án đúng
+              imageUrl: q.image instanceof File ? await convertFileToBase64(q.image) : q.image, // Ảnh câu hỏi
+              limitedTime: q.time || 10,          // Thời gian
+              score: q.score || 10,               // Điểm số
+              description: q.explanation?.text || '' // Giải thích
+            };
+            
+            console.log(`Question ${index + 1} explanation:`, {
+              original: q.explanation?.text || 'null',
+              processed: processedQuestion.description,
+              hasExplanation: !!q.explanation?.text
+            });
+            
+            return processedQuestion;
+          })
+        );
+        console.log('Processed questions:', processedData.questions);
+      }
+      
+      await indexedDBService.saveQuestionSetData(processedData);
+      console.log('Đã lưu bản nháp vào IndexedDB:', processedData);
+    } catch (error) {
+      console.error('Lỗi khi lưu vào IndexedDB:', error);
+      // Không throw error để không làm crash component
+      // Dữ liệu vẫn được lưu trong state
+    }
+  }, [convertFileToBase64]);
 
-      const questionSetData = {
+  // Bỏ auto-save để tránh nháy liên tục - Chỉ lưu khi bấm nút "Lưu thay đổi"
+  
+  // Function để lưu thay đổi vào IndexedDB
+  const handleSaveChanges = useCallback(async () => {
+    try {
+      const draftData = {
         topic: topic || 'Khác',
         name: questionSetName || 'Bộ câu hỏi không có tiêu đề',
         description: description || '',
         visibleTo: visibleTo,
-        imageUrl: imageUrl,
-        questions: processedQuestions
-      }
-
-      try {
-        await indexedDBService.saveQuestionSetData(questionSetData);
-        console.log('Auto-saved to IndexedDB:', questionSetData);
-      } catch (error) {
-        console.error('Lỗi khi lưu vào IndexedDB:', error);
-      }
+        coverImage: imageUrl, // Sử dụng coverImage để nhất quán với API
+        questions: questions
+      };
+      
+      await saveToIndexedDB(draftData);
+      alert('Đã lưu thay đổi vào bản nháp!');
+    } catch (error) {
+      console.error('Lỗi khi lưu thay đổi:', error);
+      alert('Có lỗi khi lưu thay đổi!');
     }
+  }, [topic, questionSetName, description, visibleTo, imageUrl, questions, saveToIndexedDB]);
 
-    // Xử lý và lưu dữ liệu
-    processQuestionsImages()
-  }
-
-  // Khôi phục dữ liệu từ IndexedDB khi component mount
+  // Load dữ liệu từ IndexedDB khi component mount
   useEffect(() => {
-    console.log('Component mounting, checking IndexedDB...')
-    
     const loadDataFromIndexedDB = async () => {
       try {
         // Xóa dữ liệu preview khi quay về từ trang preview
         await indexedDBService.deletePreviewQuestions();
-        console.log('Đã xóa previewQuestions khi quay về trang tạo câu hỏi');
         
         const savedData = await indexedDBService.getQuestionSetData();
         if (savedData) {
-          console.log('Restoring data from IndexedDB:', savedData)
+          console.log('Khôi phục dữ liệu từ IndexedDB:', savedData);
           
           // Khôi phục các trường cơ bản
-          if (savedData.name) setQuestionSetName(savedData.name)
-          if (savedData.description) setDescription(savedData.description)
-          if (savedData.topic) setTopic(savedData.topic)
-          if (savedData.visibleTo !== undefined) setVisibleTo(savedData.visibleTo)
-          if (savedData.imageUrl) setImageUrl(savedData.imageUrl)
+          if (savedData.name) setQuestionSetName(savedData.name);
+          if (savedData.description) setDescription(savedData.description);
+          if (savedData.topic) setTopic(savedData.topic);
+          if (savedData.visibleTo !== undefined) setVisibleTo(savedData.visibleTo);
+          if (savedData.coverImage) {
+            console.log('Khôi phục ảnh bìa:', typeof savedData.coverImage, savedData.coverImage.substring(0, 50) + '...');
+            setImageUrl(savedData.coverImage);
+          } else if (savedData.imageUrl) {
+            // Fallback cho dữ liệu cũ
+            console.log('Khôi phục ảnh bìa (fallback):', typeof savedData.imageUrl, savedData.imageUrl.substring(0, 50) + '...');
+            setImageUrl(savedData.imageUrl);
+          }
           
           // Khôi phục câu hỏi nếu có
           if (savedData.questions && savedData.questions.length > 0) {
+            console.log('Restoring questions from IndexedDB:', savedData.questions.length);
             const restoredQuestions = savedData.questions.map((q, index) => {
-              console.log('CreateQuestionSet: Restoring question image:', q.imageUrl);
-              console.log('CreateQuestionSet: Image type:', typeof q.imageUrl);
-              if (typeof q.imageUrl === 'string') {
-                console.log('CreateQuestionSet: Image preview:', q.imageUrl.substring(0, 50) + '...');
-              }
+              console.log(`Khôi phục câu hỏi ${index + 1}:`, {
+                content: q.content,
+                answerA: q.answerA,
+                answerB: q.answerB,
+                answerC: q.answerC,
+                answerD: q.answerD,
+                correctAnswer: q.correctAnswer,
+                imageUrl: q.imageUrl ? typeof q.imageUrl + ' - ' + q.imageUrl.substring(0, 50) + '...' : 'null',
+                limitedTime: q.limitedTime,
+                score: q.score,
+                description: q.description || 'null',
+                hasDescription: !!q.description
+              });
               
               return {
                 id: index + 1,
                 question: q.content || '',
                 options: [q.answerA || '', q.answerB || '', q.answerC || '', q.answerD || ''],
                 correctAnswer: ['A', 'B', 'C', 'D'].indexOf(q.correctAnswer) >= 0 ? ['A', 'B', 'C', 'D'].indexOf(q.correctAnswer) : 0,
-                image: q.imageUrl || null, // Khôi phục ảnh từ base64 string
+                image: q.imageUrl || null, // Sử dụng q.imageUrl từ dữ liệu đã lưu
                 time: q.limitedTime || 10,
                 score: q.score || 10,
                 questionFormat: { ...defaultFormat },
@@ -144,63 +242,32 @@ const CreateQuestionSet = () => {
                   { ...defaultFormat },
                   { ...defaultFormat },
                 ],
-                explanation: { text: q.description || '', image: null }
+                explanation: { 
+                  text: q.description || '', 
+                  image: null 
+                }
               };
+              
+              console.log(`Restored question ${index + 1} explanation:`, {
+                description: q.description || 'null',
+                explanationText: q.description || '',
+                hasExplanation: !!q.description
+              });
             });
-            setQuestions(restoredQuestions)
-            console.log('Restored questions:', restoredQuestions)
+            console.log('Restored questions:', restoredQuestions);
+            setQuestions(restoredQuestions);
           }
-        } else {
-          console.log('No saved data found, creating default question')
-          // Nếu không có dữ liệu đã lưu, tạo câu hỏi mặc định
-          setQuestions([{
-            id: 1,
-            question: '',
-            options: ['', '', '', ''],
-            correctAnswer: 0,
-            image: null, // Không có ảnh cho câu hỏi mặc định
-            time: 10,
-            score: 10,
-            questionFormat: { ...defaultFormat },
-            optionFormats: [
-              { ...defaultFormat },
-              { ...defaultFormat },
-              { ...defaultFormat },
-              { ...defaultFormat },
-            ],
-            explanation: { text: '', image: null }
-          }])
         }
       } catch (error) {
-        console.error('Error loading data from IndexedDB:', error)
-        // Nếu có lỗi, tạo câu hỏi mặc định
-        setQuestions([{
-          id: 1,
-          question: '',
-          options: ['', '', '', ''],
-          correctAnswer: 0,
-          image: null, // Không có ảnh cho câu hỏi mặc định
-          time: 10,
-          score: 10,
-          questionFormat: { ...defaultFormat },
-          optionFormats: [
-            { ...defaultFormat },
-            { ...defaultFormat },
-            { ...defaultFormat },
-            { ...defaultFormat },
-          ],
-          explanation: { text: '', image: null }
-        }])
+        console.error('Lỗi khi load dữ liệu từ IndexedDB:', error);
       }
       
-      // Đánh dấu đã khởi tạo xong
-      setIsInitialized(true)
-      console.log('Component initialization completed')
-    }
+      setIsInitialized(true);
+      setIsDataLoaded(true); // Đánh dấu dữ liệu đã được load
+    };
 
-    // Gọi hàm async
-    loadDataFromIndexedDB()
-  }, []) // Chỉ chạy 1 lần khi component mount
+    loadDataFromIndexedDB();
+  }, []);
 
   // Đảm bảo luôn có ít nhất 1 câu hỏi
   useEffect(() => {
@@ -226,14 +293,7 @@ const CreateQuestionSet = () => {
     }
   }, [isInitialized, questions.length])
 
-  // Tự động lưu mỗi khi có thay đổi (sau khi đã khôi phục dữ liệu)
-  useEffect(() => {
-    // Chỉ auto-save khi component đã mount và có dữ liệu
-    if (isInitialized && (questionSetName || description || topic || questions.length > 0)) {
-      console.log('Auto-saving to IndexedDB...')
-      autoSaveToIndexedDB()
-    }
-  }, [isInitialized, questionSetName, description, topic, visibleTo, imageUrl, questions])
+
 
   const addQuestion = () => {
     const newQuestion = {
@@ -380,42 +440,69 @@ const CreateQuestionSet = () => {
         }
       }
 
-      // Hàm chuyển đổi File thành base64
-      const convertImageToBase64 = async (image) => {
-        if (!image) return ''
-        if (typeof image === 'string') return image // Nếu đã là string (base64 hoặc URL)
-        
-        return new Promise((resolve) => {
-          const reader = new FileReader()
-          reader.onload = () => resolve(reader.result)
-          reader.readAsDataURL(image)
-        })
-      }
+      // Hàm chuyển đổi File thành base64 (sử dụng function đã có)
+      const convertImageToBase64 = convertFileToBase64;
 
       // Xử lý tất cả ảnh trong questions
+      console.log('=== XỬ LÝ ẢNH CÂU HỎI ===');
+      console.log('Questions array:', questions);
+      
       const processedQuestions = await Promise.all(
-        questions.map(async (q) => ({
-          content: q.question,
-          description: q.explanation?.text || '',
-          answerA: q.options[0] || '',
-          answerB: q.options[1] || '',
-          answerC: q.options[2] || '',
-          answerD: q.options[3] || '',
-          imageUrl: await convertImageToBase64(q.image),
-          correctAnswer: ['A', 'B', 'C', 'D'][q.correctAnswer] || 'A',
-          limitedTime: q.time,
-          score: q.score
-        }))
+        questions.map(async (q, index) => {
+          console.log(`\n--- Câu hỏi ${index + 1} ---`);
+          console.log('Question object:', q);
+          console.log('q.image:', q.image);
+          console.log('q.image type:', typeof q.image);
+          console.log('q.image instanceof File:', q.image instanceof File);
+          
+          const questionImage = await convertImageToBase64(q.image);
+          console.log(`Câu hỏi ${index + 1} - Ảnh đã xử lý:`, {
+            hasImage: !!q.image,
+            imageType: typeof q.image,
+            processedImageType: typeof questionImage,
+            processedImageLength: questionImage ? questionImage.length : 0,
+            processedImagePreview: questionImage ? questionImage.substring(0, 100) + '...' : 'null'
+          });
+          
+          return {
+            content: q.question,
+            description: q.explanation?.text || '',
+            answerA: q.options[0] || '',
+            answerB: q.options[1] || '',
+            answerC: q.options[2] || '',
+            answerD: q.options[3] || '',
+            imageUrl: questionImage, // Đảm bảo tên field khớp với API
+            correctAnswer: ['A', 'B', 'C', 'D'][q.correctAnswer] || 'A',
+            limitedTime: q.time,
+            score: q.score
+          };
+        })
       );
+      
+      console.log('=== KẾT QUẢ XỬ LÝ CÂU HỎI ===');
+      console.log('Processed questions:', processedQuestions);
+
+      // Xử lý ảnh bìa
+      const processedCoverImage = await convertImageToBase64(imageUrl);
+      console.log('Processed cover image:', typeof processedCoverImage, processedCoverImage ? processedCoverImage.substring(0, 50) + '...' : 'null');
 
       // Chuẩn bị dữ liệu để gửi lên API
       const quizData = {
         topic: topic || 'Khác',
         name: questionSetName || 'Bộ câu hỏi không có tiêu đề',
+        description: description || '', // Thêm description theo API
         visibleTo: visibleTo,
-        imageUrl: imageUrl || '',
+        coverImage: processedCoverImage, // Sử dụng coverImage thay vì imageUrl
         questions: processedQuestions
       };
+
+      console.log('Final quiz data to send:', {
+        topic: quizData.topic,
+        name: quizData.name,
+        hasCoverImage: !!quizData.coverImage,
+        coverImageType: typeof quizData.coverImage,
+        questionsCount: quizData.questions.length
+      });
 
       console.log('Sending quiz data to API:', quizData);
 
@@ -423,10 +510,10 @@ const CreateQuestionSet = () => {
       const response = await createQuiz(quizData);
       console.log('Quiz created successfully:', response);
 
-      // Xóa dữ liệu IndexedDB
+      // Xóa bản nháp trong IndexedDB sau khi lưu thành công
       await indexedDBService.deleteQuestionSetData();
       await indexedDBService.deletePreviewQuestions();
-      console.log('Đã xóa dữ liệu IndexedDB sau khi lưu thành công');
+      console.log('Đã xóa bản nháp trong IndexedDB sau khi lưu thành công');
 
       // Hiển thị thông báo thành công
       alert('Đã lưu bộ câu hỏi vào database thành công!');
@@ -435,16 +522,22 @@ const CreateQuestionSet = () => {
       navigate('/');
 
     } catch (error) {
-      console.error('Lỗi khi lưu quiz:', error);
+      console.error('=== LỖI KHI LƯU QUIZ ===');
+      console.error('Error details:', error);
       
       // Hiển thị thông báo lỗi chi tiết hơn
       let errorMessage = 'Có lỗi xảy ra khi lưu bộ câu hỏi. Vui lòng thử lại!';
       
       if (error.response) {
         // Lỗi từ server
+        console.error('Server response error:', {
+          status: error.response.status,
+          data: error.response.data,
+          headers: error.response.headers
+        });
+        
         if (error.response.status === 401 || error.response.status === 403) {
           // Lỗi authentication sẽ được xử lý bởi response interceptor
-          // Không cần hiển thị alert vì sẽ tự động chuyển đến trang login
           console.log('Authentication error handled by interceptor');
           return;
         } else if (error.response.status === 400) {
@@ -454,7 +547,11 @@ const CreateQuestionSet = () => {
         }
       } else if (error.request) {
         // Lỗi kết nối
+        console.error('Network error:', error.request);
         errorMessage = 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng!';
+      } else {
+        // Lỗi khác
+        console.error('Other error:', error.message);
       }
       
       // Chỉ hiển thị alert cho các lỗi không phải authentication
@@ -464,6 +561,7 @@ const CreateQuestionSet = () => {
     } finally {
       // Kết thúc loading
       setIsSaving(false);
+      console.log('=== KẾT THÚC XỬ LÝ LƯU ===');
     }
   }
 
@@ -506,15 +604,16 @@ const CreateQuestionSet = () => {
   // Lưu giải thích
   const handleSaveExplanation = () => {
     if (explanationModal.questionId !== null) {
+      console.log('Saving explanation for question:', explanationModal.questionId, 'Text:', explanationValue);
       setQuestions(prev => prev.map(q => 
         q.id === explanationModal.questionId
-          ? { ...q, explanation: { text: explanationValue, image: explanationImage } }
+          ? { ...q, explanation: { text: explanationValue, image: null } }
           : q
       ));
+      console.log('Explanation saved successfully');
     }
     setExplanationModal({ open: false, questionId: null });
     setExplanationValue('');
-    setExplanationImage(null);
   };
 
   // Xóa giải thích
@@ -528,26 +627,22 @@ const CreateQuestionSet = () => {
     }
     setExplanationModal({ open: false, questionId: null });
     setExplanationValue('');
-    setExplanationImage(null);
   };
 
   // Đóng modal
   const handleCloseExplanation = () => {
     setExplanationModal({ open: false, questionId: null });
     setExplanationValue('');
-    setExplanationImage(null);
   };
 
   // State tạm cho modal
   const [explanationValue, setExplanationValue] = useState('');
-  const [explanationImage, setExplanationImage] = useState(null);
 
   // Khi mở modal, nạp dữ liệu cũ nếu có
   React.useEffect(() => {
     if (explanationModal.open && explanationModal.questionId !== null) {
       const currentQuestion = questions.find(q => q.id === explanationModal.questionId);
       setExplanationValue(currentQuestion?.explanation?.text || '');
-      setExplanationImage(currentQuestion?.explanation?.image || null);
     }
   }, [explanationModal, questions]);
 
@@ -698,15 +793,16 @@ const CreateQuestionSet = () => {
           title={questionSetName || "Bộ câu hỏi không có tiêu đề"}
           onTitleChange={handleTitleChange}
           onSave={handleSave}
+          onSaveDraft={handleSaveChanges} // Thêm function lưu bản nháp
           showPreview={true}
           onPreview={handleOpenPreview}
           onTopicChange={handleTopicChange}
           onVisibilityChange={handleVisibilityChange}
-          onDescriptionChange={handleDescriptionChange}
           onImageUrlChange={handleImageUrlChange}
           onBack={handleBackToDashboard}
           initialTopic={topic}
           initialVisibility={visibleTo}
+          initialImageUrl={imageUrl}
           isSaving={isSaving}
         />
         
@@ -764,9 +860,7 @@ const CreateQuestionSet = () => {
           onSave={handleSaveExplanation}
           onDelete={handleDeleteExplanation}
           value={explanationValue}
-          image={explanationImage}
           onValueChange={setExplanationValue}
-          onImageChange={setExplanationImage}
         />
 
         {/* Popup confirm back về dashboard */}

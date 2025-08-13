@@ -26,6 +26,7 @@ import EnterRoomCode from './pages/EnterRoomCode'
 import WaitingRoomForController from './pages/WaitingRoomForController'
 import WaitingRoomForPlayer from './pages/WaitingRoomForPlayer'
 import PlayRoomForController from './pages/PlayRoomForController'
+import GameResult from './pages/GameResult'
 
 import ChatTest from './pages/ChatTest'
 import SupportCardButtonTest from './pages/SupportCardButtonTest'
@@ -162,6 +163,7 @@ export default function App() {
           <Route path="/sent-activate-link" element={<SentActivateLink />} />
           <Route path="/activated-successfully" element={<ActivatedSuccessfully />} />
           <Route path="/verify-code" element={<VerifyCode />} />
+          <Route path="/game-result" element={<GameResult />} />
 
           {/* Routes không có Sidebar và TopControls */}
           <Route path="/create-question-set" element={<CreateQuestionSet />} />

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import TopControls from '../components/TopControls'
 import Sidebar from '../components/Sidebar'
 import SavedQuizCard from '../components/SavedQuizCard'
+import { searchQuizzes, addFavorite, removeFavorite } from '../services/api'
 
 const SearchResults = () => {
   const [searchParams] = useSearchParams()
@@ -15,101 +16,61 @@ const SearchResults = () => {
     const query = searchParams.get('q') || ''
     setSearchTerm(query)
     
-    // Simulate API call để lấy kết quả tìm kiếm
-    setLoading(true)
-    setTimeout(() => {
-      // Mock data - trong thực tế sẽ gọi API
-      const mockResults = [
-        {
-          id: 1,
-          title: "Toán học cơ bản",
-          description: "Bộ câu hỏi về toán học cơ bản cho học sinh THCS",
-          questionCount: 50,
-          difficulty: "Dễ",
-          category: "Toán học",
-          author: "Nguyễn Văn A",
-          createdAt: "2024-01-15",
-          image: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=400&h=300&fit=crop"
-        },
-        {
-          id: 2,
-          title: "Văn học Việt Nam",
-          description: "Tuyển tập các tác phẩm văn học Việt Nam nổi tiếng",
-          questionCount: 30,
-          difficulty: "Trung bình",
-          category: "Văn học",
-          author: "Trần Thị B",
-          createdAt: "2024-01-10",
-          image: "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&h=300&fit=crop"
-        },
-        {
-          id: 3,
-          title: "Lịch sử thế giới",
-          description: "Các sự kiện lịch sử quan trọng của thế giới",
-          questionCount: 40,
-          difficulty: "Khó",
-          category: "Lịch sử",
-          author: "Lê Văn C",
-          createdAt: "2024-01-05",
-          image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=300&fit=crop"
-        },
-        {
-          id: 4,
-          title: "Địa lý Việt Nam",
-          description: "Khám phá địa lý tự nhiên và kinh tế Việt Nam",
-          questionCount: 35,
-          difficulty: "Trung bình",
-          category: "Địa lý",
-          author: "Phạm Thị D",
-          createdAt: "2024-01-01",
-          image: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&h=300&fit=crop"
-        },
-        {
-            id: 5,
-            title: "Địa lý Việt Nam",
-            description: "Khám phá địa lý tự nhiên và kinh tế Việt Nam",
-            questionCount: 35,
-            difficulty: "Trung bình",
-            category: "Địa lý",
-            author: "Phạm Thị Dang á hhh",
-            createdAt: "2024-01-01",
-            image: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&h=300&fit=crop"
-          },
-          {
-            id: 6,
-            title: "Địa lý Việt Nam",
-            description: "Khám phá địa lý tự nhiên và kinh tế Việt Nam",
-            questionCount: 35,
-            difficulty: "Trung bình",
-            category: "Địa lý",
-            author: "Phạm Thị D",
-            createdAt: "2024-01-01",
-            image: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&h=300&fit=crop"
-          },
-          {
-            id: 7,
-            title: "Địa lý Việt Nam",
-            description: "Khám phá địa lý tự nhiên và kinh tế Việt Nam",
-            questionCount: 35,
-            difficulty: "Trung bình",
-            category: "Địa lý",
-            author: "Phạm Thị D",
-            createdAt: "2024-01-01",
-            image: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&h=300&fit=crop"
-          }
-      ]
-
-      // Lọc kết quả dựa trên từ khóa tìm kiếm
-      const filteredResults = mockResults.filter(item => 
-        item.title.toLowerCase().includes(query.toLowerCase()) ||
-        item.description.toLowerCase().includes(query.toLowerCase()) ||
-        item.category.toLowerCase().includes(query.toLowerCase())
-      )
-
-      setSearchResults(filteredResults)
+    if (query.trim()) {
+      // Gọi API tìm kiếm thật
+      fetchSearchResults(query.trim())
+    } else {
+      setSearchResults([])
       setLoading(false)
-    }, 1000)
+    }
   }, [searchParams])
+
+  // Function để fetch kết quả tìm kiếm từ API
+  const fetchSearchResults = async (searchQuery) => {
+    try {
+      setLoading(true)
+      setSearchResults([])
+      
+      // Gọi API searchQuizzes với topic và name
+      const response = await searchQuizzes('', searchQuery, 0, 20)
+      console.log('API Response:', response)
+      console.log('Search Results:', response?.data)
+      
+      const results = response?.data || []
+      setSearchResults(results)
+    } catch (error) {
+      console.error('Lỗi khi tìm kiếm:', error)
+      setSearchResults([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Function để xử lý toggle favorite
+  const handleToggleFavorite = async (quizId, newIsSavedState) => {
+    try {
+      if (newIsSavedState) {
+        // Thêm vào yêu thích
+        await addFavorite(quizId)
+        console.log(`Đã thêm quiz ${quizId} vào yêu thích`)
+      } else {
+        // Bỏ yêu thích
+        await removeFavorite(quizId)
+        console.log(`Đã xóa quiz ${quizId} khỏi yêu thích`)
+      }
+      
+      // Cập nhật state local
+      setSearchResults(prev => prev.map(quiz => 
+        quiz.quizId === quizId 
+          ? { ...quiz, favorite: newIsSavedState }
+          : quiz
+      ))
+      
+    } catch (err) {
+      console.error('Lỗi khi toggle favorite:', err)
+      alert('Không thể thay đổi trạng thái yêu thích. Vui lòng thử lại.')
+    }
+  }
 
   return (
     <div className="app-root flex h-screen bg-dark-bg text-white font-content">
@@ -147,17 +108,16 @@ const SearchResults = () => {
                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 justify-items-center">
                    {searchResults.map((quiz) => (
                      <SavedQuizCard
-                       key={quiz.id}
-                       id={quiz.id}
-                       title={quiz.title}
-                       subtitle={quiz.description}
-                       questionCount={quiz.questionCount}
-                       author={quiz.author}
-                       authorAvatar={quiz.image}
-                       isSaved={false} // Mặc định chưa được lưu
+                       key={quiz.quizId}
+                       id={quiz.quizId}
+                       title={quiz.quizTopic || 'Bộ câu hỏi'}
+                       subtitle={quiz.quizName || quiz.quizDescription || ''}
+                       questionCount={String(quiz.quantityQuestion || 0)}
+                       author={quiz.creator || 'Ẩn danh'}
+                       authorAvatar={quiz.creatorImageUrl}
+                       isSaved={!!quiz.favorite}
                        onToggleSave={(quizId, isSaved) => {
-                         console.log(`Quiz ${quizId} ${isSaved ? 'đã được lưu' : 'đã bỏ lưu'}`)
-                         // TODO: Gọi API để lưu/bỏ lưu quiz
+                         handleToggleFavorite(quizId, isSaved)
                        }}
                      />
                    ))}

@@ -6,11 +6,8 @@ const ExplanationModal = ({
   onSave,
   onDelete,
   value = '',
-  image = null,
   onValueChange,
-  onImageChange,
 }) => {
-  const fileInputRef = useRef();
   if (!open) return null;
 
   return (
@@ -33,9 +30,9 @@ const ExplanationModal = ({
           </button>
         </header>
         {/* Content Boxes */}
-        <section className="flex flex-col md:flex-row gap-4 mb-6">
+        <section className="mb-6">
           {/* Giải thích Textarea */}
-          <div className="w-full md:w-1/2">
+          <div className="w-full">
             <label htmlFor="explanation" className="sr-only">Nhập giải thích</label>
             <textarea
               id="explanation"
@@ -46,52 +43,6 @@ const ExplanationModal = ({
               value={value}
               onChange={e => onValueChange && onValueChange(e.target.value)}
             />
-          </div>
-          {/* Thêm hình ảnh box */}
-          <div className="w-full md:w-1/2 flex flex-col items-center justify-center">
-            {image ? (
-              <div className="relative w-full flex flex-col items-center">
-                <img src={URL.createObjectURL(image)} alt="explanation" className="rounded-lg max-h-48 object-contain mb-2" />
-                <button
-                  className="absolute top-2 right-2 bg-white/80 rounded-full p-1 text-gray-700 hover:text-red-600"
-                  onClick={() => onImageChange && onImageChange(null)}
-                  type="button"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
-              </div>
-            ) : (
-              <div
-                tabIndex={0}
-                role="button"
-                aria-label="Thêm hình ảnh"
-                className="w-full h-full flex flex-col justify-center items-center cursor-pointer border border-[#db0060] rounded-lg text-[#db0060] p-4 select-none focus:outline-none focus:ring-2 focus:ring-[#db0060] focus:ring-offset-1"
-                onClick={() => fileInputRef.current && fileInputRef.current.click()}
-                onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && fileInputRef.current && fileInputRef.current.click()}
-              >
-                <button aria-hidden="true" className="bg-[#b70145] rounded-md w-10 h-10 flex justify-center items-center mb-2 hover:bg-[#a10250] focus:outline-none focus:ring-2 focus:ring-[#ff206e]">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 stroke-white stroke-2" fill="none" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                  </svg>
-                </button>
-                <span className="text-sm font-medium select-text">Thêm hình ảnh</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  ref={fileInputRef}
-                  onChange={e => {
-                    if (e.target.files && e.target.files[0]) {
-                      onImageChange && onImageChange(e.target.files[0]);
-                    }
-                  }}
-                />
-              </div>
-            )}
           </div>
         </section>
         {/* Buttons */}

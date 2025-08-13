@@ -52,7 +52,19 @@ const QuizSettingsModal = ({ isOpen, onClose, onSave, initialData = {}, availabl
       customTopic: customTopicValue,
       visibility: initialData.visibility || 'public',
       description: initialData.description || '',
-      coverImage: null
+      coverImage: (() => {
+        // Xử lý coverImage từ initialData
+        if (initialData.coverImage instanceof File) {
+          console.log('QuizSettingsModal: coverImage is File object, will handle in form');
+          return initialData.coverImage; // Giữ nguyên File object để user có thể thay đổi
+        } else if (typeof initialData.coverImage === 'string' && initialData.coverImage.startsWith('data:')) {
+          console.log('QuizSettingsModal: coverImage is base64 string');
+          return initialData.coverImage;
+        } else {
+          console.log('QuizSettingsModal: No valid coverImage found');
+          return null;
+        }
+      })()
     }
     console.log('QuizSettingsModal: Setting new formData:', newFormData)
     setFormData(newFormData)
@@ -139,19 +151,7 @@ const QuizSettingsModal = ({ isOpen, onClose, onSave, initialData = {}, availabl
             />
           </div>
 
-          {/* Mô tả */}
-          <div className="flex flex-col space-y-1 max-w-sm">
-            <label htmlFor="description" className="font-semibold text-[#ED005D]">Mô tả</label>
-            <input
-              id="description"
-              name="description"
-              type="text"
-              value={formData.description}
-              onChange={(e) => handleInputChange('description', e.target.value)}
-              placeholder="Mô tả bộ câu hỏi (tùy chọn)"
-              className="border border-[#ED005D] rounded-md px-3 py-2 text-gray-500 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ED005D] focus:ring-opacity-40"
-            />
-          </div>
+
 
           {/* Chủ đề */}
           <div className="flex flex-col space-y-1 max-w-sm">
@@ -249,20 +249,44 @@ const QuizSettingsModal = ({ isOpen, onClose, onSave, initialData = {}, availabl
 
         {/* Right: Upload ảnh */}
         <div className="flex-1 flex items-center justify-center">
-          <label htmlFor="coverImage" className="group cursor-pointer w-48 h-48 md:w-56 md:h-56 border border-[#ED005D] rounded-md flex flex-col items-center justify-center space-y-3 text-[#ED005D] font-medium hover:bg-pink-50 transition relative select-none">
-            <input 
-              type="file" 
-              id="coverImage" 
-              name="coverImage" 
-              accept="image/*" 
-              className="hidden" 
-              onChange={handleFileChange}
-            />
-            <div className="bg-[#ED005D] text-white rounded-lg p-2.5 group-hover:bg-[#c6004c] transition flex items-center justify-center shadow-md">
-              <Plus className="w-6 h-6 stroke-current" />
+          {formData.coverImage ? (
+            // Hiển thị ảnh đã chọn
+            <div className="relative w-48 h-48 md:w-56 md:h-56 group">
+              <img 
+                src={formData.coverImage instanceof File ? URL.createObjectURL(formData.coverImage) : formData.coverImage} 
+                alt="Ảnh bìa" 
+                className="w-full h-full object-cover rounded-md border border-[#ED005D]"
+              />
+              {/* Nút xóa ảnh - hiện khi hover */}
+              <button
+                onClick={() => handleInputChange('coverImage', null)}
+                className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg"
+                type="button"
+                title="Xóa ảnh"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
             </div>
-            <span>Thêm ảnh bìa</span>
-          </label>
+          ) : (
+            // Giao diện thêm ảnh
+            <label htmlFor="coverImage" className="group cursor-pointer w-48 h-48 md:w-56 md:h-56 border border-[#ED005D] rounded-md flex flex-col items-center justify-center space-y-3 text-[#ED005D] font-medium hover:bg-pink-50 transition relative select-none">
+              <input 
+                type="file" 
+                id="coverImage" 
+                name="coverImage" 
+                accept="image/*" 
+                className="hidden" 
+                onChange={handleFileChange}
+              />
+              <div className="bg-[#ED005D] text-white rounded-lg p-2.5 group-hover:bg-[#c6004c] transition flex items-center justify-center shadow-md">
+                <Plus className="w-6 h-6 stroke-current" />
+              </div>
+              <span>Thêm ảnh bìa</span>
+            </label>
+          )}
         </div>
       </div>
     </div>

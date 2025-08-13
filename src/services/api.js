@@ -28,18 +28,24 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor để xử lý lỗi authentication
+// Response interceptor để xử lý lỗi authentication (TẠM THỜI ẨN AUTO REDIRECT)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401 || error.response?.status === 403) {
-      console.log('Authentication error, clearing token and redirecting to login');
-      localStorage.removeItem('token');
+      console.log('=== LỖI AUTHENTICATION ===');
+      console.log('Status:', error.response.status);
+      console.log('Response data:', error.response.data);
+      console.log('Response headers:', error.response.headers);
+      console.log('Current token:', localStorage.getItem('token') ? 'Có token' : 'Không có token');
       
-      // Chuyển đến trang login
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
-      }
+      // TẠM THỜI ẨN AUTO REDIRECT - CHỈ LOG LỖI
+      // localStorage.removeItem('token');
+      // if (window.location.pathname !== '/login') {
+      //   window.location.href = '/login';
+      // }
+      
+      console.log('Token đã được giữ lại để debug, không tự động redirect');
     }
     return Promise.reject(error);
   }
@@ -48,10 +54,132 @@ api.interceptors.response.use(
 // API tạo bộ câu hỏi
 export const createQuiz = async (quizData) => {
   try {
-    const response = await api.post('/api/questions', quizData);
+    console.log('=== GỌI API CREATE QUIZ ===');
+    console.log('Endpoint:', '/api/questions');
+    console.log('Method: POST');
+    console.log('Data to send:', quizData);
+    console.log('Current token:', localStorage.getItem('token') ? 'Có token' : 'Không có token');
+    
+    // Tạo FormData để gửi multipart/form-data
+    const formData = new FormData();
+    
+    // Thêm quiz data dạng JSON string
+    const quizRequest = {
+      topic: quizData.topic,
+      name: quizData.name,
+      visibleTo: quizData.visibleTo,
+      imageUrl: quizData.coverImage || '', // API cần imageUrl, không phải coverImage
+      description: quizData.description || '',
+      questions: quizData.questions.map(q => ({
+        content: q.content,
+        description: q.description,
+        answerA: q.answerA,
+        answerB: q.answerB,
+        answerC: q.answerC,
+        answerD: q.answerD,
+        imageUrl: q.imageUrl || '',
+        correctAnswer: q.correctAnswer,
+        limitedTime: q.limitedTime,
+        score: q.score
+      }))
+    };
+    
+    formData.append('quiz', new Blob([JSON.stringify(quizRequest)], { type: 'application/json' }));
+    
+    // Thêm ảnh bìa nếu có
+    if (quizData.coverImage && quizData.coverImage.startsWith('data:')) {
+      // Chuyển base64 thành File
+      const base64Response = await fetch(quizData.coverImage);
+      const blob = await base64Response.blob();
+      const file = new File([blob], 'cover-image.png', { type: 'image/png' });
+      formData.append('image', file);
+    }
+    
+    // Thêm ảnh câu hỏi nếu có
+    const questionImages = [];
+    for (let i = 0; i < quizData.questions.length; i++) {
+      const q = quizData.questions[i];
+      if (q.imageUrl && q.imageUrl.startsWith('data:')) {
+        try {
+          // Chuyển base64 thành File - sử dụng await
+          const base64Response = await fetch(q.imageUrl);
+          const blob = await base64Response.blob();
+          const file = new File([blob], `question-${i + 1}.png`, { type: 'image/png' });
+          questionImages.push(file);
+          console.log(`Đã xử lý ảnh câu hỏi ${i + 1}:`, file.name, file.size);
+        } catch (error) {
+          console.error(`Lỗi khi xử lý ảnh câu hỏi ${i + 1}:`, error);
+        }
+      }
+    }
+    
+    // Thêm tất cả ảnh câu hỏi vào FormData
+    questionImages.forEach((file, index) => {
+      formData.append('questionImages', file);
+      console.log(`Đã thêm ảnh câu hỏi vào FormData:`, file.name);
+    });
+    
+    console.log('FormData created:', {
+      quiz: quizRequest,
+      hasImage: formData.has('image'),
+      questionImagesCount: questionImages.length,
+      questionImagesDetails: questionImages.map(f => ({ name: f.name, size: f.size, type: f.type }))
+    });
+    
+    // Log chi tiết FormData entries
+    console.log('=== FORM DATA ENTRIES ===');
+    for (let [key, value] of formData.entries()) {
+      if (value instanceof File) {
+        console.log(`${key}:`, { name: value.name, size: value.size, type: value.type });
+      } else {
+        console.log(`${key}:`, value);
+      }
+    }
+    
+    // Gọi API với FormData
+    const response = await api.post('/api/questions', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    
+    console.log('API response success:', response);
+    console.log('=== API RESPONSE DETAILS ===');
+    console.log('Response data:', response.data);
+    console.log('Response status:', response.status);
+    console.log('Response message:', response.data?.message);
+    
+    // Log chi tiết quiz được tạo
+    if (response.data?.data) {
+      console.log('Created quiz details:', response.data.data);
+      console.log('Quiz ID:', response.data.data.id);
+      console.log('Quiz name:', response.data.data.name);
+      console.log('Quiz questions count:', response.data.data.questions?.length);
+      
+      // Log chi tiết câu hỏi
+      if (response.data.data.questions) {
+        response.data.data.questions.forEach((q, index) => {
+          console.log(`Question ${index + 1}:`, {
+            content: q.content,
+            hasImage: !!q.imageUrl,
+            imageUrl: q.imageUrl
+          });
+        });
+      }
+    }
+    
     return response.data;
   } catch (error) {
-    console.error('Lỗi khi tạo quiz:', error);
+    console.error('=== LỖI API CREATE QUIZ ===');
+    console.error('Error:', error);
+    console.error('Error message:', error.message);
+    console.error('Error status:', error.response?.status);
+    console.error('Error data:', error.response?.data);
+    console.error('Error config:', {
+      url: error.config?.url,
+      method: error.config?.method,
+      headers: error.config?.headers
+    });
     throw error;
   }
 };
@@ -141,10 +269,11 @@ export const getTopQuizCreators = async () => {
 };
 
 // API lấy danh sách favorites của user
-export const getUserFavorites = async () => {
+export const getUserFavorites = async (page = 0, size = 10) => {
   try {
-    const response = await api.get('/api/favorites/user');
-    return response.data;
+    const response = await api.get('/api/favorites/user', { params: { page, size } });
+    // Backend trả ApiResponse<List<QuizSearchResponse>>; lấy mảng ở field data
+    return response.data?.data || [];
   } catch (error) {
     console.error('Lỗi khi lấy danh sách favorites:', error);
     throw error;
@@ -152,14 +281,144 @@ export const getUserFavorites = async () => {
 };
 
 // API thêm/bỏ quiz khỏi favorites (toggle)
-export const toggleFavorite = async (quizId) => {
+// API thêm vào danh sách yêu thích
+export const addFavorite = async (quizId) => {
   try {
-    const response = await api.post('/api/favorites/toggle', null, {
-      params: { quizId }
+    const response = await api.post('/api/favorites/add', null, { params: { quizId } });
+    return response.data;
+  } catch (error) {
+    console.error('Lỗi khi thêm vào favorites:', error);
+    throw error;
+  }
+};
+
+// API bỏ khỏi danh sách yêu thích
+export const removeFavorite = async (quizId) => {
+  try {
+    const response = await api.delete('/api/favorites/remove', { params: { quizId } });
+    return response.data;
+  } catch (error) {
+    console.error('Lỗi khi xóa khỏi favorites:', error);
+    throw error;
+  }
+};
+
+// API xóa câu hỏi
+export const deleteQuestion = async (questionId) => {
+  try {
+    const response = await api.delete(`/api/quiz/question/${questionId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Lỗi khi xóa câu hỏi:', error);
+    throw error;
+  }
+};
+
+// API thêm câu hỏi vào quiz (có thể thêm nhiều câu/lần) - multipart/form-data
+export const addQuestions = async (questionRequests) => {
+  try {
+    // questionRequests: Array<{ request: QuestionRequestLike, imageDataUrl?: string | null }>
+    const formData = new FormData();
+
+    // Chuẩn hóa payload requests (chỉ phần JSON QuestionRequest)
+    const requestsJson = questionRequests.map(q => q.request);
+    formData.append('requests', new Blob([JSON.stringify(requestsJson)], { type: 'application/json' }));
+
+    // Đảm bảo index ảnh trùng với index request: append file rỗng nếu không có ảnh
+    for (let i = 0; i < questionRequests.length; i++) {
+      const img = questionRequests[i].imageDataUrl;
+      if (img && typeof img === 'string' && img.startsWith('data:')) {
+        const base64Response = await fetch(img);
+        const blob = await base64Response.blob();
+        const file = new File([blob], `question-${i + 1}.png`, { type: blob.type || 'image/png' });
+        formData.append('questionImages', file);
+      } else {
+        // Thêm file rỗng để giữ alignment
+        const empty = new File([new Blob([])], `question-${i + 1}-empty`, { type: 'application/octet-stream' });
+        formData.append('questionImages', empty);
+      }
+    }
+
+    const response = await api.post('/api/quiz/question', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
     });
     return response.data;
   } catch (error) {
-    console.error('Lỗi khi toggle favorite:', error);
+    console.error('Lỗi khi thêm câu hỏi:', error);
+    throw error;
+  }
+};
+
+// API cập nhật câu hỏi (multipart/form-data: request + image?)
+export const updateQuestion = async (questionId, questionData) => {
+  try {
+    const formData = new FormData();
+
+    // Backward compatibility: accept plain JSON payload too
+    let requestPayload;
+    let imageDataUrl = null;
+    if (questionData && questionData.request) {
+      requestPayload = questionData.request;
+      imageDataUrl = questionData.imageDataUrl || null;
+    } else {
+      // Legacy shape from EditPage.jsx
+      requestPayload = {
+        content: questionData.content,
+        description: questionData.description,
+        answerA: questionData.answerA,
+        answerB: questionData.answerB,
+        answerC: questionData.answerC,
+        answerD: questionData.answerD,
+        correctAnswer: questionData.correctAnswer,
+        limitedTime: questionData.limitedTime,
+        score: questionData.score,
+        quizId: questionData.quizId,
+        imageUrl: questionData.imageUrl || ''
+      };
+      if (typeof questionData.imageUrl === 'string' && questionData.imageUrl.startsWith('data:')) {
+        imageDataUrl = questionData.imageUrl;
+      }
+    }
+
+    // request JSON
+    formData.append('request', new Blob([JSON.stringify(requestPayload)], { type: 'application/json' }));
+    // optional image - prefer File if provided
+    if (questionData.imageFile instanceof File) {
+      formData.append('image', questionData.imageFile);
+    } else if (imageDataUrl && imageDataUrl.startsWith('data:')) {
+      const base64Response = await fetch(imageDataUrl);
+      const blob = await base64Response.blob();
+      const file = new File([blob], `question-${questionId}.png`, { type: blob.type || 'image/png' });
+      formData.append('image', file);
+    }
+    const response = await api.put(`/api/quiz/question/${questionId}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Lỗi khi cập nhật câu hỏi:', error);
+    throw error;
+  }
+};
+
+// API cập nhật quiz
+export const updateQuiz = async (quizId, quizData) => {
+  try {
+    const response = await api.put(`/api/questions/${quizId}`, quizData);
+    return response.data;
+  } catch (error) {
+    console.error('Lỗi khi cập nhật quiz:', error);
+    throw error;
+  }
+};
+
+// API xóa quiz
+export const deleteQuiz = async (quizId) => {
+  try {
+    const response = await api.delete(`/api/questions/${quizId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Lỗi khi xóa quiz:', error);
     throw error;
   }
 };

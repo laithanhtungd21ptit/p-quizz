@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Plus, ChevronDown, LogOut, Settings, User, Menu, Trello, FileText } from 'lucide-react'
 import CreateRoom from '../pages/CreateRoom'
 import SearchInput from './SearchInput'
+import { searchQuizzes } from '../services/api'
 
 /**
  * Props mới:
@@ -28,9 +29,34 @@ const TopControls = ({
   const [userProfile, setUserProfile] = useState(null)
   const [userLevel, setUserLevel] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [topics, setTopics] = useState([])
+  const [loadingTopics, setLoadingTopics] = useState(false)
   const dropdownRef = useRef(null)
   const createDropdownRef = useRef(null)
   const navigate = useNavigate()
+
+  // Hàm lấy danh sách topic từ API
+  const fetchTopics = async () => {
+    try {
+      setLoadingTopics(true)
+      // Gọi API để lấy danh sách topic (có thể là search với topic rỗng)
+      const response = await searchQuizzes('', '', 0, 50)
+      const quizzes = response?.data || []
+      
+      // Lấy danh sách unique topics từ kết quả
+      const uniqueTopics = [...new Set(quizzes.map(quiz => quiz.quizTopic).filter(Boolean))]
+      setTopics(uniqueTopics)
+    } catch (error) {
+      console.error('Lỗi khi lấy danh sách topic:', error)
+      // Fallback về danh sách topic mặc định
+      setTopics([
+        "Toán học", "Văn học", "Lịch sử", "Địa lý", "Tiếng Anh",
+        "Vật lý", "Hóa học", "Sinh học", "Công nghệ thông tin", "Kinh tế học"
+      ])
+    } finally {
+      setLoadingTopics(false)
+    }
+  }
 
   // Hàm lấy thông tin profile từ localStorage và API
   const fetchUserProfile = async () => {
@@ -99,6 +125,7 @@ const TopControls = ({
 
   useEffect(() => {
     fetchUserProfile()
+    fetchTopics()
 
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -166,21 +193,22 @@ const TopControls = ({
         <div className="flex-1 relative z-[9998]">
           <SearchInput
             placeholder="Tìm kiếm bộ câu hỏi..."
-            suggestions={[
-              "Toán học cơ bản",
-              "Văn học Việt Nam", 
-              "Lịch sử thế giới",
-              "Địa lý Việt Nam",
-              "Tiếng Anh giao tiếp",
-              "Vật lý cơ học",
-              "Hóa học vô cơ",
-              "Sinh học tế bào",
-              "Công nghệ thông tin",
-              "Kinh tế học"
-            ]}
-            onSearch={(value) => {
-              console.log('Searching for:', value)
-              // Thêm logic tìm kiếm ở đây
+            suggestions={topics}
+            onSearch={async (value) => {
+              if (value.trim()) {
+                try {
+                  // Gọi API tìm kiếm
+                  const response = await searchQuizzes('', value.trim(), 0, 10)
+                  console.log('Search results:', response?.data)
+                  
+                  // Navigate đến trang search với kết quả
+                  navigate(`/search?q=${encodeURIComponent(value.trim())}`)
+                } catch (error) {
+                  console.error('Lỗi khi tìm kiếm:', error)
+                  // Vẫn navigate đến trang search để hiển thị lỗi
+                  navigate(`/search?q=${encodeURIComponent(value.trim())}`)
+                }
+              }
             }}
           />
         </div>

@@ -5,7 +5,7 @@ import StatsPanel from '../components/StatsPanel'
 import QuestionCard from '../components/QuestionCard'
 import SavedQuizCard from '../components/SavedQuizCard'
 import { mockStats, mockQuestions, mockWeeklyData } from '../data/mockData'
-import { getUserProfile, getDailyStats, getTopQuizCreators } from '../services/api'
+import { getUserProfile, getDailyStats, getTopQuizCreators, getUserFavorites } from '../services/api'
 
 const Dashboard = () => {
   const [scrollPosition, setScrollPosition] = useState(0)
@@ -16,6 +16,8 @@ const Dashboard = () => {
   const [isLoadingStats, setIsLoadingStats] = useState(true)
   const [topCreators, setTopCreators] = useState([])
   const [isLoadingCreators, setIsLoadingCreators] = useState(true)
+  const [featuredQuizzes, setFeaturedQuizzes] = useState([])
+  const [isLoadingFeatured, setIsLoadingFeatured] = useState(true)
   const chartRef = useRef(null)
   const chartInstance = useRef(null)
   const navigate = useNavigate()
@@ -146,6 +148,27 @@ const Dashboard = () => {
     fetchTopCreators()
   }, [])
 
+  // Fetch featured quizzes khi component mount
+  useEffect(() => {
+    fetchFeaturedQuizzes()
+  }, [])
+
+  // Cập nhật hiển thị nút mũi tên khi featuredQuizzes thay đổi
+  useEffect(() => {
+    const leftBtn = document.getElementById('leftScrollBtn');
+    const rightBtn = document.getElementById('rightScrollBtn');
+    
+    if (leftBtn && rightBtn) {
+      if (featuredQuizzes.length > 3) {
+        leftBtn.style.display = 'none'; // Ẩn nút trái ban đầu
+        rightBtn.style.display = 'flex'; // Hiện nút phải ban đầu
+      } else {
+        leftBtn.style.display = 'none';
+        rightBtn.style.display = 'none';
+      }
+    }
+  }, [featuredQuizzes])
+
   // Function để fetch daily statistics
   const fetchDailyStats = async () => {
     try {
@@ -211,6 +234,25 @@ const Dashboard = () => {
       ])
     } finally {
       setIsLoadingCreators(false)
+    }
+  }
+
+  // Function để fetch featured quizzes (sử dụng getUserFavorites)
+  const fetchFeaturedQuizzes = async () => {
+    try {
+      setIsLoadingFeatured(true)
+      const quizzes = await getUserFavorites()
+      setFeaturedQuizzes(quizzes)
+    } catch (error) {
+      console.error('Lỗi khi lấy bộ câu hỏi nổi bật:', error)
+      // Fallback về mock data nếu có lỗi
+      setFeaturedQuizzes([
+        { quizId: 1, quizTopic: 'TIẾNG NHẬT', quizName: 'Từ vựng Mina no Nihongo bài 25', questions: Array(10), creator: 'Ngô Quốc Anh', creatorImageUrl: 'https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/8fb5f33e-5e67-4591-8df0-33e231a368c9.png' },
+        { quizId: 2, quizTopic: 'TOÁN HỌC', quizName: 'Đại số tuyến tính - Ma trận và định thức', questions: Array(15), creator: 'Lại Thanh Tùng', creatorImageUrl: 'https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/b40eb9e-0381-479e-8d5a-977dacf706ec.png' },
+        { quizId: 3, quizTopic: 'VẬT LÝ', quizName: 'Cơ học lượng tử - Nguyên lý bất định', questions: Array(12), creator: 'Vũ Văn Toản', creatorImageUrl: 'https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/73041618-0a8e-43ac-8ee7-0b898d3a9c20.png' }
+      ])
+    } finally {
+      setIsLoadingFeatured(false)
     }
   }
 
@@ -640,7 +682,7 @@ const Dashboard = () => {
             borderRadius: '50%',
             width: '40px',
             height: '40px',
-            display: 'flex',
+            display: featuredQuizzes.length > 3 ? 'flex' : 'none',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
@@ -682,7 +724,7 @@ const Dashboard = () => {
             const leftBtn = document.getElementById('leftScrollBtn');
             const rightBtn = document.getElementById('rightScrollBtn');
             
-            if (leftBtn && rightBtn) {
+            if (leftBtn && rightBtn && featuredQuizzes.length > 3) {
               // Show/hide left button
               if (container.scrollLeft <= 10) {
                 leftBtn.style.display = 'none';
@@ -700,90 +742,29 @@ const Dashboard = () => {
             }
           }}
         >
-          <SavedQuizCard 
-            title="TIẾNG NHẬT"
-            subtitle="Từ vựng Mina no Nihongo bài 25"
-            questionCount="10"
-            author="Ngô Quốc Anh"
-            authorAvatar="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/8fb5f33e-5e67-4591-8df0-33e231a368c9.png"
-          />
-          <SavedQuizCard 
-            title="TOÁN HỌC"
-            subtitle="Đại số tuyến tính - Ma trận và định thức"
-            questionCount="15"
-            author="Lại Thanh Tùng"
-            authorAvatar="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/b40ebf9e-0381-479e-8d5a-977dacf706ec.png"
-          />
-          <SavedQuizCard 
-            title="VẬT LÝ"
-            subtitle="Cơ học lượng tử - Nguyên lý bất định"
-            questionCount="12"
-            author="Vũ Văn Toản"
-            authorAvatar="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/73041618-0a8e-43ac-8ee7-0b898d3a9c20.png"
-          />
-          <SavedQuizCard 
-            title="HÓA HỌC"
-            subtitle="Hóa học hữu cơ - Phản ứng oxi hóa khử"
-            questionCount="18"
-            author="Nguyễn Tùng"
-            authorAvatar="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/60549c4f-441e-47db-b3d0-65a6f47bd140.png"
-          />
-          <SavedQuizCard 
-            title="SINH HỌC"
-            subtitle="Di truyền học - Gen và nhiễm sắc thể"
-            questionCount="14"
-            author="Trần Văn Minh"
-            authorAvatar="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/e69efc41-e613-4cc4-8775-3f1e74bfe878.png"
-          />
-          <SavedQuizCard 
-            title="LỊCH SỬ"
-            subtitle="Lịch sử Việt Nam - Thời kỳ phong kiến"
-            questionCount="20"
-            author="Lê Thị Hương"
-            authorAvatar="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/b40ebf9e-0381-479e-8d5a-977dacf706ec.png"
-          />
-          <SavedQuizCard 
-            title="ĐỊA LÝ"
-            subtitle="Địa lý tự nhiên - Khí hậu và thời tiết"
-            questionCount="16"
-            author="Phạm Đức Anh"
-            authorAvatar="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/73041618-0a8e-43ac-8ee7-0b898d3a9c20.png"
-          />
-          <SavedQuizCard 
-            title="VĂN HỌC"
-            subtitle="Văn học Việt Nam - Truyện Kiều"
-            questionCount="22"
-            author="Hoàng Thị Lan"
-            authorAvatar="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/e69efc41-e613-4cc4-8775-3f1e74bfe878.png"
-          />
-          <SavedQuizCard 
-            title="TIẾNG ANH"
-            subtitle="Grammar - Present Perfect Tense"
-            questionCount="25"
-            author="Nguyễn Văn Hùng"
-            authorAvatar="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/b40ebf9e-0381-479e-8d5a-977dacf706ec.png"
-          />
-          <SavedQuizCard 
-            title="TIN HỌC"
-            subtitle="Lập trình Python - Cơ bản đến nâng cao"
-            questionCount="30"
-            author="Lê Minh Tuấn"
-            authorAvatar="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/60549c4f-441e-47db-b3d0-65a6f47bd140.png"
-          />
-          <SavedQuizCard 
-            title="ÂM NHẠC"
-            subtitle="Lý thuyết âm nhạc - Nhạc lý cơ bản"
-            questionCount="15"
-            author="Trần Thị Mai"
-            authorAvatar="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/73041618-0a8e-43ac-8ee7-0b898d3a9c20.png"
-          />
-          <SavedQuizCard 
-            title="MỸ THUẬT"
-            subtitle="Lịch sử mỹ thuật - Trường phái Ấn tượng"
-            questionCount="12"
-            author="Vũ Hoàng Nam"
-            authorAvatar="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/e69efc41-e613-4cc4-8775-3f1e74bfe878.png"
-          />
+          {isLoadingFeatured ? (
+            <div className="flex items-center justify-center w-full py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ED005D]"></div>
+            </div>
+          ) : featuredQuizzes.length > 0 ? (
+            featuredQuizzes.map((quiz) => (
+              <SavedQuizCard 
+                key={quiz.quizId}
+                id={quiz.quizId}
+                title={quiz.quizTopic}
+                subtitle={quiz.quizName}
+                questionCount={String(quiz.questions?.length || 0)}
+                author={quiz.creator}
+                authorAvatar={quiz.creatorImageUrl}
+                isSaved={true}
+              />
+            ))
+          ) : (
+            <div className="text-center text-gray-500 py-8">
+              <p>Không có bộ câu hỏi nổi bật</p>
+            </div>
+          )}
+
         </div>
 
         {/* Right Arrow Button */}
@@ -801,7 +782,7 @@ const Dashboard = () => {
             borderRadius: '50%',
             width: '40px',
             height: '40px',
-            display: 'flex',
+            display: featuredQuizzes.length > 3 ? 'flex' : 'none',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',

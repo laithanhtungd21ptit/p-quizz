@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Search, Filter, Heart, Clock, Users } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import SavedQuizCard from '../components/SavedQuizCard'
-import { getUserFavorites, toggleFavorite } from '../services/api'
+import { getUserFavorites, addFavorite, removeFavorite } from '../services/api'
 
 const SavedSets = () => {
   const navigate = useNavigate()
@@ -15,8 +15,18 @@ const SavedSets = () => {
     const fetchFavorites = async () => {
       try {
         setLoading(true)
-        const data = await getUserFavorites()
-        setFavorites(data)
+        const list = await getUserFavorites()
+        // Map từ QuizSearchResponse -> dữ liệu card
+        const mapped = list.map(item => ({
+          quizId: item.quizId,
+          quizTitle: item.quizTopic,
+          description: item.quizName,
+          questions: new Array(item.quantityQuestion || 0).fill(null),
+          creator: item.creator,
+          creatorImageUrl: item.creatorImageUrl,
+          createdAt: item.createdAt,
+        }))
+        setFavorites(mapped)
         setError(null)
       } catch (err) {
         console.error('Lỗi khi lấy danh sách favorites:', err)
@@ -32,16 +42,24 @@ const SavedSets = () => {
   // Xử lý toggle favorite
   const handleToggleSave = async (quizId, isSaved) => {
     try {
-      const result = await toggleFavorite(quizId)
-      if (result.success) {
-        // Cập nhật state local
-        if (result.action === 'removed') {
-          setFavorites(prev => prev.filter(fav => fav.quizId !== quizId))
-        } else if (result.action === 'added') {
-          // Nếu thêm mới, có thể cần fetch lại toàn bộ danh sách
-          const updatedData = await getUserFavorites()
-          setFavorites(updatedData)
-        }
+      // isSaved là TRẠNG THÁI MỚI sau khi toggle (!isStarred)
+      // Nếu trạng thái mới là true => thêm; false => bỏ
+      if (isSaved) {
+        await addFavorite(quizId)
+        const list = await getUserFavorites()
+        const mapped = list.map(item => ({
+          quizId: item.quizId,
+          quizTitle: item.quizTopic,
+          description: item.quizName,
+          questions: new Array(item.quantityQuestion || 0).fill(null),
+          creator: item.creator,
+          creatorImageUrl: item.creatorImageUrl,
+          createdAt: item.createdAt,
+        }))
+        setFavorites(mapped)
+      } else {
+        await removeFavorite(quizId)
+        setFavorites(prev => prev.filter(fav => fav.quizId !== quizId))
       }
     } catch (err) {
       console.error('Lỗi khi toggle favorite:', err)
@@ -182,12 +200,13 @@ const SavedSets = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 justify-items-center">
             {favorites.map((favorite) => (
               <SavedQuizCard 
-                key={favorite.id}
+                key={favorite.quizId}
                 id={favorite.quizId}
                 title={favorite.quizTitle}
                 subtitle={favorite.description || ''}
                 questionCount={favorite.questions?.length || 0}
-                author="Người dùng" // Có thể cập nhật sau khi có thông tin tác giả
+                author={favorite.creator}
+                authorAvatar={favorite.creatorImageUrl}
                 isSaved={true}
                 onToggleSave={handleToggleSave}
               />
