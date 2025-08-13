@@ -1,6 +1,5 @@
-// src/api/auth.js
+import {jwtDecode} from 'jwt-decode';
 import api from './api';
-import { jwtDecode } from 'jwt-decode';
 
 const TOKEN_KEY = 'accessToken';
 const USER_KEY = 'currentUser';
@@ -36,7 +35,8 @@ export async function loginApi({ username, password }) {
     }
 
     localStorage.setItem(TOKEN_KEY, token);
-    localStorage.setItem('token', token); // Thêm key 'token'
+    // keep legacy keys for backward compatibility
+    localStorage.setItem('token', token);
 
     const decoded = decodeToken(token);
     const currentUser = {
@@ -45,7 +45,7 @@ export async function loginApi({ username, password }) {
       expiresAt: decoded.exp || null
     };
     localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
-    localStorage.setItem('user', JSON.stringify(currentUser)); // Thêm key 'user'
+    localStorage.setItem('user', JSON.stringify(currentUser));
 
     return { token, user: currentUser, raw: res.data };
   } catch (err) {
@@ -76,8 +76,6 @@ export async function logoutLocal() {
   localStorage.removeItem(USER_KEY);
   localStorage.removeItem('token'); // Xóa key 'token'
   localStorage.removeItem('user'); // Xóa key 'user'
-  // optional: call backend logout endpoint if exists:
-  // await api.post('/auth/logout');
 }
 
 export async function registerApi({ username, email, password, confirmPassword }) {
@@ -99,10 +97,6 @@ export async function registerApi({ username, email, password, confirmPassword }
   }
 }
 
-/**
- * Gửi yêu cầu quên mật khẩu (server sẽ gửi mã/ link về email).
- * Backend của bạn có /auth/forgot-password nhận { username }.
- */
 export async function forgotPasswordApi({ username }) {
   try {
     const res = await api.post('/auth/forgot-password', { username });
@@ -117,10 +111,6 @@ export async function forgotPasswordApi({ username }) {
   }
 }
 
-/**
- * Xác thực mã/OTP và đổi mật khẩu.
- * Mặc định gửi { username, code, newPassword } — nếu backend dùng key khác (ví dụ `password`), đổi cho phù hợp.
- */
 export async function verifyCodeApi({ username, code, newPassword }) {
   try {
     const payload = { username, code, newPassword };

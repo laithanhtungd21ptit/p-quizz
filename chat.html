@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Chat Realtime with JWT</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+  </head>
+  <body>
+    <h2>Đăng nhập</h2>
+    <div>
+      <label>Username:</label>
+      <input type="text" id="username" />
+      <label>Password:</label>
+      <input type="password" id="password" />
+      <button onclick="login()">Đăng nhập</button>
+    </div>
+
+    <hr />
+
+    <h2>Chat nhóm</h2>
+    <div>
+      <label>Nhóm:</label>
+      <input type="text" id="groupName" value="group1" />
+      <button onclick="connectWebSocket()">Kết nối</button>
+    </div>
+
+    <div>
+      <label>Nội dung:</label>
+      <input type="text" id="content" />
+      <button onclick="sendMessage()">Gửi</button>
+    </div>
+
+    <div>
+      <button onclick="loadMessages()">Tải tin nhắn</button>
+    </div>
+
+    <div
+      id="chat"
+      style="margin-top: 20px; border: 1px solid gray; padding: 10px"
+    ></div>
+    <script>
+      let stompClient = null;
+      let jwtToken = null;
+      let currentGroup = "group1"; // Nhóm mặc định
+
+      document.addEventListener("DOMContentLoaded", function () {
+        document.getElementById("groupName").value = currentGroup;
+        // Tự động load tin nhắn nhóm mặc định
+        loadMessages();
+      });
+
+      function login() {
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
+
+        axios
+          .post("http://localhost:8080/auth/login", {
+            username,
+            password,
+          })
+          .then((res) => {
+            jwtToken = res.data.token;
+            alert("Đăng nhập thành công!");
+            loadMessages(); // Nếu cần reload tin sau khi đăng nhập
+          })
+          .catch((err) => {
+            console.error(err);
+            alert("Đăng nhập thất bại!");
+          });
+      }
+
+      function connectWebSocket() {
+        if (stompClient !== null && stompClient.connected) {
+          console.log("Đã kết nối WebSocket, không kết nối lại.");
+          return;
+        }
+
+        const socket = new SockJS("http://localhost:8080/ws");
+        stompClient = Stomp.over(socket);
+
+        stompClient.connect({}, function (frame) {
+          console.log("WebSocket kết nối: " + frame);
+          currentGroup = document.getElementById("groupName").value;
+
+          stompClient.subscribe(
+            "/topic/chat/" + currentGroup,
+            function (message) {
+              const msg = JSON.parse(message.body);
+              displayMessage(msg);
+            }
+          );
+
+          loadMessages();
+        });
+      }
+
+      function loadMessages() {
+        const group = document.getElementById("groupName").value;
+        currentGroup = group;
+
+        if (!jwtToken) {
+          console.warn("Chưa đăng nhập nên chưa thể tải tin nhắn.");
+          return;
+        }
+
+        axios
+          .get("http://localhost:8080/chat/group/" + group, {
+            headers: {
+              Authorization: "Bearer " + jwtToken,
+            },
+          })
+          .then((res) => {
+            const chatDiv = document.getElementById("chat");
+            chatDiv.innerHTML = "";
+            res.data.forEach((msg) => displayMessage(msg));
+          })
+          .catch((err) => {
+            console.error(err);
+            alert("Không tải được tin nhắn");
+          });
+      }
+
+      function sendMessage() {
+        const content = document.getElementById("content").value;
+        const group = document.getElementById("groupName").value;
+
+        axios
+          .post(
+            "http://localhost:8080/chat/send",
+            {
+              content: content,
+              groupName: group,
+            },
+            {
+              headers: {
+                Authorization: "Bearer " + jwtToken,
+              },
+            }
+          )
+          .then(() => {
+            document.getElementById("content").value = "";
+          })
+          .catch((err) => {
+            console.error(err);
+            alert("Gửi thất bại");
+          });
+      }
+
+      function displayMessage(msg) {
+        const chatDiv = document.getElementById("chat");
+        const p = document.createElement("p");
+        p.innerHTML = `<strong>${msg.senderUsername}:</strong> ${msg.content}`;
+        chatDiv.appendChild(p);
+      }
+    </script>
+  </body>
+</html>

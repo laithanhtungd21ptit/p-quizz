@@ -1,0 +1,1342 @@
+{
+	"info": {
+		"_postman_id": "e0a993a2-c011-4283-9a9a-ad75754214d0",
+		"name": "TTTN",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "33658937"
+	},
+	"item": [
+		{
+			"name": "AUTH",
+			"item": [
+				{
+					"name": "REGISTER_ACCOUNT",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{  \r\n    \"username\" : \"Nguyễn Thị Khoa\",\r\n    \"email\": \"gixot88562@dekpal.com\",\r\n    \"password\" : \"123456\",\r\n    \"confirmPassword\": \"123456\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/auth/register",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"auth",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "LOGIN",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"username\" : \"Nguyễn Văn Tùng\",\r\n    \"password\" : \"123456\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/auth/login",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "CHANGE_PASSWORD",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"username\": \"tungnguyen\",\r\n    \"oldPassword\": \"123456\",\r\n    \"newPassword\": \"12345\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/auth/change-password",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"auth",
+								"change-password"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "FORGOT_PASSWORD",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"username\": \"tungnguyen\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/auth/forgot-password",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"auth",
+								"forgot-password"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "VERIFY_CODE_REGISTER",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"username\": \"tungnguyen\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/auth/verify-code",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"auth",
+								"verify-code"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "LOGOUT",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"username\": \"tungnguyen\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/auth/logout",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"auth",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "ROOM",
+			"item": [
+				{
+					"name": "CREATE_ROOM",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJOZ3V54buFbiBWxINuIFTDuW5nIiwicm9sZSI6IlJPTEVfVVNFUiIsImlhdCI6MTc1NDM3Nzk5NCwiZXhwIjoxNzU0NDY0Mzk0fQ.-6FJ66z_ybcjwSfE47jX_X2VV7N3w4N6mxXtCYJgJcU",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"quiz\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/rooms/create?quizId=1",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"rooms",
+								"create"
+							],
+							"query": [
+								{
+									"key": "quizId",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "JOIN_ROOM",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJOZ3V54buFbiBNaW5oIFF1w6JuIiwicm9sZSI6IlJPTEVfVVNFUiIsImlhdCI6MTc1NDM4MDkyNywiZXhwIjoxNzU0NDY3MzI3fQ.BpfJO6UKTwR9PReoXREjtFJ31JLbKgtJG7q4Mz1S-Pc",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"quiz\"\r\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8080/rooms/join?pin=HDX4GG",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"rooms",
+								"join"
+							],
+							"query": [
+								{
+									"key": "pin",
+									"value": "HDX4GG"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "START_GAME",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJOZ3V54buFbiBWxINuIFTDuW5nIiwicm9sZSI6IlJPTEVfVVNFUiIsImlhdCI6MTc1NDU4MjY3MSwiZXhwIjoxNzU0NjY5MDcxfQ.dl_ERsVrjwiWcmqO-csp7tXnWxf0DCnL6BWu78Z4pCo",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "http://localhost:8080/rooms/start/1",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"rooms",
+								"start",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "CHAT",
+			"item": [
+				{
+					"name": "GET_CHAT_GROUP",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJOZ3V54buFbiBWxINuIFTDuW5nIiwicm9sZSI6IlJPTEVfVVNFUiIsImlhdCI6MTc1NDU0Nzk2NiwiZXhwIjoxNzU0NjM0MzY2fQ.bmw5gtSR5KSDkS2OBMd0A5-6D99aQY_ZzCC3eMZl5cQ",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"groupName\": \"group1\",\r\n  \"content\": \"anh em ơi, tôi đến đây\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/chat/send",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"chat",
+								"send"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST_CHAT_GROUP",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJOZ3V54buFbiBWxINuIFTDuW5nIiwicm9sZSI6IlJPTEVfVVNFUiIsImlhdCI6MTc1NDU0Nzk2NiwiZXhwIjoxNzU0NjM0MzY2fQ.bmw5gtSR5KSDkS2OBMd0A5-6D99aQY_ZzCC3eMZl5cQ",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8080/chat/group/group1",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"chat",
+								"group",
+								"group1"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "QUIZ",
+			"item": [
+				{
+					"name": "CREATE_QUIZ",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJOZ3V54buFbiBWxINuIFTDuW5nIiwicm9sZSI6IlJPTEVfVVNFUiIsImlhdCI6MTc1NDM3OTkyMCwiZXhwIjoxNzU0NDY2MzIwfQ.2KsJAFiW6wxTIAgTUAIm4hqlFDCDZjYnUq9Hax1e5Js",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"topic\": \"Toán lớp 8\",\r\n  \"name\": \"Các phép tính cơ bản\",\r\n  \"visibleTo\": true,\r\n  \"questions\": [\r\n    {\r\n      \"content\": \"3 + 3 bằng mấy?\",\r\n      \"answerA\": \"3\",\r\n      \"answerB\": \"4\",\r\n      \"answerC\": \"5\",\r\n      \"answerD\": \"6\",\r\n      \"correctAnswer\": \"6\"\r\n    },\r\n    {\r\n      \"content\": \"5 * 7 = ?\",\r\n      \"answerA\": \"30\",\r\n      \"answerB\": \"31\",\r\n      \"answerC\": \"35\",\r\n      \"answerD\": \"25\",\r\n      \"correctAnswer\": \"35\"\r\n    },\r\n       {\r\n      \"content\": \"8 * 6 = ?\",\r\n      \"answerA\": \"42\",\r\n      \"answerB\": \"31\",\r\n      \"answerC\": \"48\",\r\n      \"answerD\": \"25\",\r\n      \"correctAnswer\": \"48\"\r\n    }\r\n  ]\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/questions",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"questions"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET_ALL_QUIZ",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJOZ3V54buFbiBUaOG7iyBLaG9hIiwicm9sZSI6IlJPTEVfVVNFUiIsImlhdCI6MTc1NDM4MzgxNCwiZXhwIjoxNzU0NDcwMjE0fQ.1cSiYGZjGz7hSZnS0jxd110b8goHT5qk5Wf30i7qFZE",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"username\": \"tungnguyen\"\r\n}\r\n"
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/questions/all",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"questions",
+								"all"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET_QUIZ",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJOZ3V54buFbiBUaOG7iyBLaG9hIiwicm9sZSI6IlJPTEVfVVNFUiIsImlhdCI6MTc1NDM4MzgxNCwiZXhwIjoxNzU0NDcwMjE0fQ.1cSiYGZjGz7hSZnS0jxd110b8goHT5qk5Wf30i7qFZE",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"username\": \"tungnguyen\"\r\n}\r\n"
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/questions/1",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"questions",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET_QUIZ_BY_USER",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJOZ3V54buFbiBUaOG7iyBLaG9hIiwicm9sZSI6IlJPTEVfVVNFUiIsImlhdCI6MTc1NDM4MzgxNCwiZXhwIjoxNzU0NDcwMjE0fQ.1cSiYGZjGz7hSZnS0jxd110b8goHT5qk5Wf30i7qFZE",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"username\" : \"Nguyễn Minh Quân\",\r\n    \"password\" : \"123456\"\r\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/questions/user?page=0&size=5&userId=1",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"questions",
+								"user"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "5"
+								},
+								{
+									"key": "userId",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "SEARCH_QUIZ_BY_TOPIC_AND_NAME",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJOZ3V54buFbiBUaOG7iyBLaG9hIiwicm9sZSI6IlJPTEVfVVNFUiIsImlhdCI6MTc1NDM4MzgxNCwiZXhwIjoxNzU0NDcwMjE0fQ.1cSiYGZjGz7hSZnS0jxd110b8goHT5qk5Wf30i7qFZE",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"username\": \"tungnguyen\"\r\n}\r\n"
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/questions/search?topic=Địa&name=Các",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"questions",
+								"search"
+							],
+							"query": [
+								{
+									"key": "topic",
+									"value": "Địa"
+								},
+								{
+									"key": "name",
+									"value": "Các"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "QUIZ_FAVORITE",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/favorites/add?quizId=1",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"favorites",
+								"add"
+							],
+							"query": [
+								{
+									"key": "quizId",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "QUIZ_TOGGLE_ADD_FARVORITE",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/favorites/add?quizId=1",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"favorites",
+								"add"
+							],
+							"query": [
+								{
+									"key": "quizId",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET_QUIZ_FAVORITE",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"title\": \"Toán lớp 8 - Tập 1\",\r\n  \"questions\": [\r\n    {\r\n      \"content\": \"3 + 3 bằng mấy?\",\r\n      \"answerA\": \"3\",\r\n      \"answerB\": \"4\",\r\n      \"answerC\": \"5\",\r\n      \"answerD\": \"6\",\r\n      \"correctAnswer\": \"6\"\r\n    },\r\n    {\r\n      \"content\": \"5 * 7 = ?\",\r\n      \"answerA\": \"30\",\r\n      \"answerB\": \"31\",\r\n      \"answerC\": \"35\",\r\n      \"answerD\": \"25\",\r\n      \"correctAnswer\": \"35\"\r\n    }\r\n  ]\r\n}\r\n"
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/favorites/user?quizId=1",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"favorites",
+								"user"
+							],
+							"query": [
+								{
+									"key": "quizId",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET_LIST_QUIZ_FAVORITE",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"title\": \"Toán lớp 8 - Tập 1\",\r\n  \"questions\": [\r\n    {\r\n      \"content\": \"3 + 3 bằng mấy?\",\r\n      \"answerA\": \"3\",\r\n      \"answerB\": \"4\",\r\n      \"answerC\": \"5\",\r\n      \"answerD\": \"6\",\r\n      \"correctAnswer\": \"6\"\r\n    },\r\n    {\r\n      \"content\": \"5 * 7 = ?\",\r\n      \"answerA\": \"30\",\r\n      \"answerB\": \"31\",\r\n      \"answerC\": \"35\",\r\n      \"answerD\": \"25\",\r\n      \"correctAnswer\": \"35\"\r\n    }\r\n  ]\r\n}\r\n"
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/favorites/user",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"favorites",
+								"user"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET_CHECK_QUIZ_FAVORITE",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"title\": \"Toán lớp 8 - Tập 1\",\r\n  \"questions\": [\r\n    {\r\n      \"content\": \"3 + 3 bằng mấy?\",\r\n      \"answerA\": \"3\",\r\n      \"answerB\": \"4\",\r\n      \"answerC\": \"5\",\r\n      \"answerD\": \"6\",\r\n      \"correctAnswer\": \"6\"\r\n    },\r\n    {\r\n      \"content\": \"5 * 7 = ?\",\r\n      \"answerA\": \"30\",\r\n      \"answerB\": \"31\",\r\n      \"answerC\": \"35\",\r\n      \"answerD\": \"25\",\r\n      \"correctAnswer\": \"35\"\r\n    }\r\n  ]\r\n}\r\n"
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/favorites/check?quizId=2",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"favorites",
+								"check"
+							],
+							"query": [
+								{
+									"key": "quizId",
+									"value": "2"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "REMOVE_QUIZ_FAVORITE",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"title\": \"Toán lớp 8 - Tập 1\",\r\n  \"questions\": [\r\n    {\r\n      \"content\": \"3 + 3 bằng mấy?\",\r\n      \"answerA\": \"3\",\r\n      \"answerB\": \"4\",\r\n      \"answerC\": \"5\",\r\n      \"answerD\": \"6\",\r\n      \"correctAnswer\": \"6\"\r\n    },\r\n    {\r\n      \"content\": \"5 * 7 = ?\",\r\n      \"answerA\": \"30\",\r\n      \"answerB\": \"31\",\r\n      \"answerC\": \"35\",\r\n      \"answerD\": \"25\",\r\n      \"correctAnswer\": \"35\"\r\n    }\r\n  ]\r\n}\r\n"
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/favorites/remove?quizId=1",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"favorites",
+								"remove"
+							],
+							"query": [
+								{
+									"key": "quizId",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "SEARCH_QUIZ_BY_TOPIC_AND_NAME",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJOZ3V54buFbiBUaOG7iyBLaG9hIiwicm9sZSI6IlJPTEVfVVNFUiIsImlhdCI6MTc1NDM4MzgxNCwiZXhwIjoxNzU0NDcwMjE0fQ.1cSiYGZjGz7hSZnS0jxd110b8goHT5qk5Wf30i7qFZE",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"username\": \"tungnguyen\"\r\n}\r\n"
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/questions/search",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"questions",
+								"search"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "TEST",
+			"item": [
+				{
+					"name": "TEST_WEBSOCKET",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJOZ3V54buFbiBWxINuIFTDuW5nIiwicm9sZSI6IlJPTEVfVVNFUiIsImlhdCI6MTc1NDM3NDA0OCwiZXhwIjoxNzU0NDYwNDQ4fQ.FMnfI1yZ7NaNqLPAPYk4sveWbgygmF8GKZsFKy3oYTQ",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"message\": \"hello bạn\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/ws/send?clientSessionId=abc123",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"ws",
+								"send"
+							],
+							"query": [
+								{
+									"key": "clientSessionId",
+									"value": "abc123"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "GAME_QUESTION",
+			"item": [
+				{
+					"name": "SUBMIT_ANSWER",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJOZ3V54buFbiBUaOG7iyBLaG9hIiwicm9sZSI6IlJPTEVfVVNFUiIsImlhdCI6MTc1NDQ3MDc5NiwiZXhwIjoxNzU0NTU3MTk2fQ.8MlCgEjB6bu-VpbH9SNqo16DLL0g-xrU5GroanTBujE",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"selectedAnswer\": 35,\r\n    \"timeTaken\": 3,\r\n    \"clientSessionId\": \r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/room/HDX4GG/submit-answer",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"room",
+								"HDX4GG",
+								"submit-answer"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "USING_SUPPORT_CARD",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJOZ3V54buFbiBUaOG7iyBLaG9hIiwicm9sZSI6IlJPTEVfVVNFUiIsImlhdCI6MTc1NDU4MjQwMiwiZXhwIjoxNzU0NjY4ODAyfQ.HbKmvp1xb6Qzcre1OT254fGtrQ2xyPRw3GqsQ0LT3DU",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"clientSessionId\": \"client-2\",\r\n    \"questionId\": 3,\r\n    \"cardType\": \"HIDE_ANSWER\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/HDX4GG/support-card",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"HDX4GG",
+								"support-card"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "RESET_ROOM",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJOZ3V54buFbiBWxINuIFTDuW5nIiwicm9sZSI6IlJPTEVfVVNFUiIsImlhdCI6MTc1NDY3ODQyOSwiZXhwIjoxNzU0NzY0ODI5fQ.naFYa8aZbimsyCckQVWajwieaMJr-jbMMQjI1yP-YkI",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"username\" : \"Nguyễn Văn Tùng\",\r\n    \"password\" : \"123456\"\r\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8080/HDX4GG/reset-room?quizId=1&clientSessionId=client-1",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"HDX4GG",
+								"reset-room"
+							],
+							"query": [
+								{
+									"key": "quizId",
+									"value": "1"
+								},
+								{
+									"key": "clientSessionId",
+									"value": "client-1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "NEXT_QUESTION",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJOZ3V54buFbiBWxINuIFTDuW5nIiwicm9sZSI6IlJPTEVfVVNFUiIsImlhdCI6MTc1NDU4MjY3MSwiZXhwIjoxNzU0NjY5MDcxfQ.dl_ERsVrjwiWcmqO-csp7tXnWxf0DCnL6BWu78Z4pCo",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"title\": \"Toán lớp 8 - Tập 1\",\r\n  \"questions\": [\r\n    {\r\n      \"content\": \"3 + 3 bằng mấy?\",\r\n      \"answerA\": \"3\",\r\n      \"answerB\": \"4\",\r\n      \"answerC\": \"5\",\r\n      \"answerD\": \"6\",\r\n      \"correctAnswer\": \"6\"\r\n    },\r\n    {\r\n      \"content\": \"5 * 7 = ?\",\r\n      \"answerA\": \"30\",\r\n      \"answerB\": \"31\",\r\n      \"answerC\": \"35\",\r\n      \"answerD\": \"25\",\r\n      \"correctAnswer\": \"35\"\r\n    }\r\n  ]\r\n}\r\n"
+						},
+						"url": {
+							"raw": "http://localhost:8080/HDX4GG/next-question",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"HDX4GG",
+								"next-question"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "RANDOM_CARD",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJOZ3V54buFbiBWxINuIFTDuW5nIiwicm9sZSI6IlJPTEVfVVNFUiIsImlhdCI6MTc1NDY3ODQyOSwiZXhwIjoxNzU0NzY0ODI5fQ.naFYa8aZbimsyCckQVWajwieaMJr-jbMMQjI1yP-YkI",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"clientSessionId\": \"client-1\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/HDX4GG/support-card/random",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"HDX4GG",
+								"support-card",
+								"random"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "QUESTION_QUIZ",
+			"item": [
+				{
+					"name": "CREATE_QUESTION_QUIZ",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJOZ3V54buFbiBWxINuIFTDuW5nIiwicm9sZSI6IlJPTEVfVVNFUiIsImlhdCI6MTc1NDgxNDIwMSwiZXhwIjoxNzU0OTAwNjAxfQ.U0MjwfbP2UYWCzPWFvq2eA0vkwdYPftfmWGasQ1BB80",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "[\r\n  {\r\n    \"content\": \"Thủ đô của Việt Nam là gì?\",\r\n    \"description\": \"Địa lý cơ bản\",\r\n    \"answerA\": \"Hà Nội\",\r\n    \"answerB\": \"TP. Hồ Chí Minh\",\r\n    \"answerC\": \"Đà Nẵng\",\r\n    \"answerD\": \"Huế\",\r\n    \"correctAnswer\": \"A\",\r\n    \"limitedTime\": 15,\r\n    \"score\": 200,\r\n    \"quizId\": 1\r\n  },\r\n  {\r\n    \"content\": \"2 + 2 = ?\",\r\n    \"description\": \"Toán học cơ bản\",\r\n    \"answerA\": \"3\",\r\n    \"answerB\": \"4\",\r\n    \"answerC\": \"5\",\r\n    \"answerD\": \"6\",\r\n    \"correctAnswer\": \"B\",\r\n    \"limitedTime\": 10,\r\n    \"score\": 100,\r\n    \"quizId\": 1\r\n  }\r\n]\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/quiz/question",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"quiz",
+								"question"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "UPDATE_QUESTION_QUIZ",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJOZ3V54buFbiBWxINuIFTDuW5nIiwicm9sZSI6IlJPTEVfVVNFUiIsImlhdCI6MTc1NDgxNDIwMSwiZXhwIjoxNzU0OTAwNjAxfQ.U0MjwfbP2UYWCzPWFvq2eA0vkwdYPftfmWGasQ1BB80",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"content\": \"Câu hỏi số 1: Thủ đô của Việt Nam là gì? (đã chỉnh sửa)\",\r\n  \"description\": \"Câu hỏi về địa lý Việt Nam\",\r\n  \"answerA\": \"Hà Nội\",\r\n  \"answerB\": \"TP. Hồ Chí Minh\",\r\n  \"answerC\": \"Đà Nẵng\",\r\n  \"answerD\": \"Huế\",\r\n  \"imageUrl\": \"https://example.com/image-updated.jpg\",\r\n  \"correctAnswer\": \"A\",\r\n  \"limitedTime\": 20,\r\n  \"score\": 300,\r\n  \"quizId\": 1\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/quiz/question/13",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"quiz",
+								"question",
+								"13"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "DELETE_QUESTION_QUIZ",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJOZ3V54buFbiBWxINuIFTDuW5nIiwicm9sZSI6IlJPTEVfVVNFUiIsImlhdCI6MTc1NDgxNDIwMSwiZXhwIjoxNzU0OTAwNjAxfQ.U0MjwfbP2UYWCzPWFvq2eA0vkwdYPftfmWGasQ1BB80",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"username\": \"tungnguyen\"\r\n}\r\n"
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/quiz/question/14",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"quiz",
+								"question",
+								"14"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
