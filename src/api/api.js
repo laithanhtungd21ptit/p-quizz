@@ -1,4 +1,3 @@
-// src/api/api.js
 import axios from 'axios';
 
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
@@ -35,5 +34,7 @@ api.interceptors.response.use(
     return Promise.reject(err);
   }
 );
+
+export const getApiBaseUrl = () => api.defaults.baseURL;
 
 export default api;
