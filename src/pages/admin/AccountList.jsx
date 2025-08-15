@@ -4,6 +4,7 @@ import AdminSearchInput from '../../components/AdminSearchInput'
 const AccountList = () => {
   // State management
   const [users, setUsers] = useState([])
+  const [filteredUsers, setFilteredUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
@@ -249,8 +250,42 @@ const AccountList = () => {
   // Handle search
   const handleSearch = (value) => {
     setSearchTerm(value)
-    // Implement search logic here if needed
-    console.log('Searching for account:', value)
+    
+    if (!value.trim()) {
+      setFilteredUsers(users)
+      return
+    }
+
+    const filtered = users.filter(user => {
+      const searchLower = value.toLowerCase()
+      const firstName = (user.firstname || '').toLowerCase()
+      const username = (user.username || '').toLowerCase()
+      const email = (user.email || '').toLowerCase()
+      
+      // Tìm kiếm theo tên, username, email
+      const textMatch = firstName.includes(searchLower) || 
+                        username.includes(searchLower) || 
+                        email.includes(searchLower)
+      
+      // Tìm kiếm theo thời gian (ngày/tháng/năm)
+      let dateMatch = false
+      if (user.createdAt) {
+        const createdDate = new Date(user.createdAt)
+        const dateString = createdDate.toLocaleDateString('vi-VN')
+        const year = createdDate.getFullYear().toString()
+        const month = (createdDate.getMonth() + 1).toString().padStart(2, '0')
+        const day = createdDate.getDate().toString().padStart(2, '0')
+        
+        dateMatch = dateString.includes(searchLower) ||
+                   year.includes(searchLower) ||
+                   month.includes(searchLower) ||
+                   day.includes(searchLower)
+      }
+      
+      return textMatch || dateMatch
+    })
+    
+    setFilteredUsers(filtered)
   }
 
   // Handle pagination
@@ -275,6 +310,11 @@ const AccountList = () => {
       window.removeEventListener('storage', handleStorageChange)
     }
   }, [])
+
+  // Update filteredUsers when users change
+  useEffect(() => {
+    setFilteredUsers(users)
+  }, [users])
 
   if (loading) {
     return (
@@ -323,22 +363,26 @@ const AccountList = () => {
         <div className="mb-4 flex justify-start">
           <div className="relative w-80 z-[9998]">
             <AdminSearchInput
-              placeholder="Tìm kiếm theo tên/ Tài khoản"
+              placeholder="Tìm kiếm theo tên/ Tài khoản/ Email/ Thời gian"
               suggestions={[
-                "Nguyễn Thị Quỳnh",
-                "Trần Văn An",
-                "Lê Thị Bình",
-                "Phạm Hoàng Cường",
-                "Hoàng Thị Dung",
-                "Vũ Minh Đức",
-                "Đặng Thị Em",
-                "Ngô Văn Phúc",
-                "Lý Thị Giang",
-                "Bùi Hoàng Hải"
+                ...users.map(user => user.firstname || user.username).filter(Boolean),
+                ...users.map(user => user.email).filter(Boolean),
+                ...users.map(user => {
+                  if (user.createdAt) {
+                    const date = new Date(user.createdAt)
+                    return date.toLocaleDateString('vi-VN')
+                  }
+                  return null
+                }).filter(Boolean)
               ]}
               onSearch={handleSearch}
             />
           </div>
+        </div>
+        
+        {/* Search Help Text */}
+        <div className="mb-4 text-sm text-gray-600">
+          <span className="font-medium">Gợi ý tìm kiếm:</span> Bạn có thể tìm kiếm theo tên, tài khoản, email hoặc thời gian tạo (VD: 2024, 12, 25/12/2024)
         </div>
 
         {/* Table */}
@@ -358,10 +402,10 @@ const AccountList = () => {
               </tr>
             </thead>
             <tbody>
-              {users.length > 0 ? (
-                users.map((user, index) => (
+              {filteredUsers.length > 0 ? (
+                filteredUsers.map((user, index) => (
                   <tr key={user.id || index} className="border-b border-gray-200 hover:bg-gray-100">
-                    <td className="py-3 px-4">{currentPage * pageSize + index + 1}</td>
+                    <td className="py-3 px-4">{index + 1}</td>
                     <td className="py-3 px-4 flex items-center gap-2">
                       <img 
                         src={user.avatar || "https://randomuser.me/api/portraits/women/44.jpg"} 
@@ -419,7 +463,7 @@ const AccountList = () => {
               ) : (
                 <tr>
                   <td colSpan="6" className="py-8 text-center text-gray-500">
-                    Không có người dùng nào
+                    {searchTerm ? 'Không tìm thấy người dùng nào phù hợp với từ khóa tìm kiếm' : 'Không có người dùng nào'}
                   </td>
                 </tr>
               )}
@@ -427,8 +471,15 @@ const AccountList = () => {
           </table>
         </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
+        {/* Search Results Info */}
+        {searchTerm && (
+          <div className="mt-2 text-sm text-gray-600">
+            Tìm thấy {filteredUsers.length} kết quả cho "{searchTerm}"
+          </div>
+        )}
+
+        {/* Pagination - Only show when not searching */}
+        {!searchTerm && totalPages > 1 && (
           <div className="mt-4 flex justify-end space-x-2">
             <button 
               onClick={() => handlePageChange(currentPage - 1)}

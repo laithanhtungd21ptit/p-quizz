@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Participants trong currentRoom</title>
+</head>
+<body>
+    <h1>🧪 Test Participants trong currentRoom</h1>
+    
+    <div id="output"></div>
+    
+    <script>
+        function log(message) {
+            const output = document.getElementById('output');
+            output.innerHTML += `<p>${message}</p>`;
+        }
+        
+        function checkCurrentRoom() {
+            log('=== KIỂM TRA CURRENTROOM ===');
+            
+            const currentRoom = localStorage.getItem('currentRoom');
+            if (!currentRoom) {
+                log('❌ Không có currentRoom trong localStorage');
+                return;
+            }
+            
+            try {
+                const roomData = JSON.parse(currentRoom);
+                log(`✅ Room data: ${JSON.stringify(roomData, null, 2)}`);
+                
+                if (roomData.participants) {
+                    log(`✅ Có participants: ${roomData.participants.length} người`);
+                    log(`📋 Danh sách participants:`);
+                    roomData.participants.forEach((p, index) => {
+                        log(`  ${index + 1}. ${p.username || p.firstName || p.firstname || 'Unknown'} (ID: ${p.id || p.userId})`);
+                    });
+                } else {
+                    log('❌ Không có participants trong room data');
+                }
+                
+                log(`📍 PinCode: ${roomData.pinCode}`);
+                log(`🆔 Room ID: ${roomData.roomId}`);
+                log(`🎯 Client Session ID: ${roomData.clientSessionId}`);
+                
+            } catch (error) {
+                log(`❌ Lỗi khi parse currentRoom: ${error.message}`);
+            }
+        }
+        
+        function checkUserData() {
+            log('=== KIỂM TRA USER DATA ===');
+            
+            const user = localStorage.getItem('user');
+            if (!user) {
+                log('❌ Không có user trong localStorage');
+                return;
+            }
+            
+            try {
+                const userData = JSON.parse(user);
+                log(`✅ User data: ${JSON.stringify(userData, null, 2)}`);
+                log(`👤 Username: ${userData.username}`);
+                log(`🆔 User ID: ${userData.id}`);
+            } catch (error) {
+                log(`❌ Lỗi khi parse user: ${error.message}`);
+            }
+        }
+        
+        function checkToken() {
+            log('=== KIỂM TRA TOKEN ===');
+            
+            let token = localStorage.getItem('token');
+            if (token) {
+                log(`✅ Token từ localStorage.getItem('token'): ${token.substring(0, 50)}...`);
+            } else {
+                log('❌ Không có token từ localStorage.getItem("token")');
+            }
+            
+            const auth = localStorage.getItem('auth');
+            if (auth) {
+                try {
+                    const authData = JSON.parse(auth);
+                    if (authData.bearer && authData.bearer.length > 0) {
+                        const authToken = authData.bearer[0].value;
+                        log(`✅ Token từ auth.bearer[0].value: ${authToken.substring(0, 50)}...`);
+                    } else {
+                        log('❌ Không có bearer trong auth data');
+                    }
+                } catch (error) {
+                    log(`❌ Lỗi khi parse auth: ${error.message}`);
+                }
+            } else {
+                log('❌ Không có auth trong localStorage');
+            }
+        }
+        
+        function testRoomAccess() {
+            log('=== TEST ROOM ACCESS ===');
+            
+            const currentRoom = localStorage.getItem('currentRoom');
+            if (!currentRoom) {
+                log('❌ Không có currentRoom để test');
+                return;
+            }
+            
+            try {
+                const roomData = JSON.parse(currentRoom);
+                const pinCode = roomData.pinCode;
+                
+                if (!pinCode) {
+                    log('❌ Không có pinCode để test');
+                    return;
+                }
+                
+                log(`🧪 Test truy cập phòng với pinCode: ${pinCode}`);
+                
+                // Test API call
+                let token = localStorage.getItem('token');
+                if (!token) {
+                    const authData = localStorage.getItem('auth');
+                    if (authData) {
+                        try {
+                            const parsedAuth = JSON.parse(authData);
+                            if (parsedAuth.bearer && parsedAuth.bearer.length > 0) {
+                                token = parsedAuth.bearer[0].value;
+                            }
+                        } catch (error) {
+                            log(`❌ Lỗi khi parse auth: ${error.message}`);
+                            return;
+                        }
+                    }
+                }
+                
+                if (!token) {
+                    log('❌ Không có token để test API');
+                    return;
+                }
+                
+                // Test room access
+                fetch(`http://localhost:8080/api/room/${pinCode}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    log(`📡 Room access response: ${response.status} ${response.statusText}`);
+                    return response.text();
+                })
+                .then(data => {
+                    log(`📄 Response data: ${data.substring(0, 200)}...`);
+                })
+                .catch(error => {
+                    log(`❌ API error: ${error.message}`);
+                });
+                
+            } catch (error) {
+                log(`❌ Lỗi khi test room access: ${error.message}`);
+            }
+        }
+        
+        // Auto-run khi load trang
+        window.onload = function() {
+            log('🚀 Bắt đầu kiểm tra...');
+            checkCurrentRoom();
+            checkUserData();
+            checkToken();
+            testRoomAccess();
+        };
+    </script>
+</body>
+</html>

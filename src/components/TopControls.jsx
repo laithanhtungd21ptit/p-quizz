@@ -166,7 +166,7 @@ const TopControls = ({
           className="flex items-center justify-center"
           aria-label="Quay lại"
         >
-          <img src="return_button.png" alt="Quay lại" className="w-7 h-7" />
+          <img src="/return_button.png" alt="Quay lại" className="w-7 h-7" />
         </button>
       )}
 

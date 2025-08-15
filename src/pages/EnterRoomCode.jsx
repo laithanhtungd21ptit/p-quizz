@@ -67,8 +67,33 @@ const EnterRoomCode = () => {
       })
 
       if (response.ok) {
-        const roomData = await response.json()
-        console.log('Joined room successfully:', roomData)
+        // Log response headers và content type
+        console.log('Response headers:', Object.fromEntries(response.headers.entries()))
+        console.log('Content-Type:', response.headers.get('content-type'))
+        
+        let roomData
+        try {
+          roomData = await response.json()
+          console.log('Joined room successfully:', roomData)
+        } catch (parseError) {
+          console.error('Lỗi parse JSON:', parseError)
+          const rawText = await response.text()
+          console.log('Raw response text:', rawText)
+          throw new Error('Không thể parse response JSON')
+        }
+        console.log('Room data structure:', {
+          roomId: roomData.roomId,
+          id: roomData.id,
+          pinCode: roomData.pinCode,
+          clientSessionId: roomData.clientSessionId,
+          hasClientSessionId: !!roomData.clientSessionId
+        })
+        
+        // Log toàn bộ response để debug
+        console.log('Full response data:', JSON.stringify(roomData, null, 2))
+        console.log('Response keys:', Object.keys(roomData))
+        console.log('clientSessionId type:', typeof roomData.clientSessionId)
+        console.log('clientSessionId value:', roomData.clientSessionId)
         
         // Join room API luôn tạo participant với isHost = false
         // Nếu host muốn vào room của chính họ, họ sẽ navigate trực tiếp
@@ -80,9 +105,20 @@ const EnterRoomCode = () => {
         // Lưu thông tin room vào localStorage
         localStorage.setItem('currentRoom', JSON.stringify(roomData))
         localStorage.setItem('roomId', roomId.toString())
+        
+        // Lưu clientSessionId riêng biệt để sử dụng sau này
+        if (roomData.clientSessionId) {
+          localStorage.setItem('clientSessionId', roomData.clientSessionId)
+          console.log('ClientSessionId saved:', roomData.clientSessionId)
+        } else {
+          console.warn('Không có clientSessionId trong response!')
+          console.log('Toàn bộ roomData:', roomData)
+        }
+        
         console.log('Room data saved to localStorage:', {
           currentRoom: roomData,
-          roomId: roomId
+          roomId: roomId,
+          clientSessionId: roomData.clientSessionId
         })
         
         // Sau khi join thành công, có thể check host bằng API riêng
@@ -103,22 +139,33 @@ const EnterRoomCode = () => {
             const participants = await checkHostResponse.json()
             console.log('Room participants:', participants)
             
-            // Lấy thông tin user hiện tại từ token  
-            const tokenPayload = JSON.parse(atob(token.split('.')[1]))
-            const currentUsername = tokenPayload.sub
-            
-            // Check nếu user hiện tại là host (có isHost = true trong participants)
-            const currentParticipant = participants.find(p => 
-              p.username === currentUsername || 
-              p.name === currentUsername ||
-              p.firstname === currentUsername
-            )
-            
-            isHost = currentParticipant?.isHost || false
-            console.log('Current user is host:', isHost)
+                    // Lấy thông tin user hiện tại từ token  
+        const tokenPayload = JSON.parse(atob(token.split('.')[1]))
+        const currentUsername = tokenPayload.sub
+        
+        // Check nếu user hiện tại là host (có isHost = true trong participants)
+        const currentParticipant = participants.find(p => 
+          p.username === currentUsername || 
+          p.name === currentUsername ||
+          p.firstname === currentUsername
+        )
+        
+        isHost = currentParticipant?.isHost || false
+        console.log('Current user is host:', isHost)
+        
+        // CẬP NHẬT: Lưu participants vào currentRoom
+        const updatedRoomData = {
+          ...roomData,
+          participants: participants
+        }
+        localStorage.setItem('currentRoom', JSON.stringify(updatedRoomData))
+        console.log('✅ Đã cập nhật currentRoom với participants:', updatedRoomData)
           }
         } catch (error) {
           console.warn('Could not check host status:', error)
+          
+          // Nếu không thể lấy participants từ API, ít nhất cũng lưu roomData cơ bản
+          console.log('⚠️ Không thể lấy participants, chỉ lưu roomData cơ bản')
         }
         
         // Điều hướng dựa trên role

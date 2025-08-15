@@ -8,6 +8,9 @@ const WaitingRoomForController = () => {
   const websiteRef = useRef(null);
   const codeRef = useRef(null);
   
+  // Error boundary state
+  const [hasError, setHasError] = useState(false);
+  
   // State cho room data
   const [roomData, setRoomData] = useState(null);
   const [participants, setParticipants] = useState([]);
@@ -36,6 +39,7 @@ const WaitingRoomForController = () => {
       }
 
       // Lấy QR code và pin code của phòng  
+      console.log('Fetching room data for roomId:', roomId);
       const response = await fetch(`http://localhost:8080/rooms/${roomId}/qrcode`, {
         method: 'GET',
         headers: {
@@ -44,18 +48,40 @@ const WaitingRoomForController = () => {
         }
       });
 
+      console.log('Room data response status:', response.status);
+      console.log('Room data response headers:', Object.fromEntries(response.headers.entries()));
+
       if (response.ok) {
         const data = await response.json();
         setRoomData(data);
-        console.log('Room data:', data);
+        
+        // Lưu thông tin phòng vào localStorage
+        const currentRoom = {
+          roomId: roomId,
+          pinCode: data.pinCode,
+          qrCodeUrl: data.qrCodeUrl,
+          participants: participants, // Sẽ được cập nhật sau khi fetch participants
+          createdAt: new Date().toISOString(),
+          isStarted: false
+        };
+        localStorage.setItem('currentRoom', JSON.stringify(currentRoom));
+        console.log('✅ Đã lưu thông tin phòng vào localStorage:', currentRoom);
       } else {
         console.error('Error fetching room data:', response.status);
+        let errorMessage = '';
+        try {
+          errorMessage = await response.text();
+          console.error('Error response body:', errorMessage);
+        } catch (e) {
+          console.error('Không thể đọc error response');
+        }
+        
         if (response.status === 403) {
-          setError('Không có quyền truy cập phòng này');
+          setError(`Không có quyền truy cập phòng này: ${errorMessage}`);
         } else if (response.status === 404) {
-          setError('Phòng không tồn tại');
+          setError(`Phòng không tồn tại: ${errorMessage}`);
         } else {
-          setError('Không thể lấy thông tin phòng');
+          setError(`Không thể lấy thông tin phòng (${response.status}): ${errorMessage}`);
         }
       }
     } catch (error) {
@@ -70,6 +96,7 @@ const WaitingRoomForController = () => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
+      console.log('Fetching participants for roomId:', roomId);
       const response = await fetch(`http://localhost:8080/rooms/participants?roomId=${roomId}`, {
         method: 'GET',
         headers: {
@@ -78,16 +105,80 @@ const WaitingRoomForController = () => {
         }
       });
 
+      console.log('Participants response status:', response.status);
+      console.log('Participants response headers:', Object.fromEntries(response.headers.entries()));
+
       if (response.ok) {
         const data = await response.json();
-        console.log('Participants raw data:', data);
-        console.log('First participant structure:', data[0]);
-        console.log('First participant avatar:', data[0]?.avatar);
-        console.log('First participant keys:', Object.keys(data[0] || {}));
+        console.log('=== PARTICIPANTS API DEBUG ===');
+        console.log('Participants response:', data);
+        
+        // Debug user participation
+        const userStr = localStorage.getItem('user');
+        const currentUser = userStr ? JSON.parse(userStr) : null;
+        console.log('Current user:', currentUser);
+        
+        if (currentUser && data.length > 0) {
+          console.log('=== USER PARTICIPATION CHECK ===');
+          
+          // Kiểm tra xem user có trong danh sách participants không
+          const isParticipant = data.some(p => {
+            const usernameMatch = p.username === currentUser.username;
+            const firstNameMatch = p.firstName === currentUser.username || p.firstname === currentUser.username;
+            const idMatch = p.userId === currentUser.id || p.id === currentUser.id;
+            
+            console.log(`Participant ${p.username || p.firstName || p.firstname}:`, {
+              username: p.username,
+              firstName: p.firstName,
+              firstname: p.firstname,
+              userId: p.userId,
+              id: p.id,
+              isHost: p.isHost,
+              usernameMatch,
+              firstNameMatch,
+              idMatch,
+              isMatch: usernameMatch || firstNameMatch || idMatch
+            });
+            
+            return usernameMatch || firstNameMatch || idMatch;
+          });
+          
+          console.log('User có trong danh sách participants:', isParticipant);
+          
+          if (!isParticipant) {
+            console.warn('⚠️ USER KHÔNG CÓ TRONG DANH SÁCH PARTICIPANTS!');
+            console.warn('Username hiện tại:', currentUser.username);
+            console.warn('Có thể gây lỗi 403 khi submit answer');
+          }
+        }
         
         setParticipants(data);
+        
+        // Cập nhật participants trong localStorage
+        const currentRoomStr = localStorage.getItem('currentRoom');
+        if (currentRoomStr) {
+          const currentRoom = JSON.parse(currentRoomStr);
+          currentRoom.participants = data;
+          localStorage.setItem('currentRoom', JSON.stringify(currentRoom));
+          console.log('✅ Đã cập nhật participants trong localStorage:', data);
+        }
       } else {
         console.error('Error fetching participants:', response.status);
+        let errorMessage = '';
+        try {
+          errorMessage = await response.text();
+          console.error('Participants error response body:', errorMessage);
+        } catch (e) {
+          console.error('Không thể đọc participants error response');
+        }
+        
+        if (response.status === 403) {
+          console.error('Không có quyền xem participants của phòng này');
+        } else if (response.status === 404) {
+          console.error('Phòng không tồn tại khi fetch participants');
+        } else {
+          console.error(`Lỗi khi fetch participants (${response.status}): ${errorMessage}`);
+        }
       }
     } catch (error) {
       console.error('Error fetching participants:', error);
@@ -103,6 +194,44 @@ const WaitingRoomForController = () => {
         return;
       }
 
+      // Lấy thông tin user hiện tại
+      const userStr = localStorage.getItem('user');
+      const currentUser = userStr ? JSON.parse(userStr) : null;
+      
+      console.log('Starting game for roomId:', roomId);
+      console.log('Current participants count:', participants.length);
+      console.log('Current user:', currentUser);
+      console.log('Participants:', participants);
+      
+      // Kiểm tra xem user hiện tại có phải host không
+      const isCurrentUserHost = participants.some(p => 
+        p.isHost && (
+          // So sánh nhiều trường để tìm match
+          p.firstname === currentUser?.firstname ||
+          p.username === currentUser?.username ||
+          p.id === currentUser?.id ||
+          // So sánh username với firstname (trường hợp đặc biệt)
+          p.firstname === currentUser?.username ||
+          p.username === currentUser?.firstname
+        )
+      );
+      console.log('Is current user host?', isCurrentUserHost);
+      console.log('Host check details:', {
+        currentUser: currentUser,
+        participants: participants,
+        hostParticipants: participants.filter(p => p.isHost),
+        comparison: participants.map(p => ({
+          participant: p,
+          isMatch: (
+            p.firstname === currentUser?.firstname ||
+            p.username === currentUser?.username ||
+            p.id === currentUser?.id ||
+            p.firstname === currentUser?.username ||
+            p.username === currentUser?.firstname
+          )
+        }))
+      });
+      
       const response = await fetch(`http://localhost:8080/rooms/start/${roomId}`, {
         method: 'POST',
         headers: {
@@ -111,14 +240,42 @@ const WaitingRoomForController = () => {
         }
       });
 
+      console.log('Start game response status:', response.status);
+      console.log('Start game response headers:', Object.fromEntries(response.headers.entries()));
+
       if (response.ok) {
         const participants = await response.json();
-        console.log('Game started, participants:', participants);
-        // Chuyển đến trang play room
-        navigate(`/play-room-for-controller/${roomId}`);
+        
+        // Cập nhật trạng thái phòng trong localStorage
+        const currentRoomStr = localStorage.getItem('currentRoom');
+        if (currentRoomStr) {
+          const currentRoom = JSON.parse(currentRoomStr);
+          currentRoom.isStarted = true;
+          currentRoom.startedAt = new Date().toISOString();
+          localStorage.setItem('currentRoom', JSON.stringify(currentRoom));
+          console.log('✅ Đã cập nhật trạng thái phòng đã start:', currentRoom);
+        }
+        
+        // Đợi 1 giây để backend gửi câu hỏi đầu tiên qua WebSocket trước khi chuyển trang
+        setTimeout(() => {
+          navigate(`/play-room-for-controller/${roomId}`);
+        }, 1000);
       } else {
-        const errorData = await response.text();
-        setError(errorData || 'Không thể bắt đầu game');
+        let errorData = '';
+        try {
+          errorData = await response.text();
+          console.error('Start game error response body:', errorData);
+        } catch (e) {
+          console.error('Không thể đọc start game error response');
+        }
+        
+        if (response.status === 403) {
+          setError(`Không có quyền bắt đầu game: ${errorData}`);
+        } else if (response.status === 400) {
+          setError(`Dữ liệu không hợp lệ: ${errorData}`);
+        } else {
+          setError(`Không thể bắt đầu game (${response.status}): ${errorData}`);
+        }
       }
     } catch (error) {
       console.error('Error starting game:', error);
@@ -126,35 +283,136 @@ const WaitingRoomForController = () => {
     }
   };
 
+  // Setup WebSocket để nhận câu hỏi đầu tiên
+  const setupWebSocketForFirstQuestion = () => {
+    console.log('🔌 Setup WebSocket trong WaitingRoom để nhận câu hỏi đầu tiên...');
+    
+    try {
+      const socket = new window.SockJS('http://localhost:8080/ws');
+      const client = window.Stomp.over(socket);
+      client.debug = null;
+      
+      client.connect({}, (frame) => {
+        console.log('✅ WaitingRoom WebSocket connected!');
+        
+        // Đánh dấu connection đã sẵn sàng
+        window.waitingRoomConnected = true;
+        
+        // Subscribe để nhận câu hỏi đầu tiên khi game bắt đầu
+        client.subscribe(`/topic/room/${roomId}`, (message) => {
+          try {
+            const data = JSON.parse(message.body);
+            console.log('📨 WaitingRoom nhận được message:', data);
+            
+            // Kiểm tra xem có phải câu hỏi đầu tiên không
+            if (data.id && (data.content || data.answerA)) {
+              console.log('🎯 WaitingRoom nhận được câu hỏi đầu tiên:', {
+                questionId: data.id,
+                content: data.content,
+                limitedTime: data.limitedTime
+              });
+              
+              // Lưu câu hỏi đầu tiên để PlayRoomForController có thể sử dụng
+              localStorage.setItem('firstQuestionData', JSON.stringify(data));
+              localStorage.setItem('firstQuestionReceived', 'true');
+              
+              console.log('✅ Đã lưu câu hỏi đầu tiên, sẵn sàng chuyển trang');
+            }
+          } catch (error) {
+            console.error('❌ Lỗi parse message trong WaitingRoom:', error);
+          }
+        });
+      }, (error) => {
+        console.error('❌ WaitingRoom WebSocket error:', error);
+        window.waitingRoomConnected = false;
+      });
+      
+      // Lưu client để có thể disconnect
+      window.waitingRoomStompClient = client;
+      window.waitingRoomConnected = false; // Ban đầu chưa connected
+      
+    } catch (error) {
+      console.error('❌ Lỗi khi setup WebSocket:', error);
+    }
+  };
+
   // Load data khi component mount
   useEffect(() => {
-    console.log('WaitingRoom roomId from params:', roomId);
-    if (!roomId || roomId === 'undefined') {
-      setError('Room ID không hợp lệ');
-      navigate('/dashboard');
-      return;
-    }
-
-    const loadData = async () => {
-      setLoading(true);
-      // Load participants trước, QR code không critical
-      await fetchParticipants();
-      // QR code có thể fail, nhưng không block UI
-      try {
-        await fetchRoomData();
-      } catch (error) {
-        console.warn('Failed to load room data, continuing without QR code');
+    try {
+      if (!roomId || roomId === 'undefined') {
+        setError('Room ID không hợp lệ');
+        navigate('/dashboard');
+        return;
       }
-      setLoading(false);
-    };
 
-    loadData();
+      const loadData = async () => {
+        try {
+          setLoading(true);
+          // Load participants trước, QR code không critical
+          await fetchParticipants();
+          // QR code có thể fail, nhưng không block UI
+          try {
+            await fetchRoomData();
+          } catch (error) {
+            console.warn('Failed to load room data, continuing without QR code');
+          }
+          setLoading(false);
+        } catch (error) {
+          console.error('❌ Lỗi khi load data:', error);
+          setLoading(false);
+        }
+      };
 
-    // Poll participants mỗi 3 giây
-    const interval = setInterval(fetchParticipants, 3000);
-    
-    return () => clearInterval(interval);
+      loadData();
+      
+      // Setup WebSocket để nhận câu hỏi đầu tiên
+      setupWebSocketForFirstQuestion();
+
+      // Poll participants mỗi 3 giây
+      const interval = setInterval(fetchParticipants, 3000);
+      
+      return () => {
+        clearInterval(interval);
+        // Disconnect WebSocket khi unmount - chỉ disconnect nếu đã connected
+        if (window.waitingRoomStompClient && window.waitingRoomConnected) {
+          try {
+            console.log('🔌 Disconnecting WaitingRoom WebSocket...');
+            window.waitingRoomStompClient.disconnect();
+            window.waitingRoomConnected = false;
+          } catch (error) {
+            console.error('❌ Lỗi khi disconnect WebSocket:', error);
+          }
+        }
+      };
+    } catch (error) {
+      console.error('❌ Lỗi trong useEffect:', error);
+      setHasError(true);
+    }
   }, [roomId]);
+
+  // Hiển thị error nếu có
+  if (hasError) {
+    return (
+      <div className="h-[calc(100vh-56px)] flex flex-col items-center justify-center font-content">
+        <div className="text-center max-w-md">
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <p className="text-red-600 text-lg mb-4">Có lỗi xảy ra trong WaitingRoom</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-[var(--pink)] text-white px-6 py-2 rounded-lg hover:opacity-80 mr-4"
+          >
+            Tải lại trang
+          </button>
+          <button 
+            onClick={() => navigate('/dashboard')}
+            className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:opacity-80"
+          >
+            Về Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Hiển thị loading
   if (loading) {
@@ -270,13 +528,39 @@ const WaitingRoomForController = () => {
         </div>
       </div>
 
-      {/* Nút Bắt đầu */}
-      <button
-        onClick={handleStart}
-        className="mt-6 px-4 py-2 bg-[var(--pink)] rounded-lg text-white text-sm font-content font-semibold hover:shadow-lg hover:scale-105 transition-transform ease-in-out"
-      >
-        Bắt đầu
-      </button>
+      {/* Nút Bắt đầu - chỉ hiển thị cho host */}
+      {(() => {
+        const userStr = localStorage.getItem('user');
+        const currentUser = userStr ? JSON.parse(userStr) : null;
+        const isCurrentUserHost = participants.some(p => 
+          p.isHost && (
+            // So sánh nhiều trường để tìm match
+            p.firstname === currentUser?.firstname ||
+            p.username === currentUser?.username ||
+            p.id === currentUser?.id ||
+            // So sánh username với firstname (trường hợp đặc biệt)
+            p.firstname === currentUser?.username ||
+            p.username === currentUser?.firstname
+          )
+        );
+        
+        if (isCurrentUserHost) {
+          return (
+            <button
+              onClick={handleStart}
+              className="mt-6 px-4 py-2 bg-[var(--pink)] rounded-lg text-white text-sm font-content font-semibold hover:shadow-lg hover:scale-105 transition-transform ease-in-out"
+            >
+              Bắt đầu
+            </button>
+          );
+        } else {
+          return (
+            <div className="mt-6 px-4 py-2 bg-gray-300 rounded-lg text-gray-600 text-sm font-content font-semibold text-center">
+              Chỉ chủ phòng mới có thể bắt đầu game
+            </div>
+          );
+        }
+      })()}
 
       {/* Div chờ người tham gia */}
       <div className="mt-4 flex items-center bg-white rounded-lg px-4 py-2 shadow">
@@ -299,14 +583,6 @@ const WaitingRoomForController = () => {
           {/* Render participants trong grid responsive */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 max-w-4xl">
             {participants.map((participant, index) => {
-              console.log('Rendering participant:', {
-                index: index,
-                participant: participant,
-                avatar: participant.avatar,
-                firstname: participant.firstname,
-                name: participant.name
-              });
-              
               return (
                 <div
                   key={participant.id || index}
@@ -333,6 +609,8 @@ const WaitingRoomForController = () => {
           </div>
         </div>
       )}         
+
+
 
       <div className="w-full max-w-3xl mx-auto">
         <Chat />

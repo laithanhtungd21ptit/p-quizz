@@ -4,7 +4,9 @@ const AdminSearchInput = ({
   placeholder = "Tìm kiếm...", 
   suggestions = [], 
   onSearch, 
-  className = ""
+  className = "",
+  loading = false,
+  showClearButton = true
 }) => {
   const [searchValue, setSearchValue] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -73,6 +75,19 @@ const AdminSearchInput = ({
     }
   }
 
+  const handleClearSearch = () => {
+    setSearchValue('')
+    setShowSuggestions(false)
+    setSelectedIndex(-1)
+    setFilteredSuggestions([])
+    if (onSearch) {
+      onSearch('')
+    }
+    if (inputRef.current) {
+      inputRef.current.focus()
+    }
+  }
+
   const handleKeyDown = (e) => {
     if (!showSuggestions) return
 
@@ -110,9 +125,30 @@ const AdminSearchInput = ({
           onKeyDown={handleKeyDown}
           onFocus={() => setShowSuggestions(filteredSuggestions.length > 0)}
           placeholder={placeholder}
-          className={`pl-10 pr-4 py-2 rounded-md border border-gray-300 w-full text-black font-content ${className}`}
+          className={`pl-10 pr-12 py-2 rounded-md border border-gray-300 w-full text-black font-content focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-200 ${className}`}
+          disabled={loading}
         />
+        
+        {/* Search Icon */}
         <i className="fas fa-search absolute left-3 top-2.5 text-gray-500"></i>
+        
+        {/* Loading Spinner */}
+        {loading && (
+          <div className="absolute right-10 top-2.5">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-pink-500"></div>
+          </div>
+        )}
+        
+        {/* Clear Button */}
+        {showClearButton && searchValue && !loading && (
+          <button
+            onClick={handleClearSearch}
+            className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors duration-150"
+            title="Xóa tìm kiếm"
+          >
+            <i className="fas fa-times"></i>
+          </button>
+        )}
       </div>
 
       {/* Suggestions Dropdown */}
@@ -121,24 +157,30 @@ const AdminSearchInput = ({
           ref={suggestionsRef}
           className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] max-h-60 overflow-y-auto"
         >
-          {filteredSuggestions.map((suggestion, index) => (
-                         <div
-               key={index}
-               onClick={(e) => {
-                 e.preventDefault()
-                 e.stopPropagation()
-                 handleSuggestionClick(suggestion)
-               }}
-               className={`px-4 py-3 cursor-pointer hover:bg-gray-100 transition-colors duration-150 font-content ${
-                 index === selectedIndex ? 'bg-gray-100' : ''
-               }`}
-             >
-              <div className="flex items-center gap-2">
-                <i className="fas fa-search text-gray-400 text-sm"></i>
-                <span className="text-gray-700">{suggestion}</span>
+          {filteredSuggestions.length > 0 ? (
+            filteredSuggestions.map((suggestion, index) => (
+              <div
+                key={index}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  handleSuggestionClick(suggestion)
+                }}
+                className={`px-4 py-3 cursor-pointer hover:bg-gray-100 transition-colors duration-150 font-content ${
+                  index === selectedIndex ? 'bg-gray-100' : ''
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <i className="fas fa-search text-gray-400 text-sm"></i>
+                  <span className="text-gray-700">{suggestion}</span>
+                </div>
               </div>
+            ))
+          ) : (
+            <div className="px-4 py-3 text-gray-500 text-center">
+              Không tìm thấy gợi ý nào
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>

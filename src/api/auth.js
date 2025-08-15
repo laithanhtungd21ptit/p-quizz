@@ -47,6 +47,23 @@ export async function loginApi({ username, password }) {
     localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
     localStorage.setItem('user', JSON.stringify(currentUser)); // Thêm key 'user'
 
+    // Gọi API lấy thông tin user profile để lấy firstname
+    try {
+      const profileResponse = await api.get('/user/profile', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (profileResponse.data && profileResponse.data.firstname) {
+        localStorage.setItem('userFirstname', profileResponse.data.firstname);
+        console.log('Đã lưu firstname vào localStorage:', profileResponse.data.firstname);
+      }
+    } catch (profileError) {
+      console.warn('Không thể lấy thông tin profile:', profileError);
+      // Không throw error vì đăng nhập vẫn thành công
+    }
+
     return { token, user: currentUser, raw: res.data };
   } catch (err) {
     const message =
@@ -76,6 +93,7 @@ export async function logoutLocal() {
   localStorage.removeItem(USER_KEY);
   localStorage.removeItem('token'); // Xóa key 'token'
   localStorage.removeItem('user'); // Xóa key 'user'
+  localStorage.removeItem('userFirstname'); // Xóa firstname
   // optional: call backend logout endpoint if exists:
   // await api.post('/auth/logout');
 }

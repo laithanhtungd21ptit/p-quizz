@@ -37,8 +37,10 @@ export default function RankingTable({ data = [], totalQuestions = 15 }) {
         style={{ maxHeight: '285px', msOverflowStyle: 'none', scrollbarWidth: 'none' }}
       >
         {sorted.map((item, index) => {
-          const correctPct = (item.correct / totalQuestions) * 100;
-          const wrongPct = (item.wrong / totalQuestions) * 100;
+          // Sử dụng correctCount từ backend thay vì correct
+          const correctCount = item.correctCount || 0;
+          const correctPct = (correctCount / totalQuestions) * 100;
+          const wrongPct = ((totalQuestions - correctCount) / totalQuestions) * 100;
           const leftoverPct = 100 - correctPct - wrongPct;
 
           return (
@@ -53,11 +55,11 @@ export default function RankingTable({ data = [], totalQuestions = 15 }) {
               <div className="w-[15%] text-center text-white">{index + 1}</div>
               <div className="w-[30%] flex items-center text-white pl-12">
                 <img
-                  src={item.avatar}
+                  src={item.avatar || '/avatar/avatar_1.png'}
                   alt="avatar"
                   className="w-6 h-auto mr-4"
                 />
-                <span className="truncate">{item.name}</span>
+                <span className="truncate">{item.firstName || 'Unknown'}</span>
               </div>
               <div className="w-[15%] text-center text-white">{item.score}</div>
               <div className="w-[40%] px-2 relative">
@@ -67,7 +69,7 @@ export default function RankingTable({ data = [], totalQuestions = 15 }) {
                     style={{ width: `${correctPct}%` }}
                   >
                     <span className="absolute left-1 text-sm text-white pl-1">
-                      {item.correct}
+                      {correctCount}
                     </span>
                   </div>
                   <div
@@ -75,7 +77,7 @@ export default function RankingTable({ data = [], totalQuestions = 15 }) {
                     style={{ width: `${wrongPct}%` }}
                   >
                     <span className="absolute left-1 text-sm text-white pl-1">
-                      {item.wrong}
+                      {totalQuestions - correctCount}
                     </span>
                   </div>
                   {/* leftover gray segment */}

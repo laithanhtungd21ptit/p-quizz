@@ -1,13 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-// Mảng chủ đề mặc định sẽ được thay thế bằng API
-const defaultTopics = [
-  'Từ vựng tiếng Anh',
-  'Ngữ pháp tiếng Nhật', 
-  'Lịch sử Việt Nam',
-  'Toán học cơ bản',
-]
+
 
 const CreateRoom = ({ onClose }) => {
   const navigate = useNavigate();
@@ -35,7 +29,7 @@ const CreateRoom = ({ onClose }) => {
     try {
       const token = localStorage.getItem('token')
       if (!token) {
-        setTopicSuggestions(defaultTopics)
+        setTopicSuggestions([])
         return
       }
 
@@ -52,22 +46,13 @@ const CreateRoom = ({ onClose }) => {
         const data = await response.json()
         // Lấy danh sách topics unique từ tất cả quiz
         const topics = [...new Set(data.data?.map(quiz => quiz.topic).filter(Boolean))]
-        
-        // Ưu tiên hiển thị topics từ database, chỉ fallback về default nếu không có topics nào
-        if (topics.length > 0) {
-          setTopicSuggestions(topics)
-        } else {
-          // Nếu không có topics từ database, sử dụng default
-          setTopicSuggestions(defaultTopics)
-        }
+        setTopicSuggestions(topics)
       } else {
-        // Fallback về default topics nếu API lỗi
-        setTopicSuggestions(defaultTopics)
+        setTopicSuggestions([])
       }
     } catch (error) {
       console.error('Error loading topics:', error)
-      // Fallback về default topics
-      setTopicSuggestions(defaultTopics)
+      setTopicSuggestions([])
     } finally {
       setTopicLoading(false)
     }
@@ -85,9 +70,7 @@ const CreateRoom = ({ onClose }) => {
     try {
       const token = localStorage.getItem('token')
       if (!token) {
-        setTopicSuggestions(defaultTopics.filter(t => 
-          t.toLowerCase().includes(topicTerm.toLowerCase())
-        ))
+        setTopicSuggestions([])
         return
       }
 
@@ -110,31 +93,18 @@ const CreateRoom = ({ onClose }) => {
         // Lấy danh sách topics unique từ kết quả
         const topics = [...new Set(data.data?.map(quiz => quiz.topic).filter(Boolean))]
         
-        // Ưu tiên topics từ database, chỉ thêm default nếu không tìm thấy topics nào
-        let filteredTopics = topics.filter(t => 
+        // Lọc topics theo search term
+        const filteredTopics = topics.filter(t => 
           t.toLowerCase().includes(topicTerm.toLowerCase())
         )
         
-        // Nếu không tìm thấy topics nào từ database, mới fallback sang default
-        if (filteredTopics.length === 0) {
-          filteredTopics = defaultTopics.filter(t => 
-            t.toLowerCase().includes(topicTerm.toLowerCase())
-          )
-        }
-        
         setTopicSuggestions(filteredTopics.slice(0, 15))
       } else {
-        // Fallback về default topics nếu API lỗi
-        setTopicSuggestions(defaultTopics.filter(t => 
-          t.toLowerCase().includes(topicTerm.toLowerCase())
-        ))
+        setTopicSuggestions([])
       }
     } catch (error) {
       console.error('Error searching topics:', error)
-      // Fallback về default topics
-      setTopicSuggestions(defaultTopics.filter(t => 
-        t.toLowerCase().includes(topicTerm.toLowerCase())
-      ))
+      setTopicSuggestions([])
     } finally {
       setTopicLoading(false)
     }
@@ -346,10 +316,8 @@ const CreateRoom = ({ onClose }) => {
             onChange={e => { setTopic(e.target.value); setShowTopicDropdown(true); }}
             onFocus={() => {
               setShowTopicDropdown(true);
-              // Nếu chưa có topic suggestions hoặc chỉ có default, load lại từ API
-              if (topicSuggestions.length === 0 || 
-                  (topicSuggestions.length <= defaultTopics.length && 
-                   topicSuggestions.every(t => defaultTopics.includes(t)))) {
+              // Nếu chưa có topic suggestions, load lại từ API
+              if (topicSuggestions.length === 0) {
                 loadAllTopics();
               }
             }}
@@ -445,7 +413,7 @@ const CreateRoom = ({ onClose }) => {
                       selectedQuiz?.quizId === quiz.quizId || selectedQuiz?.id === quiz.id ? 'bg-blue-50 border-l-4 border-[#ED005D]' : ''
                     }`}
                     onMouseDown={e => { 
-                      setSearch(quiz.quizTopic || quiz.topic || 'Bộ câu hỏi'); 
+                      setSearch(quiz.name || quiz.quizName || 'Bộ câu hỏi'); 
                       setSelectedQuiz(quiz);
                       setShowSuggestDropdown(false); 
                       setError('');
@@ -455,14 +423,14 @@ const CreateRoom = ({ onClose }) => {
                     }}
                   >
                     <div className="flex flex-col">
-                      <span className="font-medium">{quiz.quizTopic || quiz.topic || 'Bộ câu hỏi'}</span>
-                      <span className="text-xs text-gray-500">{quiz.quantityQuestion || quiz.questions?.length || 0} câu hỏi</span>
+                      <span className="font-medium">{quiz.name || quiz.quizName || 'Bộ câu hỏi không có tên'}</span>
+                      <span className="text-xs text-gray-500">{quiz.quizTopic || quiz.topic || 'Không có topic'}</span>
                     </div>
-                    <div className="flex items-center gap-1 text-sm text-gray-600">
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <span className="text-xs text-gray-400">{quiz.quantityQuestion || quiz.questions?.length || 0} câu hỏi</span>
                       <div className="w-5 h-5 rounded-full bg-[#ED005D] text-white text-xs flex items-center justify-center">
                         Q
                       </div>
-                      Quiz #{quiz.quizId || quiz.id}
                     </div>
                   </div>
                 ))
@@ -483,9 +451,9 @@ const CreateRoom = ({ onClose }) => {
                 ✓
               </div>
               <div className="flex-1">
-                <div className="font-medium text-green-800">{selectedQuiz.quizTopic || selectedQuiz.topic}</div>
-                <div className="text-sm text-green-600">{selectedQuiz.quantityQuestion || selectedQuiz.questions?.length || 0} câu hỏi</div>
-                <div className="text-xs text-green-500">Quiz ID: {selectedQuiz.quizId || selectedQuiz.id}</div>
+                <div className="font-medium text-green-800">{selectedQuiz.name || selectedQuiz.quizName || 'Bộ câu hỏi không có tên'}</div>
+                <div className="text-sm text-green-600">{selectedQuiz.quizTopic || selectedQuiz.topic || 'Không có topic'}</div>
+                <div className="text-xs text-green-500">{selectedQuiz.quantityQuestion || selectedQuiz.questions?.length || 0} câu hỏi</div>
               </div>
               <button
                 onClick={() => {

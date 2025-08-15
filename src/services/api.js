@@ -423,4 +423,115 @@ export const deleteQuiz = async (quizId) => {
   }
 };
 
+// API submit answer cho câu hỏi
+export const submitAnswer = async (pinCode, answerData) => {
+  try {
+    console.log('Gửi đáp án:', { pinCode, answerData });
+    
+    const response = await api.post(`/room/${pinCode}/submit-answer`, answerData);
+    
+    console.log('Response từ backend:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Lỗi khi submit answer:', error);
+    if (error.response) {
+      console.error('Response error:', error.response.data);
+      console.error('Status:', error.response.status);
+    }
+    throw error;
+  }
+};
+
+// API lấy bảng xếp hạng của phòng
+export const getRoomRanking = async (roomId) => {
+  try {
+    console.log('Lấy bảng xếp hạng cho phòng:', roomId);
+    
+    const response = await api.get(`/gamerank/${roomId}/ranking`);
+    
+    console.log('Bảng xếp hạng từ backend:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Lỗi khi lấy bảng xếp hạng:', error);
+    if (error.response) {
+      console.error('Response error:', error.response.data);
+      console.error('Status:', error.response.status);
+    }
+    throw error;
+  }
+};
+
+// API để controller lấy câu hỏi tiếp theo
+export const getNextQuestion = async (pinCode, clientSessionId) => {
+  try {
+    console.log('Controller lấy câu hỏi tiếp theo cho pinCode:', pinCode);
+    console.log('Client Session ID:', clientSessionId);
+    
+    // Gọi đúng endpoint với pinCode và có request body
+    const response = await api.post(`/${pinCode}/next-question`, {
+      clientSessionId: clientSessionId
+    });
+    
+    console.log('Câu hỏi tiếp theo từ backend:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Lỗi khi lấy câu hỏi tiếp theo:', error);
+    if (error.response) {
+      console.error('Response error:', error.response.data);
+      console.error('Status:', error.response.status);
+    }
+    throw error;
+  }
+};
+
+// API lấy danh sách participants của phòng
+export const getRoomParticipants = async (roomId) => {
+  try {
+    console.log('Lấy danh sách participants cho phòng:', roomId);
+    
+    const response = await api.get(`/rooms/participants?roomId=${roomId}`);
+    
+    console.log('Participants từ backend:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Lỗi khi lấy participants:', error);
+    if (error.response) {
+      console.error('Response error:', error.response.data);
+      console.error('Status:', error.response.status);
+    }
+    throw error;
+  }
+};
+
+// API lưu lịch sử chơi của player (không cần authentication)
+export const savePlayerHistory = async (pinCode, clientSessionId) => {
+  try {
+    console.log('Lưu lịch sử chơi:', { pinCode, clientSessionId });
+    
+    // Sử dụng fetch thay vì axios để bypass interceptor
+    const response = await fetch(`http://localhost:8080/api/player-answers/save/${pinCode}/${clientSessionId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // Không gửi Authorization header
+      }
+    });
+    
+    console.log('Response status:', response.status);
+    
+    if (response.ok) {
+      const result = await response.text(); // API trả về string
+      console.log('Kết quả lưu lịch sử:', result);
+      return result;
+    } else {
+      const errorText = await response.text();
+      console.error('API error:', response.status, errorText);
+      throw new Error(`API Error ${response.status}: ${errorText}`);
+    }
+  } catch (error) {
+    console.error('Lỗi khi lưu lịch sử:', error);
+    throw error;
+  }
+};
+
 export default api;

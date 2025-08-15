@@ -4,6 +4,7 @@ import AdminSearchInput from '../../components/AdminSearchInput'
 const ViolationList = () => {
   // State management
   const [violations, setViolations] = useState([])
+  const [filteredViolations, setFilteredViolations] = useState([])
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
@@ -289,8 +290,44 @@ const ViolationList = () => {
   // Handle search
   const handleSearch = (value) => {
     setSearchTerm(value)
-    // Implement search logic here if needed
-    console.log('Searching for violation:', value)
+    
+    if (!value.trim()) {
+      setFilteredViolations(violations)
+      return
+    }
+
+    const filtered = violations.filter(violation => {
+      const searchLower = value.toLowerCase()
+      const username = (violation.username || '').toLowerCase()
+      const email = (userDetails.get(violation.username)?.email || '').toLowerCase()
+      const firstName = (userDetails.get(violation.username)?.firstname || '').toLowerCase()
+      const severity = (violation.severity || '').toLowerCase()
+      
+      // Tìm kiếm theo username, email, firstName, severity
+      const textMatch = username.includes(searchLower) || 
+                        email.includes(searchLower) || 
+                        firstName.includes(searchLower) ||
+                        severity.includes(searchLower)
+      
+      // Tìm kiếm theo thời gian (ngày/tháng/năm)
+      let dateMatch = false
+      if (violation.createdAt) {
+        const createdDate = new Date(violation.createdAt)
+        const dateString = createdDate.toLocaleDateString('vi-VN')
+        const year = createdDate.getFullYear().toString()
+        const month = (createdDate.getMonth() + 1).toString().padStart(2, '0')
+        const day = createdDate.getDate().toString().padStart(2, '0')
+        
+        dateMatch = dateString.includes(searchLower) ||
+                   year.includes(searchLower) ||
+                   month.includes(searchLower) ||
+                   day.includes(searchLower)
+      }
+      
+      return textMatch || dateMatch
+    })
+    
+    setFilteredViolations(filtered)
   }
 
   // Handle pagination
@@ -409,6 +446,11 @@ const ViolationList = () => {
     }
   }, [])
 
+  // Update filteredViolations when violations or userDetails change
+  useEffect(() => {
+    setFilteredViolations(violations)
+  }, [violations])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -456,22 +498,28 @@ const ViolationList = () => {
         <div className="mb-4 flex justify-start">
           <div className="relative w-80 z-[9998]">
             <AdminSearchInput
-              placeholder="Tìm kiếm theo tên/ Tài khoản"
+              placeholder="Tìm kiếm theo tên/ Tài khoản/ Email/ Mức độ/ Thời gian"
               suggestions={[
-                "Nguyễn Thị Quỳnh - Vi phạm spam",
-                "Trần Văn An - Vi phạm nội dung",
-                "Lê Thị Bình - Vi phạm quy tắc",
-                "Phạm Hoàng Cường - Vi phạm bảo mật",
-                "Hoàng Thị Dung - Vi phạm spam",
-                "Vũ Minh Đức - Vi phạm nội dung",
-                "Đặng Thị Em - Vi phạm quy tắc",
-                "Ngô Văn Phúc - Vi phạm bảo mật",
-                "Lý Thị Giang - Vi phạm spam",
-                "Bùi Hoàng Hải - Vi phạm nội dung"
+                ...violations.map(v => v.username).filter(Boolean),
+                ...Array.from(userDetails.values()).map(u => u.firstname).filter(Boolean),
+                ...Array.from(userDetails.values()).map(u => u.email).filter(Boolean),
+                'Nặng', 'Vừa', 'Nhẹ',
+                ...violations.map(v => {
+                  if (v.createdAt) {
+                    const date = new Date(v.createdAt)
+                    return date.toLocaleDateString('vi-VN')
+                  }
+                  return null
+                }).filter(Boolean)
               ]}
               onSearch={handleSearch}
             />
           </div>
+        </div>
+        
+        {/* Search Help Text */}
+        <div className="mb-4 text-sm text-gray-600">
+          <span className="font-medium">Gợi ý tìm kiếm:</span> Bạn có thể tìm kiếm theo tên, tài khoản, email, mức độ vi phạm hoặc thời gian tạo (VD: 2024, 12, 25/12/2024)
         </div>
 
         {/* Table */}
@@ -492,10 +540,10 @@ const ViolationList = () => {
               </tr>
             </thead>
             <tbody>
-              {violations.length > 0 ? (
-                violations.map((violation, index) => (
+              {filteredViolations.length > 0 ? (
+                filteredViolations.map((violation, index) => (
                   <tr key={violation.id || index} className="border-b border-gray-200 hover:bg-gray-100">
-                    <td className="py-3 px-4">{currentPage * pageSize + index + 1}</td>
+                    <td className="py-3 px-4">{index + 1}</td>
                     <td className="py-3 px-4 flex items-center gap-2">
                       <img 
                         src={violation.user?.avatar || "https://randomuser.me/api/portraits/women/44.jpg"} 
@@ -545,7 +593,7 @@ const ViolationList = () => {
               ) : (
                 <tr>
                   <td colSpan="7" className="py-8 text-center text-gray-500">
-                    Không có vi phạm nào
+                    {searchTerm ? 'Không tìm thấy vi phạm nào phù hợp với từ khóa tìm kiếm' : 'Không có vi phạm nào'}
                   </td>
                 </tr>
               )}
@@ -553,8 +601,15 @@ const ViolationList = () => {
           </table>
         </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
+        {/* Search Results Info */}
+        {searchTerm && (
+          <div className="mt-2 text-sm text-gray-600">
+            Tìm thấy {filteredViolations.length} kết quả cho "{searchTerm}"
+          </div>
+        )}
+
+        {/* Pagination - Only show when not searching */}
+        {!searchTerm && totalPages > 1 && (
           <div className="mt-4 flex justify-end space-x-2">
             <button 
               onClick={() => handlePageChange(currentPage - 1)}

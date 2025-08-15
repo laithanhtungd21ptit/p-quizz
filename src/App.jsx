@@ -168,7 +168,7 @@ export default function App() {
           {/* Routes không có Sidebar và TopControls */}
           <Route path="/create-question-set" element={<CreateQuestionSet />} />
           <Route path="/edit-question-set/:idx" element={<EditQuestionSet />} />
-          <Route path="/player-game" element={<PlayerGame />} />
+          <Route path="/player-game/:roomId" element={<PlayerGame />} />
           <Route path="/preview" element={<PreviewPage />} />
           <Route path="/question-set/:id" element={<QuestionSetDetail />} />
           <Route path="/edit" element={<EditPage />} />
