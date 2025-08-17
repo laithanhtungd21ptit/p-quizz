@@ -31,13 +31,28 @@ const SearchResults = () => {
       setLoading(true)
       setSearchResults([])
       
-      // Gọi API searchQuizzes với topic và name
-      const response = await searchQuizzes('', searchQuery, 0, 20)
-      console.log('API Response:', response)
-      console.log('Search Results:', response?.data)
+      // Tìm kiếm linh hoạt: thử cả topic và name để có kết quả tốt nhất
+      console.log('Searching for:', searchQuery)
       
-      const results = response?.data || []
-      setSearchResults(results)
+      // Thử tìm theo topic trước (cho các môn học như "Tiếng Anh", "Toán học")
+      const topicResponse = await searchQuizzes(searchQuery, '', 0, 20)
+      let topicResults = topicResponse?.data || []
+      
+      // Nếu không có kết quả theo topic, thử tìm theo name
+      let nameResults = []
+      if (topicResults.length === 0) {
+        const nameResponse = await searchQuizzes('', searchQuery, 0, 20)
+        nameResults = nameResponse?.data || []
+      }
+      
+      // Kết hợp kết quả (ưu tiên topic trước)
+      const allResults = [...topicResults, ...nameResults]
+      
+      console.log('Topic results:', topicResults)
+      console.log('Name results:', nameResults)
+      console.log('Total results:', allResults.length)
+      
+      setSearchResults(allResults)
     } catch (error) {
       console.error('Lỗi khi tìm kiếm:', error)
       setSearchResults([])

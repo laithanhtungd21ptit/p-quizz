@@ -171,7 +171,11 @@ const PlayerGame = () => {
     // Disable STOMP debug logging
     client.debug = null;
     
-    client.connect({}, (frame) => {
+    // Lấy clientSessionId để authenticate WebSocket
+    const clientSessionId = localStorage.getItem('clientSessionId');
+    const connectHeaders = clientSessionId ? { clientSessionId } : {};
+    
+    client.connect(connectHeaders, (frame) => {
       console.log('✅ WebSocket connected successfully!');
       setIsConnected(true);
       setStompClient(client);
@@ -203,6 +207,32 @@ const PlayerGame = () => {
         } catch (error) {
           console.error('❌ Error parsing WebSocket message:', error);
         }
+      });
+      
+      // Subscribe vào queue để nhận thông báo kick riêng
+      client.subscribe('/user/queue/kick', (message) => {
+        if (isBeingKicked || window.isBeingKicked) return; // Tránh duplicate processing
+        setIsBeingKicked(true);
+        
+        // Disconnect WebSocket ngay để tránh nhận thêm message
+        if (client && client.connected) {
+          client.disconnect();
+        }
+        
+        // Set global flag để tránh các component khác nhận kick message
+        window.isBeingKicked = true;
+        
+        alert(message.body); // Hiển thị thông báo kick
+        // Clear room data và quay về dashboard
+        localStorage.removeItem('currentRoom');
+        localStorage.removeItem('clientSessionId');
+        localStorage.removeItem('currentQuestionData');
+        localStorage.removeItem('gameStarted');
+        
+        // Đợi một chút để disconnect hoàn thành trước khi navigate
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 100);
       });
       
       console.log('✅ Successfully subscribed to room topic');
@@ -284,6 +314,7 @@ const PlayerGame = () => {
   const [currentParticipant, setCurrentParticipant] = useState(null);
   const [supportCards, setSupportCards] = useState([]);
   const [usedCards, setUsedCards] = useState([false, false]); // Track 2 thẻ đã sử dụng
+  const [isBeingKicked, setIsBeingKicked] = useState(false);
 
   // Helper functions để chuyển đổi giữa index (0,1,2,3) và chữ cái (A,B,C,D)
   const indexToLetter = (idx) => ['A', 'B', 'C', 'D'][idx];

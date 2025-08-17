@@ -197,12 +197,27 @@ const TopControls = ({
             onSearch={async (value) => {
               if (value.trim()) {
                 try {
-                  // Gọi API tìm kiếm
-                  const response = await searchQuizzes('', value.trim(), 0, 10)
-                  console.log('Search results:', response?.data)
+                  // Tìm kiếm cả topic và name - kiểm tra xem value có match với topic không
+                  const searchValue = value.trim()
+                  
+                  // Nếu value match với một topic trong suggestions, tìm theo topic
+                  const isTopicSearch = topics.some(topic => 
+                    topic.toLowerCase().includes(searchValue.toLowerCase())
+                  )
+                  
+                  let response
+                  if (isTopicSearch) {
+                    // Tìm theo topic
+                    response = await searchQuizzes(searchValue, '', 0, 10)
+                    console.log('Search by topic:', searchValue, response?.data)
+                  } else {
+                    // Tìm theo name
+                    response = await searchQuizzes('', searchValue, 0, 10)
+                    console.log('Search by name:', searchValue, response?.data)
+                  }
                   
                   // Navigate đến trang search với kết quả
-                  navigate(`/search?q=${encodeURIComponent(value.trim())}`)
+                  navigate(`/search?q=${encodeURIComponent(searchValue)}`)
                 } catch (error) {
                   console.error('Lỗi khi tìm kiếm:', error)
                   // Vẫn navigate đến trang search để hiển thị lỗi

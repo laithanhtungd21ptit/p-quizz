@@ -82,11 +82,7 @@ const WaitingRoomForPlayer = () => {
         const token = localStorage.getItem('token');
         const userStr = localStorage.getItem('user');
         
-        console.log('=== WAITING ROOM INIT ===');
-        console.log('Room ID from URL params:', roomId);
-        console.log('Current room in localStorage:', localStorage.getItem('currentRoom'));
-        console.log('Room ID in localStorage:', localStorage.getItem('roomId'));
-        console.log('ClientSessionId in localStorage:', localStorage.getItem('clientSessionId'));
+
         
         if (!token || !userStr) {
           setError('Vui lòng đăng nhập lại');
@@ -98,12 +94,8 @@ const WaitingRoomForPlayer = () => {
         
         // Lấy clientSessionId từ localStorage nếu có
         const clientSessionId = localStorage.getItem('clientSessionId');
-        console.log('ClientSessionId từ localStorage:', clientSessionId);
         if (clientSessionId) {
           user.clientSessionId = clientSessionId;
-          console.log('ClientSessionId loaded from localStorage:', clientSessionId);
-        } else {
-          console.log('Không tìm thấy clientSessionId trong localStorage');
         }
         
         setUserData(user);
@@ -143,7 +135,6 @@ const WaitingRoomForPlayer = () => {
     const roomStatusInterval = setInterval(async () => {
       // Dừng polling nếu room đã bắt đầu
       if (roomStarted) {
-        console.log('Room already started, stopping status polling');
         return;
       }
 
@@ -161,23 +152,19 @@ const WaitingRoomForPlayer = () => {
           
           if (response.ok) {
             const roomData = await response.json();
-            console.log('Room status check:', roomData);
             
             // Kiểm tra xem phòng có bị lock không (đã bắt đầu game)
             if (roomData.locked || roomData.startedAt) {
-              console.log('Room has started or locked! Redirecting to game...');
               setRoomStarted(true);
               navigate(`/player-game/${roomId}`);
             }
           } else if (response.status === 403) {
             // Phòng có thể đã bắt đầu hoặc user không có quyền
-            console.log('Room access forbidden - might be started');
             setRoomStarted(true);
-            // Thử redirect đến game screen
             navigate(`/player-game/${roomId}`);
           }
         } catch (error) {
-          console.error('Error checking room status:', error);
+          // Bỏ qua lỗi khi check room status
         }
       }
     }, 5000); // Tăng interval lên 5 giây để giảm spam
@@ -192,7 +179,7 @@ const WaitingRoomForPlayer = () => {
   useEffect(() => {
     if (!roomId) return;
 
-    console.log('Setting up WebSocket connection for room:', roomId);
+
     
     // Sử dụng SockJS thay vì native WebSocket
     const socket = new SockJS('http://localhost:8080/ws');
@@ -201,52 +188,68 @@ const WaitingRoomForPlayer = () => {
     // Disable STOMP debug logging
     stompClient.debug = null;
     
-    stompClient.connect({}, (frame) => {
-      console.log('STOMP connected for room:', roomId, frame);
+    // Lấy clientSessionId để authenticate WebSocket
+    const clientSessionId = localStorage.getItem('clientSessionId');
+    const connectHeaders = clientSessionId ? { clientSessionId } : {};
+    
+    stompClient.connect(connectHeaders, (frame) => {
       
       // Subscribe vào topic của phòng
       stompClient.subscribe(`/topic/room/${roomId}`, (message) => {
         try {
           const data = JSON.parse(message.body);
-          console.log('STOMP message received:', data);
           
           // Kiểm tra xem có phải game start message không
           // Backend gửi question data khi game bắt đầu
           if (data.id && (data.answerA || data.answerB || data.answerC || data.answerD)) {
-            console.log('Game started! Question received:', data.id);
-            console.log('Question data:', data);
-            
             // Lưu question data vào localStorage trước khi redirect
             localStorage.setItem('currentQuestionData', JSON.stringify(data));
             localStorage.setItem('gameStarted', 'true');
             
-            console.log('Question data saved to localStorage, redirecting to game screen...');
             // Chuyển đến game screen
             navigate(`/player-game/${roomId}`);
-            return; // Dừng xử lý tiếp
+            return;
           }
           
           // Fallback: Kiểm tra các trường khác
           if (data.questionId || data.isQuestionLast !== undefined) {
-            console.log('Game started! Alternative fields detected');
-            console.log('Redirecting to game screen...');
             navigate(`/player-game/${roomId}`);
             return;
           }
         } catch (error) {
-          console.error('Error parsing STOMP message:', error);
+          // Bỏ qua lỗi parsing
         }
       });
       
-      console.log('Subscribed to /topic/room/' + roomId);
+      // Subscribe vào queue để nhận thông báo kick riêng
+      stompClient.subscribe('/user/queue/kick', (message) => {
+        if (isBeingKicked || window.isBeingKicked) return; // Tránh duplicate processing
+        setIsBeingKicked(true);
+        
+        // Disconnect WebSocket ngay để tránh nhận thêm message
+        if (stompClient && stompClient.connected) {
+          stompClient.disconnect();
+        }
+        
+        // Set global flag để tránh các component khác nhận kick message
+        window.isBeingKicked = true;
+        
+        alert(message.body); // Hiển thị thông báo kick
+        // Clear room data và quay về dashboard
+        localStorage.removeItem('currentRoom');
+        localStorage.removeItem('clientSessionId');
+        
+        // Đợi một chút để disconnect hoàn thành trước khi navigate
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 100);
+      });
     }, (error) => {
-      console.error('STOMP connection error:', error);
-      console.log('Falling back to polling mechanism');
+      // Fallback to polling if WebSocket fails
     });
     
     // Cleanup khi component unmount
     return () => {
-      console.log('Cleaning up STOMP connection');
       if (stompClient.connected) {
         stompClient.disconnect();
       }
@@ -257,20 +260,9 @@ const WaitingRoomForPlayer = () => {
   useEffect(() => {
     if (!roomId) return;
     
-    // Kiểm tra xem WebSocket có hoạt động không
-    const checkWebSocketStatus = () => {
-      if (typeof SockJS === 'undefined' || typeof Stomp === 'undefined') {
-        console.warn('SockJS or STOMP not loaded, using polling only');
-        return false;
-      }
-      return true;
-    };
-    
-    // Kiểm tra sau 2 giây
+    // Kiểm tra WebSocket availability
     const timeout = setTimeout(() => {
-      if (!checkWebSocketStatus()) {
-        console.log('WebSocket not available, relying on polling mechanism');
-      }
+      // Check if WebSocket libraries are loaded
     }, 2000);
     
     return () => clearTimeout(timeout);
@@ -278,6 +270,7 @@ const WaitingRoomForPlayer = () => {
 
   // State để track room status
   const [roomStarted, setRoomStarted] = useState(false);
+  const [isBeingKicked, setIsBeingKicked] = useState(false);
   
   // Fetch room data (pin code, QR code)
   const fetchRoomData = async (token) => {
@@ -292,33 +285,21 @@ const WaitingRoomForPlayer = () => {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('Room data response:', data);
         setRoomData(data);
         
         // Sau khi có roomData, gọi fetchSupportCards nếu có clientSessionId
         const clientSessionId = localStorage.getItem('clientSessionId');
-        console.log('ClientSessionId khi gọi fetchSupportCards:', clientSessionId);
-        console.log('PinCode từ response:', data.pinCode);
         
         if (clientSessionId && data.pinCode && !hasFetchedInitialCards.current) {
-          console.log('Có đủ dữ liệu, gọi fetchSupportCards lần đầu');
           hasFetchedInitialCards.current = true;
           try {
             await fetchSupportCardsWithData(token, data.pinCode, clientSessionId);
             // Cập nhật số lượt đã sử dụng sau khi gọi thành công
             setSwapCount(1);
-            console.log('Đã sử dụng 1 lượt xáo trộn ban đầu');
           } catch (error) {
-            console.error('Lỗi khi lấy support cards lần đầu:', error);
             // Reset flag nếu lỗi để có thể thử lại
             hasFetchedInitialCards.current = false;
           }
-        } else {
-          console.log('Bỏ qua fetchSupportCards:', {
-            clientSessionId: !!clientSessionId,
-            pinCode: !!data.pinCode,
-            alreadyFetched: hasFetchedInitialCards.current
-          });
         }
       } else if (response.status === 404) {
         // Phòng không tồn tại (có thể đã bị xóa)
@@ -366,15 +347,7 @@ const WaitingRoomForPlayer = () => {
   // Fetch support cards từ backend với dữ liệu cụ thể
   const fetchSupportCardsWithData = async (token, pinCode, clientSessionId) => {
     try {
-      console.log('Debug fetchSupportCardsWithData:', {
-        pinCode: pinCode || 'Không có',
-        clientSessionId: clientSessionId || 'Không có',
-        token: token ? 'Có' : 'Không có'
-      });
-      
       const requestBody = { clientSessionId: clientSessionId };
-      console.log('Request body gửi lên API:', requestBody);
-      console.log('API endpoint:', `http://localhost:8080/${pinCode}/support-card/random`);
       
       const response = await fetch(`http://localhost:8080/${pinCode}/support-card/random`, {
         method: 'POST',
@@ -385,12 +358,8 @@ const WaitingRoomForPlayer = () => {
         body: JSON.stringify(requestBody)
       });
       
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-      
       if (response.ok) {
         const backendCards = await response.json();
-        console.log('Support cards từ backend:', backendCards);
         
         // Chuyển đổi từ backend enum sang UI object
         const uiCards = convertBackendCardsToUI(backendCards);
@@ -398,23 +367,11 @@ const WaitingRoomForPlayer = () => {
         
         // Lưu support cards vào localStorage để PlayerGame sử dụng
         localStorage.setItem('currentSupportCards', JSON.stringify(uiCards));
-        console.log('💾 Đã lưu support cards vào localStorage cho PlayerGame');
       } else {
-        // Log chi tiết lỗi
-        let errorMessage = '';
-        try {
-          const errorData = await response.text();
-          errorMessage = errorData;
-          console.error('Error response body:', errorData);
-        } catch (e) {
-          console.error('Không thể đọc error response');
-        }
-        
-        console.error('Lỗi khi lấy support cards:', response.status, errorMessage);
+        const errorMessage = await response.text();
         throw new Error(`API Error: ${response.status} - ${errorMessage}`);
       }
     } catch (error) {
-      console.error('Error fetching support cards:', error);
       throw error;
     }
   };
@@ -424,7 +381,6 @@ const WaitingRoomForPlayer = () => {
     const clientSessionId = localStorage.getItem('clientSessionId');
     
     if (!roomData?.pinCode || !clientSessionId) {
-      console.log('Chưa có pinCode hoặc clientSessionId, bỏ qua fetch support cards');
       return;
     }
 
@@ -454,24 +410,13 @@ const WaitingRoomForPlayer = () => {
   };
   const swapSupport = async () => {
     if (swapCount >= maxSwapCount) {
-      console.log('Đã đạt giới hạn số lần xáo trộn');
       return;
     }
 
     const token = localStorage.getItem('token');
     const clientSessionId = localStorage.getItem('clientSessionId');
     
-    console.log('Debug swapSupport:', {
-      token: token ? 'Có' : 'Không có',
-      clientSessionId: clientSessionId ? 'Có' : 'Không có',
-      roomData: roomData ? 'Có' : 'Không có',
-      pinCode: roomData?.pinCode || 'Không có',
-      swapCount,
-      maxSwapCount
-    });
-    
     if (!token || !clientSessionId || !roomData?.pinCode) {
-      console.error('Không có đủ dữ liệu để gọi API xáo trộn thẻ');
       return;
     }
 
@@ -479,7 +424,7 @@ const WaitingRoomForPlayer = () => {
       await fetchSupportCards(token);
       setSwapCount(prev => prev + 1);
     } catch (error) {
-      console.error('Lỗi khi xáo trộn thẻ:', error);
+      // Handle error silently
     }
   };
 
@@ -651,120 +596,7 @@ const WaitingRoomForPlayer = () => {
       <div className="text-white text-center mt-10 text-base font-content">
         Đang chờ người điều khiển bắt đầu...
       </div>
-      
-      {/* Debug button - chỉ hiển thị trong development */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="mt-4 p-4 bg-gray-800 rounded-lg">
-          <h3 className="text-white text-lg mb-2">Debug Info</h3>
-          <div className="text-sm text-gray-300 space-y-1">
-            <div>Token: {localStorage.getItem('token') ? 'Có' : 'Không có'}</div>
-            <div>ClientSessionId: {localStorage.getItem('clientSessionId') || 'Không có'}</div>
-            <div>RoomData: {roomData ? 'Có' : 'Không có'}</div>
-            <div>PinCode: {roomData?.pinCode || 'Không có'}</div>
-            <div>UserData: {userData ? 'Có' : 'Không có'}</div>
-            <div>User ClientSessionId: {userData?.clientSessionId || 'Không có'}</div>
-          </div>
-          <button 
-            onClick={() => {
-              console.log('=== DEBUG INFO ===');
-              console.log('localStorage:', {
-                token: localStorage.getItem('token') ? 'Có' : 'Không có',
-                clientSessionId: localStorage.getItem('clientSessionId'),
-                currentRoom: localStorage.getItem('currentRoom'),
-                roomId: localStorage.getItem('roomId')
-              });
-              console.log('State:', {
-                roomData,
-                userData,
-                supportPair,
-                swapCount
-              });
-            }}
-            className="mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Log Debug Info
-          </button>
-          
-          <button 
-            onClick={async () => {
-              console.log('=== TEST API SUPPORT CARDS ===');
-              const token = localStorage.getItem('token');
-              const clientSessionId = localStorage.getItem('clientSessionId');
-              const pinCode = roomData?.pinCode;
-              
-              if (!token || !clientSessionId || !pinCode) {
-                console.log('Thiếu dữ liệu để test API');
-                return;
-              }
-              
-              try {
-                const testResponse = await fetch(`http://localhost:8080/${pinCode}/support-card/random`, {
-                  method: 'POST',
-                  headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({ clientSessionId })
-                });
-                
-                console.log('Test API response status:', testResponse.status);
-                if (testResponse.ok) {
-                  const data = await testResponse.json();
-                  console.log('Test API success:', data);
-                } else {
-                  const errorText = await testResponse.text();
-                  console.log('Test API error:', errorText);
-                }
-              } catch (error) {
-                console.error('Test API exception:', error);
-              }
-            }}
-            className="mt-2 ml-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-          >
-            Test API Support Cards
-          </button>
-          
-          <button 
-            onClick={async () => {
-              console.log('=== CHECK ROOM STATUS ===');
-              const token = localStorage.getItem('token');
-              const pinCode = roomData?.pinCode;
-              
-              if (!token || !pinCode) {
-                console.log('Thiếu dữ liệu để check room status');
-                return;
-              }
-              
-              try {
-                // Kiểm tra xem phòng có bị lock không
-                const lockResponse = await fetch(`http://localhost:8080/${pinCode}/support-card/random`, {
-                  method: 'POST',
-                  headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({ clientSessionId: 'test' })
-                });
-                
-                console.log('Lock check response status:', lockResponse.status);
-                if (lockResponse.status === 403) {
-                  console.log('Phòng đã bị lock (đã bắt đầu game)');
-                } else if (lockResponse.status === 400) {
-                  const errorText = await lockResponse.text();
-                  console.log('Lock check error (400):', errorText);
-                } else {
-                  console.log('Phòng chưa bị lock');
-                }
-              } catch (error) {
-                console.error('Lock check exception:', error);
-              }
-            }}
-            className="mt-2 ml-2 px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700"
-          >
-            Check Room Lock Status
-          </button>
-        </div>
-      )}
+
       
 
       <div className="w-full max-w-3xl mx-auto">

@@ -11,7 +11,8 @@ const CreatedSets = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [currentPage, setCurrentPage] = useState(0)
-  const [hasMore, setHasMore] = useState(true)
+  const [totalPages, setTotalPages] = useState(0)
+  const [totalElements, setTotalElements] = useState(0)
 
   // Fetch dữ liệu khi component mount
   useEffect(() => {
@@ -19,7 +20,7 @@ const CreatedSets = () => {
   }, [])
 
   // Function để fetch bộ câu hỏi đã tạo
-  const fetchCreatedSets = async (page = 0, append = false) => {
+  const fetchCreatedSets = async (page = 0) => {
     try {
       setLoading(true)
       setError(null)
@@ -27,14 +28,23 @@ const CreatedSets = () => {
       const response = await getUserQuizzes(page, 10)
       const newQuizzes = response?.data || []
       
-      if (append) {
-        setCreatedSets(prev => [...prev, ...newQuizzes])
-      } else {
-        setCreatedSets(newQuizzes)
-      }
+      console.log('=== PAGINATION DEBUG ===')
+      console.log('Full response:', response)
+      console.log('Meta info:', response?.meta)
+      console.log('Total pages:', response?.meta?.pages)
+      console.log('Total elements:', response?.meta?.total)
       
-      // Kiểm tra xem còn dữ liệu không
-      setHasMore(newQuizzes.length === 10)
+      setCreatedSets(newQuizzes)
+      
+      // Cập nhật thông tin phân trang từ meta
+      const totalPagesFromApi = response?.meta?.pages || Math.ceil((response?.meta?.total || newQuizzes.length) / 10)
+      const totalElementsFromApi = response?.meta?.total || newQuizzes.length
+      
+      console.log('Setting totalPages:', totalPagesFromApi)
+      console.log('Setting totalElements:', totalElementsFromApi)
+      
+      setTotalPages(totalPagesFromApi)
+      setTotalElements(totalElementsFromApi)
       setCurrentPage(page)
     } catch (err) {
       console.error('Lỗi khi lấy bộ câu hỏi đã tạo:', err)
@@ -44,16 +54,16 @@ const CreatedSets = () => {
     }
   }
 
-  // Function để load thêm dữ liệu
-  const loadMore = () => {
-    if (!loading && hasMore) {
-      fetchCreatedSets(currentPage + 1, true)
+  // Function để chuyển trang
+  const goToPage = (page) => {
+    if (!loading && page >= 0 && page < totalPages) {
+      fetchCreatedSets(page)
     }
   }
 
   // Function để refresh dữ liệu
   const refreshData = () => {
-    fetchCreatedSets(0, false)
+    fetchCreatedSets(0)
   }
 
   // Function để xử lý toggle favorite
@@ -165,20 +175,69 @@ const CreatedSets = () => {
             )}
           </div>
 
-          {/* Load More Button */}
-          {hasMore && createdSets.length > 0 && (
-            <div className="text-center py-6">
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center space-x-2 py-6">
+              {/* Nút Previous */}
               <button
-                onClick={loadMore}
-                disabled={loading}
-                className={`px-6 py-2 rounded-lg transition-colors ${
-                  loading 
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 0 || loading}
+                className={`px-3 py-2 rounded-lg transition-colors ${
+                  currentPage === 0 || loading
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-[#ED005D] text-white hover:bg-[#d10052]'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
-                {loading ? 'Đang tải...' : 'Tải thêm'}
+                ‹
               </button>
+
+              {/* Các trang - hiển thị tối đa 5 trang */}
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, index) => {
+                // Tính toán trang bắt đầu để luôn hiển thị 5 trang (hoặc ít hơn nếu totalPages < 5)
+                let startPage = Math.max(0, currentPage - 2)
+                if (startPage + 5 > totalPages) {
+                  startPage = Math.max(0, totalPages - 5)
+                }
+                
+                const pageNumber = startPage + index
+                
+                return (
+                  <button
+                    key={pageNumber}
+                    onClick={() => goToPage(pageNumber)}
+                    disabled={loading}
+                    className={`px-3 py-2 rounded-lg transition-colors ${
+                      pageNumber === currentPage
+                        ? 'bg-[#ED005D] text-white'
+                        : loading
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    {pageNumber + 1}
+                  </button>
+                )
+              })}
+
+              {/* Nút Next */}
+              <button
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages - 1 || loading}
+                className={`px-3 py-2 rounded-lg transition-colors ${
+                  currentPage === totalPages - 1 || loading
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                ›
+              </button>
+            </div>
+          )}
+
+          {/* Thông tin phân trang */}
+          {totalElements > 0 && (
+            <div className="text-center text-gray-500 text-sm">
+              Hiển thị {currentPage * 10 + 1} - {Math.min((currentPage + 1) * 10, totalElements)} trong tổng số {totalElements} bộ câu hỏi
             </div>
           )}
         </>

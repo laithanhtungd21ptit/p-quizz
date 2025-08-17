@@ -12,6 +12,11 @@ const Dashboard = () => {
   const [userFirstname, setUserFirstname] = useState('')
   const [isLoadingProfile, setIsLoadingProfile] = useState(true)
   const [profileError, setProfileError] = useState('')
+  
+  // Reset kick flag khi vào dashboard
+  useEffect(() => {
+    window.isBeingKicked = false;
+  }, []);
   const [dailyStats, setDailyStats] = useState([])
   const [isLoadingStats, setIsLoadingStats] = useState(true)
   const [topCreators, setTopCreators] = useState([])

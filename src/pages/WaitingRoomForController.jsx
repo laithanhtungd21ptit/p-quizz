@@ -17,6 +17,10 @@ const WaitingRoomForController = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [copiedField, setCopiedField] = useState(null); // "website" | "code" | null
+  
+  // State cho kick user popup
+  const [showKickPopup, setShowKickPopup] = useState(false);
+  const [userToKick, setUserToKick] = useState(null); // {id, name}
 
   const handleCopy = (ref, field) => {
     if (ref.current) {
@@ -182,6 +186,67 @@ const WaitingRoomForController = () => {
       }
     } catch (error) {
       console.error('Error fetching participants:', error);
+    }
+  };
+
+  // Hiển thị popup xác nhận kick
+  const showKickConfirmation = (userId, username) => {
+    setUserToKick({ id: userId, name: username });
+    setShowKickPopup(true);
+  };
+
+  // Đóng popup kick
+  const closeKickPopup = () => {
+    setShowKickPopup(false);
+    setUserToKick(null);
+  };
+
+  // Kick người dùng khỏi phòng (sau khi đã xác nhận)
+  const confirmKickUser = async () => {
+    if (!userToKick) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('Bạn cần đăng nhập để kick người dùng');
+        closeKickPopup();
+        return;
+      }
+
+      const response = await fetch(`http://localhost:8080/rooms/kick/${roomId}/${userToKick.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        // Refresh participants list sau khi kick thành công
+        await fetchParticipants();
+        closeKickPopup();
+      } else {
+        let errorData = '';
+        try {
+          errorData = await response.text();
+        } catch (e) {
+          // Ignore
+        }
+        
+        closeKickPopup();
+        
+        if (response.status === 403) {
+          setError(`Không có quyền kick người dùng: ${errorData}`);
+        } else if (response.status === 404) {
+          setError(`Người dùng không tồn tại: ${errorData}`);
+        } else {
+          setError(`Không thể kick người dùng (${response.status}): ${errorData}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error kicking user:', error);
+      setError('Lỗi kết nối khi kick người dùng');
+      closeKickPopup();
     }
   };
 
@@ -583,11 +648,40 @@ const WaitingRoomForController = () => {
           {/* Render participants trong grid responsive */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 max-w-4xl">
             {participants.map((participant, index) => {
+              // Kiểm tra xem user hiện tại có phải host không
+              const userStr = localStorage.getItem('user');
+              const currentUser = userStr ? JSON.parse(userStr) : null;
+              const isCurrentUserHost = participants.some(p => 
+                p.isHost && (
+                  p.firstname === currentUser?.firstname ||
+                  p.username === currentUser?.username ||
+                  p.id === currentUser?.id ||
+                  p.firstname === currentUser?.username ||
+                  p.username === currentUser?.firstname
+                )
+              );
+              
+              // Không cho kick host và không cho kick chính mình
+              const canKickThisUser = isCurrentUserHost && !participant.isHost;
+              
               return (
                 <div
                   key={participant.id || index}
-                  className="flex items-center space-x-2 bg-white rounded-lg p-2 border"
+                  className="relative group flex items-center space-x-2 bg-white rounded-lg p-2 border hover:shadow-md transition-all duration-200"
                 >
+                  {/* Nút X để kick - chỉ hiện khi hover và có quyền kick */}
+                  {canKickThisUser && (
+                    <button
+                      onClick={() => showKickConfirmation(participant.id, participant.firstname || participant.username)}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600 z-10"
+                      title={`Kick ${participant.firstname || participant.username}`}
+                    >
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  )}
+                  
                   <img
                     src={participant.avatar || '/avatar/avatar_1.png'}
                     alt="Avatar"
@@ -615,6 +709,54 @@ const WaitingRoomForController = () => {
       <div className="w-full max-w-3xl mx-auto">
         <Chat />
       </div>
+
+      {/* Popup xác nhận kick user */}
+      {showKickPopup && userToKick && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-2xl">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Xác nhận kick người chơi
+              </h3>
+              <button
+                onClick={closeKickPopup}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="mb-6">
+              <p className="text-gray-700">
+                Bạn có chắc chắn muốn kick <span className="font-semibold text-red-600">"{userToKick.name}"</span> khỏi phòng?
+              </p>
+              <p className="text-sm text-gray-500 mt-2">
+                Người chơi này sẽ bị đưa ra khỏi phòng và không thể tham gia lại trừ khi được mời lại.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={closeKickPopup}
+                className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={confirmKickUser}
+                className="px-4 py-2 text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors font-medium"
+              >
+                Kick ngay
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

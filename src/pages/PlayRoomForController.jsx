@@ -154,10 +154,11 @@ export default function PlayRoomForController() {
             console.log('👥 Participants từ API:', participants);
             
             if (participants && Array.isArray(participants) && participants.length > 0) {
-              // Tạo ranking từ participants thực tế với điểm 0
-              const realRanking = participants.map((participant, index) => ({
+              // Lọc bỏ host và tạo ranking từ participants thực tế với điểm 0
+              const playersOnly = participants.filter(participant => !participant.isHost);
+              const realRanking = playersOnly.map((participant, index) => ({
                 id: participant.id || participant.userId || index + 1,
-                firstName: participant.firstName || participant.username || participant.name || `User${index + 1}`,
+                firstName: participant.firstname || participant.firstName || participant.username || participant.name || `User${index + 1}`,
                 avatar: participant.avatar || `/avatar/avatar_${(index % 5) + 1}.png`,
                 score: 0,
                 correctCount: 0,
@@ -202,9 +203,11 @@ export default function PlayRoomForController() {
         if (roomData.participants && Array.isArray(roomData.participants) && roomData.participants.length > 0) {
           console.log('👥 Participants từ localStorage:', roomData.participants);
           
-          const fallbackRanking = roomData.participants.map((participant, index) => ({
+          // Lọc bỏ host khỏi bảng xếp hạng
+          const playersOnly = roomData.participants.filter(participant => !participant.isHost);
+          const fallbackRanking = playersOnly.map((participant, index) => ({
             id: participant.id || participant.userId || index + 1,
-            firstName: participant.firstName || participant.username || participant.name || `User${index + 1}`,
+            firstName: participant.firstname || participant.firstName || participant.username || participant.name || `User${index + 1}`,
             avatar: participant.avatar || `/avatar/avatar_${(index % 5) + 1}.png`,
             score: 0,
             correctCount: 0,
