@@ -52,8 +52,24 @@ export default function PlayRoomForController() {
     // Disable STOMP debug logging
     client.debug = null;
     
-    client.connect({}, (frame) => {
-      console.log('✅ WebSocket connected successfully!');
+    // Lấy clientSessionId và pinCode để authenticate WebSocket
+    const currentRoom = localStorage.getItem('currentRoom');
+    let connectHeaders = {};
+    
+    if (currentRoom) {
+      const roomData = JSON.parse(currentRoom);
+      if (roomData.clientSessionId) {
+        connectHeaders.clientSessionId = roomData.clientSessionId;
+      }
+      if (roomData.pinCode) {
+        connectHeaders.pinCode = roomData.pinCode;
+      }
+    }
+    
+    console.log('🔌 Connecting WebSocket with headers:', connectHeaders);
+    
+    client.connect(connectHeaders, (frame) => {
+      console.log('✅ WebSocket connected successfully with authentication!');
       setIsConnected(true);
       setStompClient(client);
       
@@ -454,12 +470,14 @@ export default function PlayRoomForController() {
           
           // Lưu dữ liệu câu hỏi cuối vào localStorage để GameResult có thể sử dụng
           localStorage.setItem('finalQuestionData', JSON.stringify(nextQuestionData));
-          localStorage.setItem('finalRankingData', JSON.stringify(rankingData));
           localStorage.setItem('roomInfo', JSON.stringify(currentRoom));
           localStorage.setItem('isLastQuestion', 'true');
           
-          // Đợi limitedTime + 5 giây để người chơi kịp trả lời và load dữ liệu
-          const waitTime = (nextQuestionData.limitedTime || 30) * 1000 + 5000; // limitedTime + 5s
+          // LƯU RANKING HIỆN TẠI TRƯỚC (có thể không chính xác, sẽ cập nhật sau)
+          localStorage.setItem('finalRankingData', JSON.stringify(rankingData));
+          
+          // Đợi limitedTime + 7 giây để người chơi kịp trả lời và controller lấy ranking cuối
+          const waitTime = (nextQuestionData.limitedTime || 30) * 1000 + 7000; // limitedTime + 7s
           console.log(`⏰ Đợi ${waitTime/1000} giây trước khi chuyển đến GameResult...`);
           
           // Cập nhật câu hỏi hiện tại
@@ -478,7 +496,6 @@ export default function PlayRoomForController() {
           
           setTimeout(() => {
             console.log('🚀 Chuyển đến GameResult...');
-            // TODO: Thêm navigate('/game-result') khi có useNavigate
             window.location.href = '/game-result';
           }, waitTime);
           
@@ -629,8 +646,39 @@ export default function PlayRoomForController() {
           });
           
           if (isLastQuestion) {
-            console.log('🏁 Câu cuối cùng kết thúc, không hiển thị nút "Câu tiếp theo"');
+            console.log('🏁 Câu cuối cùng kết thúc, lấy ranking cuối cùng...');
             setShowNextQuestionButton(false);
+            
+            // LẤY RANKING CUỐI CÙNG cho câu cuối
+            const fetchFinalRanking = async () => {
+              try {
+                console.log('📊 Controller lấy bảng xếp hạng cuối cùng...');
+                
+                // Gọi trực tiếp API thay vì refreshRanking để đảm bảo có data fresh
+                const roomId = getRoomIdFromJoinCode();
+                if (roomId) {
+                  console.log('🔍 Refresh final ranking cho roomId:', roomId);
+                  const finalRankingResponse = await getRoomRanking(roomId);
+                  
+                  if (finalRankingResponse && Array.isArray(finalRankingResponse) && finalRankingResponse.length > 0) {
+                    // Cập nhật state
+                    setRankingData(finalRankingResponse);
+                    
+                    // Lưu ranking cuối cùng vào localStorage
+                    localStorage.setItem('finalRankingData', JSON.stringify(finalRankingResponse));
+                    console.log('💾 Controller đã lưu ranking cuối cùng:', finalRankingResponse);
+                  } else {
+                    console.log('⚠️ Final ranking API trả về rỗng, giữ ranking hiện tại');
+                  }
+                }
+                
+              } catch (error) {
+                console.error('❌ Lỗi khi lấy ranking cuối cùng:', error);
+              }
+            };
+            
+            // Gọi fetchFinalRanking ngay lập tức
+            fetchFinalRanking();
             
             // Rút ngắn thời gian chờ xuống 5s cho câu cuối
             setTimeout(() => {
@@ -640,10 +688,10 @@ export default function PlayRoomForController() {
           } else {
             console.log('⏰ Hết thời gian câu hỏi, hiển thị ranking và nút tiếp theo');
             setShowNextQuestionButton(true);
+            
+            // Cập nhật bảng xếp hạng cho câu thường
+            fetchRanking();
           }
-          
-          // Cập nhật bảng xếp hạng
-          fetchRanking();
           return 0;
         }
         return prev - 1;

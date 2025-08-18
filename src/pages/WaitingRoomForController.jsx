@@ -59,15 +59,33 @@ const WaitingRoomForController = () => {
         const data = await response.json();
         setRoomData(data);
         
-        // Lưu thông tin phòng vào localStorage
-        const currentRoom = {
-          roomId: roomId,
-          pinCode: data.pinCode,
-          qrCodeUrl: data.qrCodeUrl,
-          participants: participants, // Sẽ được cập nhật sau khi fetch participants
-          createdAt: new Date().toISOString(),
-          isStarted: false
-        };
+        // Cập nhật thông tin phòng trong localStorage (preserve data từ CreateRoom)
+        const existingRoomStr = localStorage.getItem('currentRoom');
+        let currentRoom;
+        
+        if (existingRoomStr) {
+          // Nếu đã có dữ liệu từ CreateRoom, chỉ cập nhật các field cần thiết
+          currentRoom = JSON.parse(existingRoomStr);
+          currentRoom.pinCode = data.pinCode;
+          currentRoom.qrCodeUrl = data.qrCodeUrl;
+          currentRoom.participants = participants; // Sẽ được cập nhật sau khi fetch participants
+          // Giữ nguyên createdAt từ CreateRoom nếu có
+          if (!currentRoom.createdAt) {
+            currentRoom.createdAt = new Date().toISOString();
+          }
+          currentRoom.isStarted = false;
+        } else {
+          // Fallback nếu không có dữ liệu từ CreateRoom
+          currentRoom = {
+            roomId: roomId,
+            pinCode: data.pinCode,
+            qrCodeUrl: data.qrCodeUrl,
+            participants: participants,
+            createdAt: new Date().toISOString(),
+            isStarted: false
+          };
+        }
+        
         localStorage.setItem('currentRoom', JSON.stringify(currentRoom));
         console.log('✅ Đã lưu thông tin phòng vào localStorage:', currentRoom);
       } else {
@@ -108,10 +126,7 @@ const WaitingRoomForController = () => {
           'Content-Type': 'application/json'
         }
       });
-
-      console.log('Participants response status:', response.status);
-      console.log('Participants response headers:', Object.fromEntries(response.headers.entries()));
-
+      
       if (response.ok) {
         const data = await response.json();
         console.log('=== PARTICIPANTS API DEBUG ===');
@@ -310,6 +325,7 @@ const WaitingRoomForController = () => {
 
       if (response.ok) {
         const participants = await response.json();
+        console.log('✅ Game started successfully! Participants:', participants);
         
         // Cập nhật trạng thái phòng trong localStorage
         const currentRoomStr = localStorage.getItem('currentRoom');
@@ -321,10 +337,18 @@ const WaitingRoomForController = () => {
           console.log('✅ Đã cập nhật trạng thái phòng đã start:', currentRoom);
         }
         
-        // Đợi 1 giây để backend gửi câu hỏi đầu tiên qua WebSocket trước khi chuyển trang
+        // Kiểm tra WebSocket connection status
+        console.log('🔍 Checking WebSocket connections:');
+        console.log('- waitingRoomConnected:', window.waitingRoomConnected);
+        console.log('- waitingRoomStompClient:', !!window.waitingRoomStompClient);
+        console.log('- waitingRoomStompClient.connected:', window.waitingRoomStompClient?.connected);
+        
+        // Đợi 2 giây để backend gửi câu hỏi đầu tiên qua WebSocket trước khi chuyển trang
+        // Tăng thời gian chờ để đảm bảo message được gửi đi
         setTimeout(() => {
+          console.log('🚀 Navigating to play room for controller...');
           navigate(`/play-room-for-controller/${roomId}`);
-        }, 1000);
+        }, 2000);
       } else {
         let errorData = '';
         try {
@@ -357,8 +381,24 @@ const WaitingRoomForController = () => {
       const client = window.Stomp.over(socket);
       client.debug = null;
       
-      client.connect({}, (frame) => {
-        console.log('✅ WaitingRoom WebSocket connected!');
+      // Lấy clientSessionId và pinCode để authenticate WebSocket
+      const currentRoom = localStorage.getItem('currentRoom');
+      let connectHeaders = {};
+      
+      if (currentRoom) {
+        const roomData = JSON.parse(currentRoom);
+        if (roomData.clientSessionId) {
+          connectHeaders.clientSessionId = roomData.clientSessionId;
+        }
+        if (roomData.pinCode) {
+          connectHeaders.pinCode = roomData.pinCode;
+        }
+      }
+      
+      console.log('🔌 Connecting WebSocket with headers:', connectHeaders);
+      
+      client.connect(connectHeaders, (frame) => {
+        console.log('✅ WaitingRoom WebSocket connected with authentication!');
         
         // Đánh dấu connection đã sẵn sàng
         window.waitingRoomConnected = true;

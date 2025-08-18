@@ -188,20 +188,38 @@ const WaitingRoomForPlayer = () => {
     // Disable STOMP debug logging
     stompClient.debug = null;
     
-    // Lấy clientSessionId để authenticate WebSocket
+    // Lấy clientSessionId và pinCode để authenticate WebSocket
     const clientSessionId = localStorage.getItem('clientSessionId');
-    const connectHeaders = clientSessionId ? { clientSessionId } : {};
+    const currentRoom = localStorage.getItem('currentRoom');
+    let connectHeaders = {};
+    
+    if (clientSessionId) {
+      connectHeaders.clientSessionId = clientSessionId;
+    }
+    
+    if (currentRoom) {
+      const roomData = JSON.parse(currentRoom);
+      if (roomData.pinCode) {
+        connectHeaders.pinCode = roomData.pinCode;
+      }
+    }
+    
+    console.log('🔌 Player connecting WebSocket with headers:', connectHeaders);
     
     stompClient.connect(connectHeaders, (frame) => {
+      console.log('✅ Player WebSocket connected with authentication!');
       
       // Subscribe vào topic của phòng
       stompClient.subscribe(`/topic/room/${roomId}`, (message) => {
+        console.log('📨 Player nhận WebSocket message:', message.body);
         try {
           const data = JSON.parse(message.body);
+          console.log('🔍 Player parsed message data:', data);
           
           // Kiểm tra xem có phải game start message không
-          // Backend gửi question data khi game bắt đầu
+          // Case 1: Backend gửi question data trực tiếp
           if (data.id && (data.answerA || data.answerB || data.answerC || data.answerD)) {
+            console.log('🎯 Player nhận được câu hỏi đầu tiên:', data);
             // Lưu question data vào localStorage trước khi redirect
             localStorage.setItem('currentQuestionData', JSON.stringify(data));
             localStorage.setItem('gameStarted', 'true');
@@ -211,13 +229,41 @@ const WaitingRoomForPlayer = () => {
             return;
           }
           
-          // Fallback: Kiểm tra các trường khác
-          if (data.questionId || data.isQuestionLast !== undefined) {
+          // Case 2: Backend gửi message với type NEXT_QUESTION
+          if (data.type === 'NEXT_QUESTION' && data.data) {
+            console.log('🎯 Player nhận được NEXT_QUESTION:', data.data);
+            localStorage.setItem('currentQuestionData', JSON.stringify(data.data));
+            localStorage.setItem('gameStarted', 'true');
             navigate(`/player-game/${roomId}`);
             return;
           }
+          
+          // Case 3: Backend gửi game start signal
+          if (data.type === 'GAME_START' || data.gameStarted === true) {
+            console.log('🎯 Player nhận được GAME_START signal');
+            navigate(`/player-game/${roomId}`);
+            return;
+          }
+          
+          // Case 4: Backend gửi message có content và description (question format khác)
+          if (data.id && (data.content || data.description)) {
+            console.log('🎯 Player nhận được question với content:', data);
+            localStorage.setItem('currentQuestionData', JSON.stringify(data));
+            localStorage.setItem('gameStarted', 'true');
+            navigate(`/player-game/${roomId}`);
+            return;
+          }
+          
+          // Fallback: Kiểm tra các trường khác
+          if (data.questionId || data.isQuestionLast !== undefined) {
+            console.log('🎯 Player fallback detection, navigating to game');
+            navigate(`/player-game/${roomId}`);
+            return;
+          }
+          
+          console.log('📝 Message không phải game start, bỏ qua:', data);
         } catch (error) {
-          // Bỏ qua lỗi parsing
+          console.error('❌ Lỗi khi parse WebSocket message:', error);
         }
       });
       

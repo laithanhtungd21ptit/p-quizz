@@ -171,12 +171,25 @@ const PlayerGame = () => {
     // Disable STOMP debug logging
     client.debug = null;
     
-    // Lấy clientSessionId để authenticate WebSocket
+    // Lấy clientSessionId và pinCode để authenticate WebSocket
     const clientSessionId = localStorage.getItem('clientSessionId');
-    const connectHeaders = clientSessionId ? { clientSessionId } : {};
+    let connectHeaders = {};
+    
+    if (clientSessionId) {
+      connectHeaders.clientSessionId = clientSessionId;
+    }
+    
+    if (currentRoom) {
+      const roomData = JSON.parse(currentRoom);
+      if (roomData.pinCode) {
+        connectHeaders.pinCode = roomData.pinCode;
+      }
+    }
+    
+    console.log('🔌 PlayerGame connecting WebSocket with headers:', connectHeaders);
     
     client.connect(connectHeaders, (frame) => {
-      console.log('✅ WebSocket connected successfully!');
+      console.log('✅ PlayerGame WebSocket connected successfully with authentication!');
       setIsConnected(true);
       setStompClient(client);
       
@@ -185,7 +198,7 @@ const PlayerGame = () => {
       console.log('📡 Subscribing to room topic:', roomTopic);
       
       client.subscribe(roomTopic, (message) => {
-        console.log('=== 🎯 MESSAGE RECEIVED IN PLAYERGAME ===');
+        console.log('=== 🎯 MESSAGE RECEIVED IN PLAYERGAME - ROOM TOPIC ===');
         console.log('📨 Raw message:', message.body);
         console.log('🎯 Topic received:', message.destination);
         
@@ -206,6 +219,31 @@ const PlayerGame = () => {
           }
         } catch (error) {
           console.error('❌ Error parsing WebSocket message:', error);
+        }
+      });
+      
+      // Subscribe vào personal queue để nhận câu hỏi tiếp theo riêng
+      client.subscribe('/user/queue/next-question', (message) => {
+        console.log('📨 Question raw message:', message.body);
+        
+        try {
+          const data = JSON.parse(message.body);
+          console.log('➡️ Next Question từ personal queue:', data);
+          
+          // Xử lý câu hỏi tiếp theo
+          if (data.id && (data.answerA || data.answerB || data.answerC || data.answerD)) {
+            console.log('🚀 Xử lý câu hỏi tiếp theo từ personal queue!');
+            handleNextQuestion(data);
+          } else if (data.type === 'NEXT_QUESTION' && data.data) {
+            console.log('🚀 Xử lý NEXT_QUESTION từ personal queue!');
+            handleNextQuestion(data.data);
+          } else {
+            console.log('📝 Personal message không phải câu hỏi:', data);
+          }
+        } catch (error) {
+          console.error('❌ Error parsing personal next-question message:', error);
+          // Fallback: treat as plain text message
+          console.log('📝 Treating as plain text message:', message.body);
         }
       });
       
@@ -773,8 +811,7 @@ const PlayerGame = () => {
       const clientSessionId = localStorage.getItem('clientSessionId');
       
       const answerData = {
-        selectedAnswer: indexToLetter(idx), // BE chỉ nhận selectedAnswer, timeTaken, clientSessionId
-        timeTaken: Math.max(0, (questionData.limitedTime || 30) - timeLeft),
+        selectedAnswer: indexToLetter(idx),
         clientSessionId: clientSessionId
       };
       
@@ -843,9 +880,8 @@ const PlayerGame = () => {
         throw new Error('Đáp án không hợp lệ');
       }
       
-      if (answerData.timeTaken < 0) {
-        console.warn('Thời gian trả lời âm, đặt lại thành 0');
-        answerData.timeTaken = 0;
+      if (!answerData.clientSessionId) {
+        throw new Error('Thiếu clientSessionId');
       }
       
       // Gửi đáp án về backend
@@ -890,31 +926,67 @@ const PlayerGame = () => {
               
               // Kiểm tra xem có phải câu hỏi cuối cùng không
               if (questionData.questionLast === true) {
-                console.log('🏁 Đây là câu hỏi cuối cùng! Sẽ chuyển đến GameResult sau khi hiển thị kết quả...');
+                console.log('🏁 Đây là câu hỏi cuối cùng! Lấy ranking cuối cùng...');
                 
-                // Lưu dữ liệu câu hỏi cuối và kết quả vào localStorage để GameResult có thể sử dụng
+                // Lưu dữ liệu câu hỏi cuối và kết quả vào localStorage
                 localStorage.setItem('finalQuestionData', JSON.stringify(questionData));
                 localStorage.setItem('finalAnswerResult', JSON.stringify(response));
                 
-                // Lưu ranking hiện tại vào localStorage để GameResult có thể sử dụng
-                if (realRankingData.length > 0) {
-                  localStorage.setItem('finalRankingData', JSON.stringify(realRankingData));
-                  console.log('💾 Đã lưu ranking cuối cùng vào localStorage cho GameResult');
-                }
-                
-                // Lấy thông tin phòng
+                // Lưu thông tin phòng
                 const currentRoom = localStorage.getItem('currentRoom');
                 if (currentRoom) {
                   localStorage.setItem('roomInfo', currentRoom);
                 }
                 
-                // Đợi 5 giây để người chơi xem kết quả, sau đó chuyển đến GameResult
+                // LẤY RANKING CUỐI CÙNG TỪ BACKEND sau khi trả lời câu cuối
+                try {
+                  const currentRoom = localStorage.getItem('currentRoom');
+                  if (currentRoom) {
+                    const roomData = JSON.parse(currentRoom);
+                    const roomId = roomData.roomId;
+                    
+                    if (roomId) {
+                      console.log('📊 Lấy bảng xếp hạng cuối cùng cho phòng:', roomId);
+                      const finalRankingResponse = await getRoomRanking(roomId);
+                      
+                      // Cập nhật ranking state để hiển thị
+                      setRealRankingData(finalRankingResponse);
+                      
+                      // Lưu ranking cuối cùng vào localStorage cho GameResult
+                      localStorage.setItem('finalRankingData', JSON.stringify(finalRankingResponse));
+                      console.log('💾 Đã lưu ranking cuối cùng vào localStorage:', finalRankingResponse);
+                    }
+                  }
+                } catch (rankingError) {
+                  console.error('❌ Lỗi khi lấy bảng xếp hạng cuối cùng:', rankingError);
+                  // Fallback: sử dụng ranking hiện tại nếu có lỗi
+                  if (realRankingData.length > 0) {
+                    localStorage.setItem('finalRankingData', JSON.stringify(realRankingData));
+                    console.log('💾 Fallback: đã lưu ranking hiện tại vào localStorage');
+                  }
+                }
+                
+                // Bắt đầu countdown progress cho câu cuối
+                setCountdownProgress(100);
+                const finalCountdownInterval = setInterval(() => {
+                  setCountdownProgress(prev => {
+                    if (prev <= 60) { // Sau 2 giây (40% progress), hiển thị ranking
+                      clearInterval(finalCountdownInterval);
+                      console.log('📊 Hiển thị ranking cuối cùng...');
+                      setShowRankingTable(true);
+                      return 60;
+                    }
+                    return prev - 2; // Giảm 2% mỗi 100ms
+                  });
+                }, 100);
+                
+                // Đợi 7 giây để người chơi xem kết quả và ranking cuối cùng, sau đó chuyển đến GameResult
                 setTimeout(() => {
                   console.log('🚀 Chuyển đến GameResult...');
                   window.location.href = '/game-result';
-                }, 5000); // 5 giây
+                }, 7000); // 7 giây để có thời gian xem ranking
                 
-                return; // Không tiếp tục xử lý ranking
+                return; // Không tiếp tục xử lý ranking thường
               }
               
               // Lấy bảng xếp hạng mới sau khi submit answer (chỉ khi không phải câu cuối)

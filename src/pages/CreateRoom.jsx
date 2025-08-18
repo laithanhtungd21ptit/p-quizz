@@ -203,14 +203,57 @@ const CreateRoom = ({ onClose }) => {
         
         // Kiểm tra roomId có tồn tại không
         const roomId = roomData.roomId || roomData.id || roomData.room?.id
+        const pinCode = roomData.pinCode || roomData.pin || roomData.joinCode
         console.log('Extracted roomId:', roomId)
+        console.log('Extracted pinCode:', pinCode)
         
         if (!roomId) {
           setError('Không thể lấy ID phòng từ response')
           return
         }
         
-        // Đóng modal và chuyển đến trang phòng chờ cho controller
+        // Spread toàn bộ data từ backend trước để làm base
+        const roomInfo = {
+          ...roomData,
+          roomId: roomData.roomId,
+          pinCode: roomData.pinCode,
+          qrCodeUrl: roomData.qrCodeUrl,
+          quizTitle: roomData.quizTitle,
+          clientSessionId: roomData.clientSessionId,
+          createdAt: roomData.createdAt,
+          endedAt: roomData.endedAt,
+          isStarted: roomData.isStarted,
+          started: roomData.started,
+          startedAt: roomData.startedAt,
+          
+          // Thông tin quiz đã chọn (để dự phòng)
+          selectedQuiz: {
+            id: selectedQuiz.quizId || selectedQuiz.id,
+            name: selectedQuiz.name || selectedQuiz.quizName,
+            topic: selectedQuiz.quizTopic || selectedQuiz.topic,
+            questionCount: selectedQuiz.quantityQuestion || selectedQuiz.questions?.length || 0
+          },
+          
+          // Thông tin host (user hiện tại)
+          host: {
+            id: JSON.parse(localStorage.getItem('user') || '{}').id,
+            username: JSON.parse(localStorage.getItem('user') || '{}').username,
+            firstname: JSON.parse(localStorage.getItem('user') || '{}').firstname,
+            isHost: true
+          },
+          
+          // Participants sẽ được cập nhật sau từ API (giữ từ backend nếu có)
+          participants: roomData.participants || []
+        }
+        
+        localStorage.setItem('currentRoom', JSON.stringify(roomInfo))
+        console.log('✅ Đã lưu thông tin phòng vào localStorage:', roomInfo)
+        
+        // Verify ngay sau khi lưu
+        const savedData = JSON.parse(localStorage.getItem('currentRoom') || '{}')
+        console.log('🔍 Kiểm tra ngay sau khi lưu:', savedData)
+        console.log('🔍 So sánh key count - Trước:', Object.keys(roomInfo).length, 'Sau:', Object.keys(savedData).length)
+      
         if (onClose) onClose()
         navigate(`/waiting-room-for-controller/${roomId}`)
       } else {

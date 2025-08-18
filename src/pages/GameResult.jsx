@@ -11,39 +11,61 @@ export default function GameResult({ joinCode = '682868' }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  // Check xem user có phải là host không (host không có clientSessionId)
+  // Check xem user có phải là host không
+  // LƯU Ý: Host cũng có clientSessionId giống player, không thể dùng clientSessionId để phân biệt
   const isHost = () => {
     const currentRoom = localStorage.getItem('currentRoom');
     const user = localStorage.getItem('user');
-    const clientSessionId = localStorage.getItem('clientSessionId');
     
-    // Nếu không có clientSessionId thì có thể là host
-    if (!clientSessionId) {
-      console.log('🏠 No clientSessionId found - likely a host');
-      return true;
+    if (!currentRoom || !user) {
+      console.log('🔍 No room or user data - defaulting to not host');
+      return false;
     }
-    
-    if (!currentRoom || !user) return false;
     
     try {
       const roomData = JSON.parse(currentRoom);
       const userData = JSON.parse(user);
       
-      // Host thường là creator của room, hoặc có thể check theo username
+      console.log('🔍 Host check data:', {
+        roomData: roomData,
+        userData: userData,
+        roomHostField: roomData.host,
+        roomHostUsername: roomData.hostUsername,
+        roomCreatedBy: roomData.createdBy,
+        currentUser: userData.username,
+        participants: roomData.participants
+      });
+      
+      // Kiểm tra từ participants trong room data
+      if (roomData.participants && Array.isArray(roomData.participants)) {
+        const currentUserParticipant = roomData.participants.find(p => {
+          const usernameMatch = p.username === userData.username;
+          const firstnameMatch = p.firstname === userData.username || p.firstName === userData.username;
+          const idMatch = p.id === userData.id || p.userId === userData.id;
+          
+          return usernameMatch || firstnameMatch || idMatch;
+        });
+        
+        if (currentUserParticipant) {
+          const isParticipantHost = currentUserParticipant.isHost === true;
+          console.log('🔍 Found in participants:', currentUserParticipant, 'isHost:', isParticipantHost);
+          return isParticipantHost;
+        }
+      }
+      
+      // Fallback: check theo các field khác
       const isRoomHost = roomData.hostUsername === userData.username || 
                         roomData.createdBy === userData.username ||
                         roomData.host === userData.username;
       
-      console.log('🔍 Host check:', {
-        hasClientSessionId: !!clientSessionId,
-        hostUsername: roomData.hostUsername,
-        currentUser: userData.username,
-        isRoomHost
+      console.log('🔍 Host check result:', {
+        isRoomHost,
+        hasClientSessionId: !!localStorage.getItem('clientSessionId')
       });
       
       return isRoomHost;
     } catch (error) {
-      console.error('Error checking host status:', error);
+      console.error('❌ Error checking host status:', error);
       return false;
     }
   };
@@ -52,42 +74,105 @@ export default function GameResult({ joinCode = '682868' }) {
   useEffect(() => {
     console.log('🏁 GameResult: Đang load dữ liệu từ localStorage...');
     
-    try {
-      // Load dữ liệu ranking cuối cùng
-      const finalRanking = localStorage.getItem('finalRankingData');
-      if (finalRanking) {
-        const parsedRanking = JSON.parse(finalRanking);
-        console.log('📊 Ranking data từ localStorage:', parsedRanking);
-        setRankingData(parsedRanking);
-      } else {
-        console.log('⚠️ Không tìm thấy finalRankingData trong localStorage');
-      }
+    const initializeRanking = async () => {
+      try {
+        // 🔄 PRIORITY 1: Thử lấy ranking mới nhất từ backend để đảm bảo consistency
+        console.log('🔄 Thử lấy ranking mới nhất từ backend...');
+        const currentRoom = localStorage.getItem('currentRoom');
+        if (currentRoom) {
+          try {
+            const roomData = JSON.parse(currentRoom);
+            const roomId = roomData.roomId;
+            
+            if (roomId) {
+              console.log('📡 Gọi API getRoomRanking cho roomId:', roomId);
+              const { getRoomRanking } = await import('../services/api');
+              const freshRankingData = await getRoomRanking(roomId);
+              
+              if (freshRankingData && Array.isArray(freshRankingData) && freshRankingData.length > 0) {
+                console.log('✅ Lấy fresh ranking từ backend thành công:', freshRankingData);
+                setRankingData(freshRankingData);
+                
+                // Cập nhật localStorage với data mới nhất
+                localStorage.setItem('finalRankingData', JSON.stringify(freshRankingData));
+                setLoading(false);
+                return; // Dừng ở đây nếu lấy được từ backend
+              }
+            }
+          } catch (apiError) {
+            console.log('⚠️ Không thể lấy ranking từ backend:', apiError);
+          }
+        }
+        
+        // 📂 FALLBACK 1: Load dữ liệu ranking từ localStorage
+        console.log('📂 Fallback: Load ranking từ localStorage...');
+        const finalRanking = localStorage.getItem('finalRankingData');
+        if (finalRanking) {
+          const parsedRanking = JSON.parse(finalRanking);
+          console.log('📊 Ranking data từ localStorage:', parsedRanking);
+          console.log('📊 Ranking data count:', parsedRanking.length);
+          console.log('📊 Ranking data details:', parsedRanking.map(p => ({
+            name: p.firstName || p.name,
+            score: p.score,
+            correctCount: p.correctCount
+          })));
+          setRankingData(parsedRanking);
+        } else {
+          console.log('⚠️ Không tìm thấy finalRankingData trong localStorage');
+          console.log('🔍 Available localStorage keys:', Object.keys(localStorage));
+          
+          // 📂 FALLBACK 2: thử load từ currentRoom nếu có participants
+          const currentRoom = localStorage.getItem('currentRoom');
+        if (currentRoom) {
+          try {
+            const roomData = JSON.parse(currentRoom);
+            if (roomData.participants && Array.isArray(roomData.participants)) {
+              console.log('🔄 Fallback: tạo ranking từ participants');
+              const fallbackRanking = roomData.participants.map((p, index) => ({
+                id: p.id || index + 1,
+                firstName: p.firstname || p.firstName || p.username || `User${index + 1}`,
+                score: 0, // Default score
+                correctCount: 0, // Default correct count
+                avatar: p.avatar || `/avatar/avatar_${(index % 7) + 1}.png`
+              }));
+              setRankingData(fallbackRanking);
+              console.log('📊 Fallback ranking:', fallbackRanking);
+            }
+          } catch (error) {
+            console.error('❌ Lỗi khi tạo fallback ranking:', error);
+          }
+        }
+        }
+        
+        // Load thông tin phòng
+        const roomInfoData = localStorage.getItem('roomInfo');
+        if (roomInfoData) {
+          const parsedRoomInfo = JSON.parse(roomInfoData);
+          console.log('🏠 Room info từ localStorage:', parsedRoomInfo);
+          setRoomInfo(parsedRoomInfo);
+        } else {
+          console.log('⚠️ Không tìm thấy roomInfo trong localStorage');
+        }
 
-      // Load thông tin phòng
-      const roomInfoData = localStorage.getItem('roomInfo');
-      if (roomInfoData) {
-        const parsedRoomInfo = JSON.parse(roomInfoData);
-        console.log('🏠 Room info từ localStorage:', parsedRoomInfo);
-        setRoomInfo(parsedRoomInfo);
-      } else {
-        console.log('⚠️ Không tìm thấy roomInfo trong localStorage');
-      }
+        // Load dữ liệu câu hỏi cuối cùng
+        const finalQuestion = localStorage.getItem('finalQuestionData');
+        if (finalQuestion) {
+          const parsedQuestion = JSON.parse(finalQuestion);
+          console.log('🎯 Final question data từ localStorage:', parsedQuestion);
+          setFinalQuestionData(parsedQuestion);
+        } else {
+          console.log('⚠️ Không tìm thấy finalQuestionData trong localStorage');
+        }
 
-      // Load dữ liệu câu hỏi cuối cùng
-      const finalQuestion = localStorage.getItem('finalQuestionData');
-      if (finalQuestion) {
-        const parsedQuestion = JSON.parse(finalQuestion);
-        console.log('🎯 Final question data từ localStorage:', parsedQuestion);
-        setFinalQuestionData(parsedQuestion);
-      } else {
-        console.log('⚠️ Không tìm thấy finalQuestionData trong localStorage');
+        setLoading(false);
+      } catch (error) {
+        console.error('❌ Lỗi khi load dữ liệu từ localStorage:', error);
+        setLoading(false);
       }
-
-      setLoading(false);
-    } catch (error) {
-      console.error('❌ Lỗi khi load dữ liệu từ localStorage:', error);
-      setLoading(false);
-    }
+    };
+    
+    // Gọi function async
+    initializeRanking();
   }, []);
 
   // Sắp xếp ranking theo điểm số giảm dần
