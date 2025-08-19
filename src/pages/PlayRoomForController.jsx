@@ -30,21 +30,12 @@ export default function PlayRoomForController() {
   const [timerFinished, setTimerFinished] = useState(false);
   const [totalQuestionsFromBackend, setTotalQuestionsFromBackend] = useState(null);
   const [currentQuestionNumber, setCurrentQuestionNumber] = useState(1); // Track số câu hỏi hiện tại
-
-  // Lấy roomId từ joinCode để gọi API
+  
   const getRoomIdFromJoinCode = () => {
     const currentRoom = localStorage.getItem('currentRoom');
     if (currentRoom) {
       const roomData = JSON.parse(currentRoom);
-      console.log('🔍 Debug getRoomIdFromJoinCode:', {
-        currentJoinCode: joinCode,
-        roomDataPinCode: roomData.pinCode,
-        roomDataRoomId: roomData.roomId,
-        match: roomData.pinCode === joinCode
-      });
-      
-      // Fix: Không cần so sánh joinCode vì joinCode có thể chưa được set
-      return roomData.roomId;
+        return roomData.roomId;
     }
     return null;
   };
@@ -119,10 +110,18 @@ export default function PlayRoomForController() {
               localStorage.setItem('currentQuestionData', JSON.stringify(data));
               
                       // Setup countdown timer với thời gian từ backend  
-        const questionTime = data.limitedTime || 30;
-        setTimeLeft(questionTime);
-        setIsQuestionActive(true);
-        setTimerFinished(false);
+              const questionTime = data.limitedTime || 30;
+        
+        console.log('🔍 Controller WebSocket Timer Setup:', {
+          receivedLimitedTime: data.limitedTime,
+          fallbackTime: 30,
+          finalQuestionTime: questionTime,
+          hasLimitedTimeFromBackend: !!data.limitedTime
+        });
+        
+              setTimeLeft(questionTime);
+              setIsQuestionActive(true);
+              setTimerFinished(false);
         
         // Cập nhật số câu hỏi hiện tại từ WebSocket message
         if (data.currentQuestion) {
@@ -133,15 +132,16 @@ export default function PlayRoomForController() {
           setCurrentQuestionNumber(1);
           console.log('📊 Controller fallback set question number to 1');
         }
-        
-        // Ẩn ranking và nút khi có câu hỏi mới
-        setShowRanking(false);
-        setShowNextQuestionButton(false);
-        
+              
+              // Ẩn ranking và nút khi có câu hỏi mới
+              setShowRanking(false);
+              setShowNextQuestionButton(false);
+              
         console.log('⏰ Controller đếm ngược câu hỏi từ WebSocket:', {
           questionTime: questionTime,
           limitedTimeFromBackend: data.limitedTime,
-          currentQuestionNumber: data.currentQuestion || 1
+          currentQuestionNumber: data.currentQuestion || 1,
+          isTimerSetupSuccess: true
         });
             }
           } catch (error) {
@@ -186,8 +186,6 @@ export default function PlayRoomForController() {
         console.error('❌ Controller không có roomId để subscribe WebSocket topics!');
         console.error('📊 Debug currentRoom data:', localStorage.getItem('currentRoom'));
       }
-      
-      console.log('✅ Controller WebSocket setup completed');
       
     }, (error) => {
       console.error('❌ WebSocket connection error:', error);
@@ -481,7 +479,6 @@ export default function PlayRoomForController() {
       // Lấy danh sách participants từ localStorage
       const currentRoomStr = localStorage.getItem('currentRoom');
       if (!currentRoomStr) {
-        console.error('❌ Không có thông tin phòng trong localStorage');
         alert('Không có thông tin phòng. Vui lòng quay lại trang chờ.');
         return;
       }
@@ -520,10 +517,7 @@ export default function PlayRoomForController() {
         
         return usernameMatch || firstnameMatch || firstNameMatch || idMatch || usernameFirstnameMatch || firstnameUsernameMatch;
       });
-      
-      console.log('=== HOST VERIFICATION RESULT ===');
-      console.log('Is current user host?', isCurrentUserHost);
-      
+    
       if (!isCurrentUserHost) {
         console.error('❌ User hiện tại không phải là chủ phòng!');
         alert('Chỉ chủ phòng mới có thể chuyển câu hỏi tiếp theo.');
@@ -563,15 +557,20 @@ export default function PlayRoomForController() {
         const actualTotalQuestions = nextQuestionData.totalQuestions || totalQuestionsFromBackend || 4;
         const isReallyLastQuestion = nextQuestionNum >= actualTotalQuestions;
         
-        console.log('🔍 Controller Debug questionLast check:', {
-          questionId: nextQuestionData.id,
-          questionLast: nextQuestionData.questionLast,
-          nextQuestionNum: nextQuestionNum,
-          totalQuestions: actualTotalQuestions,
-          isReallyLastQuestion: isReallyLastQuestion,
-          backendQuestionLast: nextQuestionData.questionLast,
-          allQuestionKeys: Object.keys(nextQuestionData)
+        console.log('🔍 === CONTROLLER LAST QUESTION DEBUG ===');
+        console.log('Question ID:', nextQuestionData.id);
+        console.log('Backend questionLast flag:', nextQuestionData.questionLast);
+        console.log('Current question number:', nextQuestionNum);
+        console.log('Total questions:', actualTotalQuestions);
+        console.log('Is really last question (calculated):', isReallyLastQuestion);
+        console.log('Question content:', nextQuestionData.content);
+        console.log('Question answers:', {
+          A: nextQuestionData.answerA,
+          B: nextQuestionData.answerB,
+          C: nextQuestionData.answerC,
+          D: nextQuestionData.answerD
         });
+        console.log('All question data keys:', Object.keys(nextQuestionData));
         
         if (isReallyLastQuestion) {
           console.log('🏁 Đây là câu hỏi cuối cùng! Gửi câu hỏi cuối cho players...');
@@ -593,6 +592,16 @@ export default function PlayRoomForController() {
           
           // Setup countdown cho câu hỏi cuối nhưng KHÔNG hiển thị nút "Câu tiếp theo"
           const questionTime = nextQuestionData.limitedTime || 30;
+          
+          console.log('🔍 Controller Final Question Timer Setup:', {
+            receivedLimitedTime: nextQuestionData.limitedTime,
+            fallbackTime: 30,
+            finalQuestionTime: questionTime,
+            hasLimitedTimeFromBackend: !!nextQuestionData.limitedTime,
+            questionId: nextQuestionData.id,
+            isFinalQuestion: true
+          });
+          
           setTimeLeft(questionTime);
           setIsQuestionActive(true);
           setTimerFinished(false);
@@ -600,6 +609,7 @@ export default function PlayRoomForController() {
           setShowRanking(false);
           
           console.log('⏰ Controller đếm ngược câu hỏi cuối:', questionTime, 'giây');
+          console.log('🎯 Controller limitedTime từ backend cho câu cuối:', nextQuestionData.limitedTime);
           console.log('🎯 Câu hỏi cuối đã được gửi cho players');
           
           // Đợi limitedTime + 7 giây để người chơi kịp trả lời và controller lấy ranking cuối
@@ -625,6 +635,17 @@ export default function PlayRoomForController() {
         
         // Setup countdown cho câu hỏi mới với thời gian từ backend
         const questionTime = nextQuestionData.limitedTime || 30;
+        
+        console.log('🔍 Controller Normal Question Timer Setup:', {
+          receivedLimitedTime: nextQuestionData.limitedTime,
+          fallbackTime: 30,
+          finalQuestionTime: questionTime,
+          hasLimitedTimeFromBackend: !!nextQuestionData.limitedTime,
+          questionId: nextQuestionData.id,
+          questionNumber: nextQuestionNum,
+          isFinalQuestion: false
+        });
+        
         setTimeLeft(questionTime);
         setIsQuestionActive(true);
         setTimerFinished(false);
@@ -638,7 +659,7 @@ export default function PlayRoomForController() {
         console.log('🧹 Cleared isLastQuestion flag - this is not the last question');
         
         console.log('⏰ Controller bắt đầu đếm ngược câu hỏi số', nextQuestionNum, ':', questionTime, 'giây');
-        console.log('🎯 Controller question time từ backend:', nextQuestionData.limitedTime);
+        console.log('🎯 Controller limitedTime từ backend:', nextQuestionData.limitedTime);
         
         // TODO: Emit event hoặc thông báo cho backend để chuyển câu hỏi
         // Có thể sử dụng WebSocket hoặc gọi API khác để thông báo
@@ -684,13 +705,35 @@ export default function PlayRoomForController() {
     if (currentRoom) {
       try {
         const roomData = JSON.parse(currentRoom);
-        if (roomData.totalQuestions) {
-          setTotalQuestionsFromBackend(roomData.totalQuestions);
-          console.log('📊 Controller loaded totalQuestions từ CreateRoom:', roomData.totalQuestions);
-        }
+        console.log('🔍 Controller currentRoom data:', roomData);
+        console.log('🔍 Controller totalQuestions check:', {
+          hasTotalQuestions: !!roomData.totalQuestions,
+          totalQuestions: roomData.totalQuestions,
+          selectedQuiz: roomData.selectedQuiz,
+          selectedQuizQuantity: roomData.selectedQuiz?.questionCount
+        });
+        
+        // Thử nhiều nguồn để lấy totalQuestions
+        const totalFromRoom = roomData.totalQuestions;
+        const totalFromSelectedQuiz = roomData.selectedQuiz?.questionCount;
+        const finalTotal = totalFromRoom || totalFromSelectedQuiz || 4;
+        
+        setTotalQuestionsFromBackend(finalTotal);
+        console.log('📊 Controller final totalQuestions:', finalTotal, 'from:', {
+          totalFromRoom,
+          totalFromSelectedQuiz,
+          fallback: 4
+        });
       } catch (error) {
         console.error('❌ Controller lỗi khi parse currentRoom:', error);
+        // Fallback
+        setTotalQuestionsFromBackend(4);
+        console.log('📊 Controller fallback totalQuestions: 4');
       }
+    } else {
+      // Fallback nếu không có currentRoom
+      setTotalQuestionsFromBackend(4);
+      console.log('📊 Controller no currentRoom, fallback totalQuestions: 4');
     }
     
     // Tạo bảng xếp hạng ban đầu với điểm 0 (fallback nếu WebSocket chưa có data)
@@ -700,6 +743,13 @@ export default function PlayRoomForController() {
     const firstQuestion = localStorage.getItem('firstQuestionData');
     const firstQuestionReceived = localStorage.getItem('firstQuestionReceived');
     
+    console.log('🔍 CONTROLLER MOUNT DEBUG - localStorage check:', {
+      hasFirstQuestion: !!firstQuestion,
+      hasFirstQuestionFlag: firstQuestionReceived === 'true',
+      firstQuestionLength: firstQuestion ? firstQuestion.length : 0,
+      firstQuestionPreview: firstQuestion ? firstQuestion.substring(0, 100) : 'null'
+    });
+  
     if (firstQuestion && firstQuestionReceived === 'true') {
       try {
         const questionData = JSON.parse(firstQuestion);
@@ -715,7 +765,29 @@ export default function PlayRoomForController() {
         
         // Setup countdown timer
         const questionTime = questionData.limitedTime || 30;
-        setTimeLeft(questionTime);
+        
+        console.log('🔍 Controller localStorage Timer Setup:', {
+          receivedLimitedTime: questionData.limitedTime,
+          fallbackTime: 30,
+          finalQuestionTime: questionTime,
+          hasLimitedTimeFromBackend: !!questionData.limitedTime,
+          source: 'firstQuestionData từ WaitingRoom'
+        });
+        
+        // ✅ FORCE: Đảm bảo dùng thời gian từ question data
+        if (questionData.limitedTime && questionData.limitedTime !== 30) {
+          console.log('🕐 FORCING timer từ question data:', questionData.limitedTime, 'giây (không phải 30s fallback)');
+          setTimeLeft(questionData.limitedTime);
+          
+          // ✅ PROTECTION: Prevent timer override
+          window.correctTimerSet = true;
+          window.correctTimerValue = questionData.limitedTime;
+          console.log('🛡️ Protected timer value:', questionData.limitedTime);
+        } else {
+          console.log('🕐 Using fallback timer:', questionTime, 'giây');
+          setTimeLeft(questionTime);
+        }
+        
         setIsQuestionActive(true);
         setTimerFinished(false);
         
@@ -723,15 +795,20 @@ export default function PlayRoomForController() {
         setShowRanking(false);
         setShowNextQuestionButton(false);
         
-        // Clear flag để không load lại
-        localStorage.removeItem('firstQuestionReceived');
+        // ✅ KHÔNG XÓA localStorage - giữ lại cho debug
+        // localStorage.removeItem('firstQuestionReceived'); // COMMENTED OUT
         
-        console.log('✅ Host bắt đầu đếm ngược', questionTime, 'giây');
+        console.log('✅ Controller bắt đầu đếm ngược từ localStorage:', questionTime, 'giây');
       } catch (error) {
         console.error('❌ Lỗi khi parse câu hỏi đầu tiên:', error);
       }
     } else {
       console.log('⚠️ Không có câu hỏi đầu tiên từ WaitingRoom');
+      console.log('🔍 Debug localStorage flags:', {
+        firstQuestion: !!localStorage.getItem('firstQuestionData'),
+        firstQuestionReceived: localStorage.getItem('firstQuestionReceived'),
+        currentQuestionData: !!localStorage.getItem('currentQuestionData')
+      });
       
       // Fallback: kiểm tra localStorage cũ
       const savedQuestion = localStorage.getItem('currentQuestionData');
@@ -739,10 +816,32 @@ export default function PlayRoomForController() {
         try {
           const questionData = JSON.parse(savedQuestion);
           console.log('📚 Fallback load câu hỏi từ localStorage cũ:', questionData);
+          console.log('🔍 Fallback timer setup:', {
+            limitedTime: questionData.limitedTime,
+            hasLimitedTime: !!questionData.limitedTime
+          });
           setCurrentQuestion(questionData);
+          
+          // Setup timer cho fallback nếu cần
+          if (questionData.limitedTime) {
+            console.log('⏰ Setup timer từ fallback localStorage:', questionData.limitedTime);
+            // Có thể cần setup timer ở đây nếu Controller không có timer nào
+          }
         } catch (error) {
           console.error('❌ Lỗi khi parse câu hỏi từ localStorage:', error);
         }
+      } else {
+        console.warn('❌ CONTROLLER KHÔNG CÓ CÂU HỎI NÀO! Setup fallback timer 30s');
+        
+        // Setup fallback timer 30 giây
+        console.log('🔧 Setting up fallback timer: 30 seconds');
+        setTimeLeft(30);
+        setIsQuestionActive(true);
+        setTimerFinished(false);
+        setShowRanking(false);
+        setShowNextQuestionButton(false);
+        
+        console.log('✅ Controller bắt đầu đếm ngược fallback: 30 giây');
       }
     }
     
@@ -758,8 +857,11 @@ export default function PlayRoomForController() {
   useEffect(() => {
     if (!isQuestionActive || timerFinished) return;
     
+    console.log('🕐 TIMER EFFECT STARTING - current timeLeft:', timeLeft);
+    
     const timer = setInterval(() => {
       setTimeLeft(prev => {
+        console.log('🕐 Timer tick - prev value:', prev);
         if (prev <= 1) {
           // Đánh dấu timer đã kết thúc nhưng vẫn hiển thị 0s
           setTimerFinished(true);
@@ -847,7 +949,15 @@ export default function PlayRoomForController() {
             <div>Đang tải bảng xếp hạng...</div>
           </div>
         ) : rankingData.length > 0 ? (
-          <RankingTable data={rankingData} totalQuestions={totalQuestionsFromBackend || 4} />
+          <>
+            {console.log('🔍 Controller RankingTable props:', {
+              totalQuestionsFromBackend,
+              fallback: 4,
+              final: totalQuestionsFromBackend || 4,
+              rankingDataLength: rankingData.length
+            })}
+            <RankingTable data={rankingData} totalQuestions={totalQuestionsFromBackend || 4} />
+          </>
         ) : (
           <div className="text-center text-gray-500 py-20">
             <div className="text-2xl mb-2">📊</div>

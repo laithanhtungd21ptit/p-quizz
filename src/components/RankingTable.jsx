@@ -1,7 +1,8 @@
 // src/components/RankingTable.jsx
 import React from 'react';
 
-export default function RankingTable({ data = [], totalQuestions = 15 }) {
+export default function RankingTable({ data = [], totalQuestions = 4 }) {
+  console.log('🔍 RankingTable received props:', { totalQuestions, dataLength: data.length });
   // Sort descending by score
   const sorted = [...data].sort((a, b) => b.score - a.score);
 
