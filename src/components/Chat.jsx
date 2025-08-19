@@ -2,9 +2,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { fetchMessages, sendMessage } from '../api/chatApi';
-// SockJS được load từ CDN trong index.html
-// STOMP được load từ CDN trong index.html
-
+import SockJS from 'sockjs-client/dist/sockjs.min.js';
+import { Client } from '@stomp/stompjs';
 
 // --- Sticker asset loading ---
 const modules = import.meta.globEager('/src/assets/stickers/*/*.png');
@@ -52,11 +51,7 @@ const Chat = ({ groupName = 'default' }) => {
   useEffect(() => {
     if (!isOpen) {
       if (stompClientRef.current) {
-        try { 
-          if (stompClientRef.current.connected) {
-            stompClientRef.current.disconnect();
-          }
-        } catch (e) {}
+        try { stompClientRef.current.deactivate(); } catch (e) {}
         stompClientRef.current = null;
         setConnected(false);
       }
@@ -97,13 +92,11 @@ const Chat = ({ groupName = 'default' }) => {
       ? `${wsUrl}?token=${encodeURIComponent(token)}`
       : wsUrl;
 
-    const socket = new SockJS(sockJsUrl);
-    const client = Stomp.over(socket);
-    
-    client.connect(
-      (WS_AUTH_METHOD === 'header' && token) ? { Authorization: `Bearer ${token}` } : {},
-      () => {
-        // onConnect
+    const client = new Client({
+      webSocketFactory: () => new SockJS(sockJsUrl),
+      reconnectDelay: 5000,
+      connectHeaders: (WS_AUTH_METHOD === 'header' && token) ? { Authorization: `Bearer ${token}` } : {},
+      onConnect: () => {
         setConnected(true);
         client.subscribe(`/topic/chat/${groupName}`, (msg) => {
           try {
@@ -114,23 +107,17 @@ const Chat = ({ groupName = 'default' }) => {
           }
         });
       },
-      (error) => {
-        // onError
-        console.error('STOMP error', error);
-        setConnected(false);
-      }
-    );
+      onStompError: (frame) => console.error('STOMP error', frame),
+      onWebSocketClose: () => setConnected(false),
+    });
 
     stompClientRef.current = client;
+    client.activate();
 
     loadHistory();
 
     return () => {
-      try { 
-        if (client && client.connected) {
-          client.disconnect();
-        }
-      } catch (e) {}
+      try { client.deactivate(); } catch (e) {}
       stompClientRef.current = null;
       setConnected(false);
     };
