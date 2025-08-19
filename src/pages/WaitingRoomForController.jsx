@@ -279,7 +279,6 @@ const WaitingRoomForController = () => {
       const currentUser = userStr ? JSON.parse(userStr) : null;
       
       console.log('Starting game for roomId:', roomId);
-      console.log('Current participants count:', participants.length);
       console.log('Current user:', currentUser);
       console.log('Participants:', participants);
       

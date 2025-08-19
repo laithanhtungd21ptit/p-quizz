@@ -20,8 +20,12 @@ const PlayerGame = () => {
     selectedAnswer: null,
     image: null,
     currentQuestion: 1,
-    totalQuestions: 10
+    totalQuestions: 4 // Sửa từ 10 → 4 theo yêu cầu
   });
+  
+  // State để track số câu hỏi thực tế và tổng số câu từ backend
+  const [actualQuestionCount, setActualQuestionCount] = useState(1);
+  const [totalQuestionsFromBackend, setTotalQuestionsFromBackend] = useState(null);
 
   // Dữ liệu mẫu cho bảng xếp hạng
   const rankingData = [
@@ -36,6 +40,20 @@ const PlayerGame = () => {
   useEffect(() => {
     const savedQuestionData = localStorage.getItem('currentQuestionData');
     const gameStarted = localStorage.getItem('gameStarted');
+    
+    // 📊 Đọc totalQuestions từ currentRoom (từ CreateRoom)
+    const currentRoom = localStorage.getItem('currentRoom');
+    if (currentRoom) {
+      try {
+        const roomData = JSON.parse(currentRoom);
+        if (roomData.totalQuestions) {
+          setTotalQuestionsFromBackend(roomData.totalQuestions);
+          console.log('📊 Loaded totalQuestions từ CreateRoom:', roomData.totalQuestions);
+        }
+      } catch (error) {
+        console.error('❌ Lỗi khi parse currentRoom:', error);
+      }
+    }
     
     // Kiểm tra xem có ranking cũ trong localStorage không
     const savedRanking = localStorage.getItem('finalRankingData');
@@ -66,6 +84,12 @@ const PlayerGame = () => {
         const parsedData = JSON.parse(savedQuestionData);
         console.log('Loading question data from localStorage:', parsedData);
         
+        // Lưu totalQuestions từ backend nếu có
+        if (parsedData.totalQuestions) {
+          setTotalQuestionsFromBackend(parsedData.totalQuestions);
+          console.log('📊 Total questions từ backend:', parsedData.totalQuestions);
+        }
+        
         // Giữ nguyên cấu trúc backend để có đầy đủ thông tin
         setQuestionData({
           // Backend fields
@@ -94,8 +118,11 @@ const PlayerGame = () => {
           selectedAnswer: null,
           image: parsedData.imageUrl || parsedData.image || null,
           currentQuestion: 1,
-          totalQuestions: 10
+          totalQuestions: parsedData.totalQuestions || 4 // Ưu tiên từ backend
         });
+        
+        // Reset actual question count cho game mới
+        setActualQuestionCount(1);
         
         // Lấy thời gian từ database (nếu có)
         const questionTime = parsedData.limitedTime || parsedData.timeLimit || parsedData.time || 30; // Ưu tiên limitedTime từ backend
@@ -117,6 +144,10 @@ const PlayerGame = () => {
         setCountdownProgress(0);
         setAnswerResult(null);
         setRealRankingData([]);
+        
+        // Reset cached score và rank cho câu hỏi mới
+        setCachedPlayerScore(null);
+        setCachedPlayerRank(null);
         
         // Clear localStorage để tránh load lại
         localStorage.removeItem('currentQuestionData');
@@ -222,6 +253,57 @@ const PlayerGame = () => {
         }
       });
       
+      // Subscribe vào ranking updates từ Kafka/WebSocket
+      const rankingTopic = `/topic/room/${roomId}/ranking`;
+      console.log('📊 Subscribing to ranking topic:', rankingTopic);
+      
+      client.subscribe(rankingTopic, (message) => {
+        console.log('=== 📊 RANKING UPDATE RECEIVED ===');
+        console.log('📨 Raw ranking message:', message.body);
+        
+        try {
+          const rankingData = JSON.parse(message.body);
+          console.log('📊 Real-time ranking update:', rankingData);
+          
+          // Cập nhật ranking ngay lập tức từ WebSocket
+          setRealRankingData(rankingData);
+          
+          // Cập nhật cached rank cho user hiện tại
+          const currentUser = localStorage.getItem('user');
+          if (currentUser && rankingData.length > 0) {
+            try {
+              const userData = JSON.parse(currentUser);
+              const playerIndex = rankingData.findIndex(player => {
+                return (
+                  player.username === userData.username ||
+                  player.name === userData.username ||
+                  player.firstName === userData.username ||
+                  player.id === userData.id ||
+                  player.firstName === userData.firstName ||
+                  player.username === userData.firstName
+                );
+              });
+              
+              if (playerIndex !== -1) {
+                const realtimeRank = playerIndex + 1;
+                setCachedPlayerRank(realtimeRank);
+                console.log('📊 [WebSocket] Updated rank to:', realtimeRank);
+                // KHÔNG cập nhật score - giữ nguyên từ submit response
+              }
+            } catch (error) {
+              console.error('❌ Error processing real-time ranking:', error);
+            }
+          }
+          
+          // Lưu ranking realtime vào localStorage
+          localStorage.setItem('finalRankingData', JSON.stringify(rankingData));
+          console.log('💾 [WebSocket] Saved real-time ranking to localStorage');
+          
+        } catch (error) {
+          console.error('❌ Error parsing ranking update:', error);
+        }
+      });
+      
       // Subscribe vào personal queue để nhận câu hỏi tiếp theo riêng
       client.subscribe('/user/queue/next-question', (message) => {
         console.log('📨 Question raw message:', message.body);
@@ -285,6 +367,12 @@ const PlayerGame = () => {
   const handleNextQuestion = (newQuestionData) => {
     console.log('🔄 Xử lý câu hỏi tiếp theo:', newQuestionData.id);
     
+    // Lưu totalQuestions từ backend nếu có
+    if (newQuestionData.totalQuestions) {
+      setTotalQuestionsFromBackend(newQuestionData.totalQuestions);
+      console.log('📊 Total questions từ backend (next question):', newQuestionData.totalQuestions);
+    }
+    
     // Cập nhật question data
     setQuestionData({
       // Backend fields
@@ -312,8 +400,8 @@ const PlayerGame = () => {
       correctAnswer: indexToLetter(newQuestionData.correctAnswer || 0),
       selectedAnswer: null,
       image: newQuestionData.imageUrl || newQuestionData.image || null,
-      currentQuestion: (questionData.currentQuestion || 0) + 1,
-      totalQuestions: 10
+      currentQuestion: actualQuestionCount + 1, // Sử dụng actual count
+      totalQuestions: newQuestionData.totalQuestions || totalQuestionsFromBackend || 4 // Ưu tiên từ backend
     });
     
     // Reset timer với thời gian mới
@@ -329,7 +417,15 @@ const PlayerGame = () => {
     setCountdownProgress(0);
     setAnswerResult(null);
     
+    // Reset cached score và rank cho câu hỏi mới
+    setCachedPlayerScore(null);
+    setCachedPlayerRank(null);
+    
+    // Cập nhật actual question count
+    setActualQuestionCount(prev => prev + 1);
+    
     console.log('✅ Đã cập nhật câu hỏi mới và reset game state');
+    console.log('📊 Current question count:', actualQuestionCount + 1);
     
     // Lưu câu hỏi mới vào localStorage
     localStorage.setItem('currentQuestionData', JSON.stringify(newQuestionData));
@@ -353,6 +449,10 @@ const PlayerGame = () => {
   const [supportCards, setSupportCards] = useState([]);
   const [usedCards, setUsedCards] = useState([false, false]); // Track 2 thẻ đã sử dụng
   const [isBeingKicked, setIsBeingKicked] = useState(false);
+  
+  // State để cache điểm số tạm thời từ submit answer response
+  const [cachedPlayerScore, setCachedPlayerScore] = useState(null);
+  const [cachedPlayerRank, setCachedPlayerRank] = useState(null);
 
   // Helper functions để chuyển đổi giữa index (0,1,2,3) và chữ cái (A,B,C,D)
   const indexToLetter = (idx) => ['A', 'B', 'C', 'D'][idx];
@@ -506,8 +606,6 @@ const PlayerGame = () => {
         },
         body: JSON.stringify(requestBody)
       });
-
-      console.log('Response status:', response.status);
 
       if (response.ok) {
         let result;
@@ -919,13 +1017,26 @@ const PlayerGame = () => {
                 timeTaken: response.timeTaken
               });
               
-              console.log('Score mới:', response.score);
+              // Cache điểm số từ response để hiển thị ngay lập tức
+              setCachedPlayerScore(response.score);
+              
+              console.log('=== 🎯 SUBMIT ANSWER RESPONSE ===');
+              console.log('Score mới từ backend:', response.score);
               console.log('Is Correct:', response.correct);
               console.log('Đáp án đúng:', response.correctAnswer);
               console.log('Bạn chọn:', response.selectedAnswer);
+              console.log('Timestamp:', new Date().toISOString());
+              console.log('📈 Cached player score updated to:', response.score);
               
-              // Kiểm tra xem có phải câu hỏi cuối cùng không
-              if (questionData.questionLast === true) {
+              // Kiểm tra xem có phải câu hỏi cuối cùng không - kiểm tra từ response thay vì questionData
+              console.log('🔍 Debug questionLast check:', {
+                responseQuestionLast: response.questionLast,
+                questionDataQuestionLast: questionData.questionLast,
+                actualQuestionCount: actualQuestionCount,
+                totalQuestions: totalQuestionsFromBackend || questionData.totalQuestions
+              });
+              
+              if (response.questionLast === true) {
                 console.log('🏁 Đây là câu hỏi cuối cùng! Lấy ranking cuối cùng...');
                 
                 // Lưu dữ liệu câu hỏi cuối và kết quả vào localStorage
@@ -989,27 +1100,9 @@ const PlayerGame = () => {
                 return; // Không tiếp tục xử lý ranking thường
               }
               
-              // Lấy bảng xếp hạng mới sau khi submit answer (chỉ khi không phải câu cuối)
-              try {
-                const currentRoom = localStorage.getItem('currentRoom');
-                if (currentRoom) {
-                  const roomData = JSON.parse(currentRoom);
-                  const roomId = roomData.roomId;
-                  
-                  if (roomId) {
-                    console.log('Lấy bảng xếp hạng cho phòng:', roomId);
-                    const rankingResponse = await getRoomRanking(roomId);
-                    setRealRankingData(rankingResponse);
-                    console.log('Bảng xếp hạng mới:', rankingResponse);
-                    
-                    // Lưu ranking vào localStorage để GameResult có thể sử dụng
-                    localStorage.setItem('finalRankingData', JSON.stringify(rankingResponse));
-                    console.log('💾 Đã lưu ranking vào localStorage cho GameResult');
-                  }
-                }
-              } catch (rankingError) {
-                console.error('Lỗi khi lấy bảng xếp hạng:', rankingError);
-              }
+              // ✅ RANKING SẼ ĐƯỢC CẬP NHẬT TỰ ĐỘNG QUA WEBSOCKET
+              // Không cần manual API call nữa vì đã subscribe /topic/room/{roomId}/ranking
+              console.log('✅ Ranking sẽ được cập nhật real-time qua WebSocket từ Kafka');
           } else {
             // Nếu backend trả về null (lỗi), vẫn set đã trả lời để tránh spam
             setHasAnswered(true);
@@ -1087,34 +1180,51 @@ const PlayerGame = () => {
           {/* Bên trái: Hạng + Điểm */}
           <div className="flex items-center space-x-3">
             {(() => {
-              // Tìm thông tin player hiện tại trong ranking
-              const currentUser = localStorage.getItem('user');
-              let playerRank = "?";
-              let playerScore = 0;
+              // Ưu tiên sử dụng cached data từ submit answer response
+              let playerRank = cachedPlayerRank || "?";
+              let playerScore = cachedPlayerScore || 0;
               
-              if (currentUser && realRankingData.length > 0) {
-                try {
-                  const userData = JSON.parse(currentUser);
-                  
-                  // Tìm player trong ranking - thử nhiều cách match
-                  const playerIndex = realRankingData.findIndex(player => {
-                    return (
-                      player.username === userData.username ||  // username
-                      player.name === userData.username ||      // name
-                      player.firstName === userData.username || // firstName
-                      player.id === userData.id ||              // id
-                      player.firstName === userData.firstName || // firstName match
-                      player.username === userData.firstName    // username vs firstName
-                    );
-                  });
-                  
-                  if (playerIndex !== -1) {
-                    playerRank = (playerIndex + 1); // Rank bắt đầu từ 1
-                    playerScore = realRankingData[playerIndex].score || 0;
+              console.log('🔍 Score Display Debug:', {
+                cachedScore: cachedPlayerScore,
+                cachedRank: cachedPlayerRank,
+                displayScore: playerScore,
+                displayRank: playerRank,
+                hasRankingData: realRankingData.length > 0,
+                timestamp: new Date().toISOString()
+              });
+              
+              // Fallback: Chỉ lấy từ ranking nếu HOÀN TOÀN không có cached data
+              if (cachedPlayerScore === null && cachedPlayerRank === null) {
+                console.log('🔄 Using fallback ranking data (no cached data available)');
+                const currentUser = localStorage.getItem('user');
+                
+                if (currentUser && realRankingData.length > 0) {
+                  try {
+                    const userData = JSON.parse(currentUser);
+                    
+                    // Tìm player trong ranking - thử nhiều cách match
+                    const playerIndex = realRankingData.findIndex(player => {
+                      return (
+                        player.username === userData.username ||  // username
+                        player.name === userData.username ||      // name
+                        player.firstName === userData.username || // firstName
+                        player.id === userData.id ||              // id
+                        player.firstName === userData.firstName || // firstName match
+                        player.username === userData.firstName    // username vs firstName
+                      );
+                    });
+                    
+                    if (playerIndex !== -1) {
+                      playerRank = (playerIndex + 1); // Rank bắt đầu từ 1
+                      playerScore = realRankingData[playerIndex].score || 0;
+                      console.log('📊 Fallback data used:', { rank: playerRank, score: playerScore });
+                    }
+                  } catch (error) {
+                    console.error('❌ Error parsing user data for ranking:', error);
                   }
-                } catch (error) {
-                  console.error('❌ Error parsing user data for ranking:', error);
                 }
+              } else {
+                console.log('✅ Using cached data - no fallback needed');
               }
               
               // Format rank display
@@ -1180,7 +1290,7 @@ const PlayerGame = () => {
                 {/* Hiển thị số câu */}
                 <div className="flex justify-center mb-2">
                   <div className="bg-pink-500 text-white px-4 rounded-lg font-bold text-lg">
-                    {questionData.currentQuestion}/{questionData.totalQuestions}
+                    {actualQuestionCount}/{totalQuestionsFromBackend || questionData.totalQuestions || 4}
                   </div>
                 </div>
 
@@ -1286,7 +1396,7 @@ const PlayerGame = () => {
              <div className="relative" style={{ width: 1037, height: 614 }}>
                <div className="absolute top-[45px] left-[64px] right-[64px]">
                  {realRankingData.length > 0 ? (
-                   <RankingTable data={realRankingData} totalQuestions={questionData.totalQuestions} />
+                   <RankingTable data={realRankingData} totalQuestions={totalQuestionsFromBackend || questionData.totalQuestions || 4} />
                  ) : (
                    <div className="text-center text-gray-500 mt-20">
                      <div className="text-2xl mb-2">📊</div>

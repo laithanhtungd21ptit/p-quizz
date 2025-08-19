@@ -226,6 +226,9 @@ const CreateRoom = ({ onClose }) => {
           started: roomData.started,
           startedAt: roomData.startedAt,
           
+          // ✅ QUAN TRỌNG: Lưu totalQuestions từ quiz data
+          totalQuestions: selectedQuiz.quantityQuestion || selectedQuiz.questions?.length || 4,
+          
           // Thông tin quiz đã chọn (để dự phòng)
           selectedQuiz: {
             id: selectedQuiz.quizId || selectedQuiz.id,
