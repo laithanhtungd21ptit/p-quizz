@@ -16,7 +16,7 @@ const WaitingRoomForController = () => {
   const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [copiedField, setCopiedField] = useState(null); // "website" | "code" | null
+  const [copiedField, setCopiedField] = useState(null);
   
   // State cho kick user popup
   const [showKickPopup, setShowKickPopup] = useState(false);
@@ -53,22 +53,19 @@ const WaitingRoomForController = () => {
       });
 
       console.log('Room data response status:', response.status);
-      console.log('Room data response headers:', Object.fromEntries(response.headers.entries()));
 
       if (response.ok) {
         const data = await response.json();
         setRoomData(data);
         
-        // Cập nhật thông tin phòng trong localStorage (preserve data từ CreateRoom)
         const existingRoomStr = localStorage.getItem('currentRoom');
         let currentRoom;
         
         if (existingRoomStr) {
-          // Nếu đã có dữ liệu từ CreateRoom, chỉ cập nhật các field cần thiết
           currentRoom = JSON.parse(existingRoomStr);
           currentRoom.pinCode = data.pinCode;
           currentRoom.qrCodeUrl = data.qrCodeUrl;
-          currentRoom.participants = participants; // Sẽ được cập nhật sau khi fetch participants
+          currentRoom.participants = participants;
           // Giữ nguyên createdAt từ CreateRoom nếu có
           if (!currentRoom.createdAt) {
             currentRoom.createdAt = new Date().toISOString();
@@ -118,7 +115,7 @@ const WaitingRoomForController = () => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      console.log('Fetching participants for roomId:', roomId);
+      console.log('🔄 [INITIAL LOAD] Fetching participants for roomId:', roomId);
       const response = await fetch(`http://localhost:8080/rooms/participants?roomId=${roomId}`, {
         method: 'GET',
         headers: {
@@ -129,9 +126,9 @@ const WaitingRoomForController = () => {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('=== PARTICIPANTS API DEBUG ===');
-        console.log('Participants response:', data);
-        
+        console.log('=== 🔄 [INITIAL] PARTICIPANTS API DEBUG ===');
+        console.log('Participants response api:', data);
+    
         // Debug user participation
         const userStr = localStorage.getItem('user');
         const currentUser = userStr ? JSON.parse(userStr) : null;
@@ -278,9 +275,14 @@ const WaitingRoomForController = () => {
       const userStr = localStorage.getItem('user');
       const currentUser = userStr ? JSON.parse(userStr) : null;
       
-      console.log('Starting game for roomId:', roomId);
-      console.log('Current user:', currentUser);
-      console.log('Participants:', participants);
+      // Kiểm tra database roomId từ localStorage
+      const currentRoomStr = localStorage.getItem('currentRoom');
+      const currentRoom = currentRoomStr ? JSON.parse(currentRoomStr) : null;
+      const databaseRoomId = currentRoom?.roomId;
+
+      // QUAN TRỌNG: Sử dụng database roomId cho API call
+      const apiRoomId = databaseRoomId || roomId;
+      console.log('API sẽ sử dụng roomId:', apiRoomId);
       
       // Kiểm tra xem user hiện tại có phải host không
       const isCurrentUserHost = participants.some(p => 
@@ -294,8 +296,7 @@ const WaitingRoomForController = () => {
           p.username === currentUser?.firstname
         )
       );
-      console.log('Is current user host?', isCurrentUserHost);
-      console.log('Host check details:', {
+      console.log('Host check details:', {  
         currentUser: currentUser,
         participants: participants,
         hostParticipants: participants.filter(p => p.isHost),
@@ -311,16 +312,14 @@ const WaitingRoomForController = () => {
         }))
       });
       
-      const response = await fetch(`http://localhost:8080/rooms/start/${roomId}`, {
+      console.log('🔗 Making API call to start room:', apiRoomId);
+      const response = await fetch(`http://localhost:8080/rooms/start/${apiRoomId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-
-      console.log('Start game response status:', response.status);
-      console.log('Start game response headers:', Object.fromEntries(response.headers.entries()));
 
       if (response.ok) {
         const participants = await response.json();
@@ -336,18 +335,76 @@ const WaitingRoomForController = () => {
           console.log('✅ Đã cập nhật trạng thái phòng đã start:', currentRoom);
         }
         
-        // Kiểm tra WebSocket connection status
-        console.log('🔍 Checking WebSocket connections:');
-        console.log('- waitingRoomConnected:', window.waitingRoomConnected);
-        console.log('- waitingRoomStompClient:', !!window.waitingRoomStompClient);
-        console.log('- waitingRoomStompClient.connected:', window.waitingRoomStompClient?.connected);
+  
+        window.firstQuestionReceived = false;
+        window.messageCount = 0;
         
-        // Đợi 2 giây để backend gửi câu hỏi đầu tiên qua WebSocket trước khi chuyển trang
-        // Tăng thời gian chờ để đảm bảo message được gửi đi
-        setTimeout(() => {
-          console.log('🚀 Navigating to play room for controller...');
-          navigate(`/play-room-for-controller/${roomId}`);
-        }, 2000);
+        // ✅ PROTECTION: Chỉ xóa nếu chưa có data
+        const existingData = localStorage.getItem('firstQuestionData');
+        const existingFlag = localStorage.getItem('firstQuestionReceived');
+        
+        if (!existingData && existingFlag !== 'true') {
+          console.log('🧹 Clearing localStorage - no existing question data');
+          localStorage.removeItem('firstQuestionData');
+          localStorage.removeItem('firstQuestionReceived');
+        } else {
+          console.log('✅ PROTECTING existing localStorage data:', {
+            hasData: !!existingData,
+            hasFlag: existingFlag === 'true'
+          });
+        }
+        
+        // Kiểm tra topic matching
+        const frontendTopic = `/topic/room/${currentRoom?.roomId || roomId}`;
+        const backendTopic = `/topic/room/${apiRoomId}`;
+        const topicsMatch = frontendTopic === backendTopic;
+        
+        console.log('🔍 Topic matching check:');
+        console.log('- Frontend subscribed to:', frontendTopic);
+        console.log('- Backend will send to:', backendTopic);
+        console.log('- Topics match:', topicsMatch);
+        
+        if (!topicsMatch) {
+          console.error('❌ TOPIC MISMATCH! This is why messages are not received!');
+        }
+        
+        // Tăng thời gian chờ lên 10 giây và kiểm tra định kỳ
+        let waitTime = 0;
+        const maxWaitTime = 10000; // 10 giây
+        const checkInterval = 500; // Kiểm tra mỗi 0.5 giây
+        
+        const questionCheckInterval = setInterval(() => {
+          waitTime += checkInterval;
+          
+          // Kiểm tra xem đã nhận được first question chưa
+          const receivedFlag = localStorage.getItem('firstQuestionReceived');
+          const questionData = localStorage.getItem('firstQuestionData');
+          
+          if (questionData) {
+            console.log('✅ First question received with data! Navigating to controller game...');
+            console.log('✅ Question data preview:', questionData.substring(0, 100) + '...');
+            clearInterval(questionCheckInterval);
+            navigate(`/play-room-for-controller/${roomId}`);
+            return;
+          } 
+        
+          // Timeout sau 10 giây
+          if (waitTime >= maxWaitTime) {
+            console.warn('⚠️ TIMEOUT: No question after 10s!');
+            
+            // Kiểm tra localStorage cuối cùng
+            const finalQuestionData = localStorage.getItem('firstQuestionData');
+            const finalFlag = localStorage.getItem('firstQuestionReceived');
+            console.warn('🔍 Final check:', {
+              hasData: !!finalQuestionData,
+              hasFlag: finalFlag === 'true',
+              wsConnected: window.waitingRoomConnected
+            });
+            
+            clearInterval(questionCheckInterval);
+            navigate(`/play-room-for-controller/${roomId}`);
+          }
+        }, checkInterval);
       } else {
         let errorData = '';
         try {
@@ -371,16 +428,24 @@ const WaitingRoomForController = () => {
     }
   };
 
-  // Setup WebSocket để nhận câu hỏi đầu tiên
-  const setupWebSocketForFirstQuestion = () => {
-    console.log('🔌 Setup WebSocket trong WaitingRoom để nhận câu hỏi đầu tiên...');
+  // Setup unified WebSocket để nhận cả participants updates và câu hỏi đầu tiên
+  const setupUnifiedWebSocket = () => {
+    console.log('🔌 Setup unified WebSocket trong WaitingRoom...');
+    
+    // ✅ PROTECTION: Override localStorage.removeItem để bảo vệ question data
+    const originalRemoveItem = localStorage.removeItem;
+    localStorage.removeItem = function(key) {
+      if ((key === 'firstQuestionData' || key === 'firstQuestionReceived') && window.questionDataProtected) {
+        console.log('🛡️ PROTECTED: Không cho xóa', key, 'vì đã có question data');
+        return;
+      }
+      return originalRemoveItem.call(this, key);
+    };
     
     try {
       const socket = new window.SockJS('http://localhost:8080/ws');
       const client = window.Stomp.over(socket);
       client.debug = null;
-      
-      // Lấy clientSessionId và pinCode để authenticate WebSocket
       const currentRoom = localStorage.getItem('currentRoom');
       let connectHeaders = {};
       
@@ -394,41 +459,85 @@ const WaitingRoomForController = () => {
         }
       }
       
-      console.log('🔌 Connecting WebSocket with headers:', connectHeaders);
-      
+      console.log('🔌 HOST connecting unified WebSocket with headers:', connectHeaders);
+
       client.connect(connectHeaders, (frame) => {
-        console.log('✅ WaitingRoom WebSocket connected with authentication!');
         
         // Đánh dấu connection đã sẵn sàng
         window.waitingRoomConnected = true;
+        const currentRoom = localStorage.getItem('currentRoom');
+        const actualRoomId = currentRoom ? JSON.parse(currentRoom).roomId : roomId;
+        const topicPath = `/topic/room/${actualRoomId}`;
         
-        // Subscribe để nhận câu hỏi đầu tiên khi game bắt đầu
-        client.subscribe(`/topic/room/${roomId}`, (message) => {
+        client.subscribe(topicPath, (message) => {
           try {
+            console.log('📨 HOST nhận message:', message.body);
             const data = JSON.parse(message.body);
-            console.log('📨 WaitingRoom nhận được message:', data);
             
-            // Kiểm tra xem có phải câu hỏi đầu tiên không
-            if (data.id && (data.content || data.answerA)) {
-              console.log('🎯 WaitingRoom nhận được câu hỏi đầu tiên:', {
-                questionId: data.id,
-                content: data.content,
-                limitedTime: data.limitedTime
-              });
+            // Case 1: Participants update (ưu tiên xử lý trước)
+            if (Array.isArray(data) && data.length > 0 && data[0].id && data[0].firstname) {
+              console.log('👥 HOST nhận được participants update từ unified WebSocket:', data);
+              console.log('👥 Participants data detail:', data);
+              setParticipants(data);
               
-              // Lưu câu hỏi đầu tiên để PlayRoomForController có thể sử dụng
-              localStorage.setItem('firstQuestionData', JSON.stringify(data));
-              localStorage.setItem('firstQuestionReceived', 'true');
-              
-              console.log('✅ Đã lưu câu hỏi đầu tiên, sẵn sàng chuyển trang');
+              // Cập nhật participants trong localStorage
+              const currentRoomStr = localStorage.getItem('currentRoom');
+              if (currentRoomStr) {
+                const currentRoom = JSON.parse(currentRoomStr);
+                currentRoom.participants = data;
+                localStorage.setItem('currentRoom', JSON.stringify(currentRoom));
+              }
+              return;
             }
+            
+            if (data && typeof data === 'object' && !Array.isArray(data)) {
+              console.log('🔍 Kiểm tra object có thể là question:', Object.keys(data));
+              
+              const isQuestion = data.content || data.answerA || data.limitedTime;
+              
+              if (isQuestion) {
+                console.log('🎯 PHÁT HIỆN QUESTION - LƯU NGAY!');
+                console.log('🎯 Data:', data);
+                try {
+                  localStorage.setItem('firstQuestionData', JSON.stringify(data));
+                  localStorage.setItem('firstQuestionReceived', 'true'); // ✅ MISSING: Set localStorage flag
+                  window.firstQuestionReceived = true;
+                  
+                  // ✅ PROTECTION: Set flag để không cho xóa
+                  window.questionDataProtected = true;
+                  
+                  // Verify đã lưu thành công
+                  const saved = localStorage.getItem('firstQuestionData');
+                  const flag = localStorage.getItem('firstQuestionReceived');
+                  console.log('✅ VERIFY SAVE SUCCESS:', {
+                    dataSaved: !!saved,
+                    flagSaved: flag === 'true',
+                    savedLength: saved ? saved.length : 0,
+                    protected: window.questionDataProtected
+                  });
+                  
+                  return;
+                } catch (saveError) {
+                  console.error('❌ LỖI KHI LƯU LOCALSTORAGE:', saveError);
+                }
+              }
+            }
+            
+            console.log('📝 HOST unified message không xử lý được, bỏ qua:', data);
           } catch (error) {
-            console.error('❌ Lỗi parse message trong WaitingRoom:', error);
+            console.error('❌ HOST lỗi parse message trong unified WebSocket:', error);
           }
         });
+        
+        // Lưu client để có thể disconnect
+        window.waitingRoomStompClient = client;
+        window.participantsStompClient = client; // Cùng 1 client cho cả 2 mục đích
+        window.participantsConnected = true;
+        
       }, (error) => {
-        console.error('❌ WaitingRoom WebSocket error:', error);
+        console.error('❌ HOST Unified WebSocket error:', error);
         window.waitingRoomConnected = false;
+        window.participantsConnected = false;
       });
       
       // Lưu client để có thể disconnect
@@ -436,7 +545,7 @@ const WaitingRoomForController = () => {
       window.waitingRoomConnected = false; // Ban đầu chưa connected
       
     } catch (error) {
-      console.error('❌ Lỗi khi setup WebSocket:', error);
+      console.error('❌ HOST lỗi khi setup unified WebSocket:', error);
     }
   };
 
@@ -454,7 +563,7 @@ const WaitingRoomForController = () => {
           setLoading(true);
           // Load participants trước, QR code không critical
           await fetchParticipants();
-          // QR code có thể fail, nhưng không block UI
+          // QR code có thể fail, nhưng không block UI - KHÔNG gọi fetchParticipants nữa
           try {
             await fetchRoomData();
           } catch (error) {
@@ -469,22 +578,19 @@ const WaitingRoomForController = () => {
 
       loadData();
       
-      // Setup WebSocket để nhận câu hỏi đầu tiên
-      setupWebSocketForFirstQuestion();
+      // Setup unified WebSocket để nhận cả participants updates và câu hỏi đầu tiên
+      setupUnifiedWebSocket();
 
-      // Poll participants mỗi 3 giây
-      const interval = setInterval(fetchParticipants, 3000);
-      
       return () => {
-        clearInterval(interval);
-        // Disconnect WebSocket khi unmount - chỉ disconnect nếu đã connected
+        // Disconnect unified WebSocket connection
         if (window.waitingRoomStompClient && window.waitingRoomConnected) {
           try {
-            console.log('🔌 Disconnecting WaitingRoom WebSocket...');
+            console.log('🔌 Disconnecting Unified WebSocket...');
             window.waitingRoomStompClient.disconnect();
             window.waitingRoomConnected = false;
+            window.participantsConnected = false;
           } catch (error) {
-            console.error('❌ Lỗi khi disconnect WebSocket:', error);
+            console.error('❌ Lỗi khi disconnect Unified WebSocket:', error);
           }
         }
       };

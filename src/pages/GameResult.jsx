@@ -254,7 +254,45 @@ export default function GameResult({ joinCode = '682868' }) {
             <div>Đang tải bảng xếp hạng...</div>
           </div>
         ) : rankingData.length > 0 ? (
-          <RankingTable data={rankingData} totalQuestions={finalQuestionData ? 1 : 15} />
+          <>
+            {(() => {
+              // Lấy totalQuestions từ currentRoom (ưu tiên) hoặc fallback
+              const currentRoom = localStorage.getItem('currentRoom');
+              let totalQuestions = 4; // default fallback
+              
+              if (currentRoom) {
+                try {
+                  const roomData = JSON.parse(currentRoom);
+                  totalQuestions = roomData.totalQuestions || roomData.selectedQuiz?.questionCount || 4;
+                } catch (error) {
+                  console.error('❌ Error parsing currentRoom for totalQuestions:', error);
+                }
+              }
+              
+              console.log('🔍 GameResult RankingTable props:', {
+                totalQuestions,
+                rankingDataLength: rankingData.length,
+                finalQuestionDataExists: !!finalQuestionData
+              });
+              
+              return null; // Just for logging, không render gì
+            })()}
+            <RankingTable 
+              data={rankingData} 
+              totalQuestions={(() => {
+                const currentRoom = localStorage.getItem('currentRoom');
+                if (currentRoom) {
+                  try {
+                    const roomData = JSON.parse(currentRoom);
+                    return roomData.totalQuestions || roomData.selectedQuiz?.questionCount || 4;
+                  } catch (error) {
+                    console.error('❌ Error parsing currentRoom:', error);
+                  }
+                }
+                return 4;
+              })()} 
+            />
+          </>
         ) : (
           <div className="text-center text-gray-500 py-20">
             <div className="text-2xl mb-2">📊</div>

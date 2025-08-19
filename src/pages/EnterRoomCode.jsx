@@ -24,9 +24,6 @@ const EnterRoomCode = () => {
         navigate('/login')
         return
       }
-
-      // Test token trước khi join room
-      console.log('Testing token validity...')
       const testResponse = await fetch('http://localhost:8080/user/profile', {
         method: 'GET',
         headers: {
@@ -34,8 +31,6 @@ const EnterRoomCode = () => {
           'Content-Type': 'application/json'
         }
       })
-      
-      console.log('Token test response status:', testResponse.status)
       
       if (!testResponse.ok) {
         console.error('Token validation failed:', testResponse.status)
@@ -67,9 +62,6 @@ const EnterRoomCode = () => {
       })
 
       if (response.ok) {
-        // Log response headers và content type
-        console.log('Response headers:', Object.fromEntries(response.headers.entries()))
-        console.log('Content-Type:', response.headers.get('content-type'))
         
         let roomData
         try {
@@ -81,23 +73,9 @@ const EnterRoomCode = () => {
           console.log('Raw response text:', rawText)
           throw new Error('Không thể parse response JSON')
         }
-        console.log('Room data structure:', {
-          roomId: roomData.roomId,
-          id: roomData.id,
-          pinCode: roomData.pinCode,
-          clientSessionId: roomData.clientSessionId,
-          hasClientSessionId: !!roomData.clientSessionId
-        })
-        
+  
         // Log toàn bộ response để debug
         console.log('Full response data:', JSON.stringify(roomData, null, 2))
-        console.log('Response keys:', Object.keys(roomData))
-        console.log('clientSessionId type:', typeof roomData.clientSessionId)
-        console.log('clientSessionId value:', roomData.clientSessionId)
-        
-        // Join room API luôn tạo participant với isHost = false
-        // Nếu host muốn vào room của chính họ, họ sẽ navigate trực tiếp
-        // từ create room hoặc sử dụng flow khác
         
         const roomId = roomData.roomId || roomData.id
         console.log('Join successful, room ID:', roomId)
