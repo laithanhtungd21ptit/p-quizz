@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -19,10 +21,8 @@
   text-overflow: ellipsis;
 }
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
 :root {
-  --pink: #ED005D;
+  --pink: #ed005d;
   --dark-bg: #0a0a0a;
   --dark-bg-alt: #121212;
   --white: #ffffff;
@@ -34,7 +34,7 @@ html {
 }
 
 body {
-  font-family: 'FWWC2023', 'Inter', sans-serif;
+  font-family: "FWWC2023", "Inter", sans-serif;
   background: var(--dark-bg);
   color: var(--white);
   margin: 0;
@@ -94,7 +94,7 @@ body {
   height: 16px;
   width: 16px;
   border-radius: 50%;
-  background: #ED005D;
+  background: #ed005d;
   cursor: pointer;
   box-shadow: 0 0 10px rgba(237, 0, 93, 0.3);
 }
@@ -103,7 +103,7 @@ body {
   height: 16px;
   width: 16px;
   border-radius: 50%;
-  background: #ED005D;
+  background: #ed005d;
   cursor: pointer;
   border: none;
   box-shadow: 0 0 10px rgba(237, 0, 93, 0.3);
@@ -233,14 +233,14 @@ body {
   stroke-width: 2.2;
   flex-shrink: 0;
   transition: stroke 0.3s ease;
-} 
+}
 
 /* Responsive layout for sidebar and main content */
 @media (max-width: 1024px) {
   .main-content {
     margin-left: 72px !important;
   }
-  
+
   .main-content.sidebar-collapsed {
     margin-left: 72px !important;
   }
@@ -251,7 +251,7 @@ body {
     margin-left: 0 !important;
     padding: 1rem !important;
   }
-  
+
   .main-content.sidebar-collapsed {
     margin-left: 0 !important;
   }
@@ -262,7 +262,7 @@ body {
   box-sizing: border-box;
   word-wrap: break-word;
   overflow-wrap: break-word;
-} 
+}
 
 /* Responsive panels */
 @media (min-width: 1024px) {
@@ -286,4 +286,4 @@ body {
 #savedCards {
   -ms-overflow-style: none;
   scrollbar-width: none;
-} 
+}
