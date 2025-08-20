@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import TopControls from '../components/TopControls'
 import Sidebar from '../components/Sidebar'
 import SavedQuizCard from '../components/SavedQuizCard'
-import { searchQuizzes, addFavorite, removeFavorite } from '../services/api'
+import { searchQuizzes, addFavorite, removeFavorite, getUserFavorites } from '../services/api'
 
 const SearchResults = () => {
   const [searchParams] = useSearchParams()
@@ -51,8 +51,21 @@ const SearchResults = () => {
       console.log('Topic results:', topicResults)
       console.log('Name results:', nameResults)
       console.log('Total results:', allResults.length)
-      
-      setSearchResults(allResults)
+
+      // Đánh dấu trạng thái đã yêu thích (nếu đăng nhập)
+      let annotatedResults = allResults
+      try {
+        const favorites = await getUserFavorites(0, 1000)
+        const favoriteIds = new Set((favorites || []).map(f => f.quizId))
+        annotatedResults = allResults.map(q => ({
+          ...q,
+          favorite: favoriteIds.has(q.quizId)
+        }))
+      } catch (favErr) {
+        console.log('Không lấy được danh sách yêu thích (có thể chưa đăng nhập):', favErr?.response?.status || favErr?.message)
+      }
+
+      setSearchResults(annotatedResults)
     } catch (error) {
       console.error('Lỗi khi tìm kiếm:', error)
       setSearchResults([])
