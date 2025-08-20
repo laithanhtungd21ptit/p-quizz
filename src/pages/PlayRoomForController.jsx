@@ -4,6 +4,25 @@ import Chat from "../components/Chat";
 import { getRoomRanking, getNextQuestion, getRoomParticipants } from '../services/api';
 
 export default function PlayRoomForController() {
+  // Gọi kết thúc phòng không chặn điều hướng (fire-and-forget)
+  const endRoomNonBlocking = (roomId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!roomId || !token) return;
+      if (window.endRoomCalled) return;
+      window.endRoomCalled = true;
+      fetch(`http://localhost:8080/rooms/${roomId}/end`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        keepalive: true
+      }).catch(() => {});
+    } catch (e) {
+      // ignore
+    }
+  };
   // State cho WebSocket
   const [stompClient, setStompClient] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -183,8 +202,8 @@ export default function PlayRoomForController() {
             console.error('❌ Controller error parsing ranking update:', error);
           }
         });
-        
-        console.log('✅ Controller đã subscribe vào cả 2 topics cho room:', roomId);
+
+        console.log('✅ Controller đã subscribe vào các topics chính cho room:', roomId);
       } else {
         console.error('❌ Controller không có roomId để subscribe WebSocket topics!');
         console.error('📊 Debug currentRoom data:', localStorage.getItem('currentRoom'));
@@ -583,10 +602,7 @@ export default function PlayRoomForController() {
           
           // Lưu dữ liệu câu hỏi cuối vào localStorage để GameResult có thể sử dụng
           localStorage.setItem('finalQuestionData', JSON.stringify(nextQuestionData));
-          // ✅ CHUẨN HÓA: Chỉ dùng currentRoom, không lưu roomInfo duplicate
-          // isLastQuestion - không cần lưu localStorage, chỉ là logic tạm thời
-          
-          // ✅ KHÔNG CẦN lưu finalRankingData - GameResult sẽ gọi API fresh
+    
           console.log('🏁 Controller final question setup (không lưu ranking localStorage)');
           
           // Cập nhật câu hỏi hiện tại để Controller cũng thấy
@@ -619,8 +635,10 @@ export default function PlayRoomForController() {
           console.log(`⏰ Sẽ chuyển đến GameResult sau ${waitTime/1000} giây...`);
           
           setTimeout(() => {
-            console.log('🚀 Chuyển đến GameResult...');
+            const roomIdToEnd = getRoomIdFromJoinCode();
+            console.log('🚀 Điều hướng sang GameResult và gọi endRoom nền...');
             window.location.href = '/game-result';
+            endRoomNonBlocking(roomIdToEnd);
           }, waitTime);
           
           return; // Không tiếp tục xử lý câu hỏi tiếp theo
@@ -660,17 +678,6 @@ export default function PlayRoomForController() {
         window.correctTimerSet = false;
         window.correctTimerValue = null;
         console.log('🔓 Reset timer protection for new question');
-        
-        // isLastQuestion - không cần clear vì không lưu localStorage nữa
-        console.log('🧹 isLastQuestion logic - không dùng localStorage nữa');
-        
-        console.log('⏰ Controller bắt đầu đếm ngược câu hỏi số', nextQuestionNum, ':', questionTime, 'giây');
-        console.log('🎯 Controller limitedTime từ backend:', nextQuestionData.limitedTime);
-        
-        // TODO: Emit event hoặc thông báo cho backend để chuyển câu hỏi
-        // Có thể sử dụng WebSocket hoặc gọi API khác để thông báo
-        
-        // Không cần setTimeout nữa vì đã có countdown timer tự động
       }
     } catch (error) {
       console.error('Lỗi khi lấy câu hỏi tiếp theo:', error);
@@ -911,8 +918,10 @@ export default function PlayRoomForController() {
             
             // Rút ngắn thời gian chờ xuống 5s cho câu cuối
             setTimeout(() => {
-              console.log('🚀 Chuyển đến GameResult sau 5s...');
+              const roomIdToEnd = getRoomIdFromJoinCode();
+              console.log('🚀 Điều hướng sang GameResult và gọi endRoom nền...');
               window.location.href = '/game-result';
+              endRoomNonBlocking(roomIdToEnd);
             }, 5000);
           } else {
             setShowNextQuestionButton(true);

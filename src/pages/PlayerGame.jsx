@@ -115,10 +115,13 @@ const PlayerGame = () => {
         // Reset actual question count cho game mới
         setActualQuestionCount(1);
         
-        // Lấy thời gian từ database (nếu có)
-        const questionTime = parsedData.limitedTime || parsedData.timeLimit || parsedData.time || 30; // Ưu tiên limitedTime từ backend
-        console.log('Setting question time from database:', questionTime, 'seconds');
-        setTimeLeft(questionTime);
+        // Lấy thời gian còn lại dựa trên startTime từ backend (nếu có)
+        const baseLimit = parsedData.limitedTime || parsedData.timeLimit || parsedData.time || 30; // Ưu tiên limitedTime từ backend
+        const startTimeMs = parsedData.startTime ? new Date(parsedData.startTime).getTime() : null;
+        const elapsedSec = startTimeMs ? Math.floor((Date.now() - startTimeMs) / 1000) : 0;
+        const remainingTime = Math.max(baseLimit - elapsedSec, 0);
+        console.log('Setting question time using startTime sync:', { baseLimit, startTime: parsedData.startTime, elapsedSec, remainingTime });
+        setTimeLeft(remainingTime);
         
         // ✅ KHÔNG CẦN lưu finalRankingData - real-time via WebSocket
         console.log('🔄 Reset PlayerGame state (không lưu ranking localStorage)');
@@ -304,12 +307,33 @@ const PlayerGame = () => {
             }
           }
           
-          // ✅ KHÔNG CẦN lưu finalRankingData - chỉ update state
           console.log('📊 [WebSocket] Real-time ranking updated (không lưu localStorage)');
           
         } catch (error) {
           console.error('❌ Error parsing ranking update:', error);
         }
+      });
+      
+      const endedTopic = `/topic/room/${roomId}/ended`;
+      client.subscribe(endedTopic, (message) => {
+        console.log('=== 🏁 ROOM ENDED MESSAGE RECEIVED (PLAYER) ===');
+        console.log('📨 Raw message:', message.body);
+        try {
+          const finalRanking = JSON.parse(message.body);
+          if (Array.isArray(finalRanking)) {
+            setRealRankingData(finalRanking);
+          }
+        } catch (e) {
+          console.error('❌ Error parsing ROOM_ENDED message:', e);
+        }
+        localStorage.removeItem('currentQuestionData');
+        localStorage.removeItem('gameStarted');
+        localStorage.removeItem('finalAnswerResult');
+        localStorage.setItem('roomEnded', 'true');
+
+        setTimeout(() => {
+          window.location.href = '/game-result';
+        }, 300);
       });
       
       // Subscribe vào personal queue để nhận câu hỏi tiếp theo riêng
@@ -440,9 +464,13 @@ const PlayerGame = () => {
     // Cập nhật actual question count TRƯỚC khi set state khác
     setActualQuestionCount(prev => prev + 1);
     
-    // Reset timer với thời gian mới
-    const newTime = newQuestionData.limitedTime || 30;
-    setTimeLeft(newTime);
+    // Reset timer với thời gian mới dựa trên startTime từ backend (nếu có)
+    const baseLimitNext = newQuestionData.limitedTime || 30;
+    const startTimeMsNext = newQuestionData.startTime ? new Date(newQuestionData.startTime).getTime() : null;
+    const elapsedSecNext = startTimeMsNext ? Math.floor((Date.now() - startTimeMsNext) / 1000) : 0;
+    const remainingTimeNext = Math.max(baseLimitNext - elapsedSecNext, 0);
+    console.log('Reset timer using startTime sync for next question:', { baseLimitNext, startTime: newQuestionData.startTime, elapsedSecNext, remainingTimeNext });
+    setTimeLeft(remainingTimeNext);
     
     // Reset các state khác
     setHasAnswered(false);
@@ -1176,23 +1204,7 @@ const PlayerGame = () => {
                   return prev - 1.4; // Giảm để hết 100% trong 7 giây (100/70 = ~1.4)
                 });
               }, 100);
-              
-              // ✅ GUARANTEED NAVIGATION: Đảm bảo chuyển trang sau 8 giây
-              const navigationTimer = setTimeout(() => {
-                console.log('🚀 [TIMER] Navigating to GameResult after 8s...');
-                console.log('🔍 [TIMER] Current state:', {
-                  hasAnswered,
-                  isLastQuestion,
-                  showRankingTable,
-                  timeLeft
-                });
-                window.location.href = '/game-result';
-              }, 8000); // 8 giây để chắc chắn
-              
-              // Store timer reference to clear if needed
-              window.gameResultNavigationTimer = navigationTimer;
-              console.log('⏱️ Set navigation timer for 8 seconds');
-              
+ 
               return; // Không tiếp tục xử lý ranking thường
             }
             console.log('✅ Ranking sẽ được cập nhật real-time qua WebSocket từ Kafka');
@@ -1299,11 +1311,11 @@ const PlayerGame = () => {
                 timeTaken: response.timeTaken
               });
               
-          // Cache điểm số từ response để hiển thị ngay lập tức
-          setCachedPlayerScore(response.score);
-          
-          console.log('=== 🎯 SUBMIT ANSWER RESPONSE ===');
-          console.log('Score mới từ backend:', response.score);
+              // Cache điểm số từ response để hiển thị ngay lập tức
+              setCachedPlayerScore(response.score);
+              
+              console.log('=== 🎯 SUBMIT ANSWER RESPONSE ===');
+              console.log('Score mới từ backend:', response.score);
               console.log('Is Correct:', response.correct);
               console.log('Đáp án đúng:', response.correctAnswer);
               console.log('Bạn chọn:', response.selectedAnswer);
@@ -1323,7 +1335,7 @@ const PlayerGame = () => {
             byResponse: isLastQuestionByResponse,
             byQuestionData: isLastQuestionByQuestionData,
             byCount: isLastQuestionByCount,
-            actualQuestionCount: actualQuestionCount,
+                actualQuestionCount: actualQuestionCount,
             totalQuestions: totalQuestions,
             calculation: `${actualQuestionCount} === ${totalQuestions} = ${isLastQuestionByCount}`
           });
@@ -1374,27 +1386,27 @@ const PlayerGame = () => {
             localStorage.setItem('finalQuestionData', JSON.stringify(questionData));
             // ✅ CHUẨN HÓA: Chỉ dùng currentRoom, không lưu roomInfo duplicate
                 
-            // LẤY RANKING CUỐI CÙNG TỪ BACKEND sau khi trả lời câu cuối
-              try {
-                const currentRoom = localStorage.getItem('currentRoom');
-                if (currentRoom) {
-                  const roomData = JSON.parse(currentRoom);
-                  const roomId = roomData.roomId;
-                  
-                  if (roomId) {
-                  console.log('📊 Lấy bảng xếp hạng cuối cùng cho phòng:', roomId);
-                  const finalRankingResponse = await getRoomRanking(roomId);
-                  
-                  // Cập nhật ranking state để hiển thị
-                  setRealRankingData(finalRankingResponse);
-                  
+                // LẤY RANKING CUỐI CÙNG TỪ BACKEND sau khi trả lời câu cuối
+                try {
+                  const currentRoom = localStorage.getItem('currentRoom');
+                  if (currentRoom) {
+                    const roomData = JSON.parse(currentRoom);
+                    const roomId = roomData.roomId;
+                    
+                    if (roomId) {
+                      console.log('📊 Lấy bảng xếp hạng cuối cùng cho phòng:', roomId);
+                      const finalRankingResponse = await getRoomRanking(roomId);
+                      
+                      // Cập nhật ranking state để hiển thị
+                      setRealRankingData(finalRankingResponse);
+                      
                   // ✅ KHÔNG CẦN lưu vào localStorage - GameResult sẽ gọi API trực tiếp
                   console.log('📊 Final ranking response (time-up, không lưu localStorage):', finalRankingResponse);
+                    }
                   }
-                }
-              } catch (rankingError) {
-              console.error('❌ Lỗi khi lấy bảng xếp hạng cuối cùng:', rankingError);
-              // Fallback: sử dụng ranking hiện tại nếu có lỗi
+                } catch (rankingError) {
+                  console.error('❌ Lỗi khi lấy bảng xếp hạng cuối cùng:', rankingError);
+                  // Fallback: sử dụng ranking hiện tại nếu có lỗi
               // ✅ KHÔNG CẦN fallback localStorage - GameResult sẽ tự xử lý
               console.log('⚠️ Fallback (time-up): không lưu ranking vào localStorage, GameResult sẽ gọi API');
             }
@@ -1407,17 +1419,17 @@ const PlayerGame = () => {
             }, 3000); // 3 giây để xem kết quả
             
             // Bắt đầu countdown progress cho câu cuối (chỉ để hiệu ứng)
-            setCountdownProgress(100);
-            const finalCountdownInterval = setInterval(() => {
-              setCountdownProgress(prev => {
+                setCountdownProgress(100);
+                const finalCountdownInterval = setInterval(() => {
+                  setCountdownProgress(prev => {
                 if (prev <= 0) {
-                  clearInterval(finalCountdownInterval);
+                      clearInterval(finalCountdownInterval);
                   return 0;
-                }
+                    }
                 return prev - 1.4; // Giảm để hết 100% trong 7 giây (100/70 = ~1.4)
-              });
-            }, 100);
-            
+                  });
+                }, 100);
+                
             // ✅ GUARANTEED NAVIGATION: Đảm bảo chuyển trang sau 8 giây (TIME UP case)
             const navigationTimer = setTimeout(() => {
               console.log('🚀 [TIMER TIME-UP] Navigating to GameResult after 8s...');
@@ -1427,16 +1439,16 @@ const PlayerGame = () => {
                 showRankingTable,
                 timeLeft
               });
-              window.location.href = '/game-result';
+                  window.location.href = '/game-result';
             }, 8000); // 8 giây để chắc chắn
             
             // Store timer reference to clear if needed
             window.gameResultNavigationTimerTimeUp = navigationTimer;
             console.log('⏱️ Set navigation timer for 8 seconds (time up case)');
-            
-            return; // Không tiếp tục xử lý ranking thường
-          }
-          console.log('✅ Ranking sẽ được cập nhật real-time qua WebSocket từ Kafka');
+                
+                return; // Không tiếp tục xử lý ranking thường
+              }
+              console.log('✅ Ranking sẽ được cập nhật real-time qua WebSocket từ Kafka');
           } else {
             // Nếu backend trả về null (lỗi), vẫn set đã trả lời để tránh spam
             setHasAnswered(true);

@@ -307,7 +307,6 @@ const WaitingRoomForController = () => {
         }))
       });
       
-      console.log('🔗 Making API call to start room:', apiRoomId);
       const response = await fetch(`http://localhost:8080/rooms/start/${apiRoomId}`, {
         method: 'POST',
         headers: {
@@ -330,21 +329,15 @@ const WaitingRoomForController = () => {
           console.log('✅ Đã cập nhật trạng thái phòng đã start:', currentRoom);
         }
         
-  
-        window.firstQuestionReceived = false;
         window.messageCount = 0;
         
         // ✅ PROTECTION: Chỉ xóa nếu chưa có data
         const existingData = localStorage.getItem('firstQuestionData');
-        
-        if (!existingData && !window.firstQuestionReceived) {
+        if (!existingData) {
           console.log('🧹 Clearing localStorage - no existing question data');
           localStorage.removeItem('firstQuestionData');
         } else {
-          console.log('✅ PROTECTING existing localStorage data:', {
-            hasData: !!existingData,
-            hasWindowFlag: window.firstQuestionReceived === true
-          });
+          console.log('✅ Keeping existing firstQuestionData in localStorage');
         }
         
         // Kiểm tra topic matching
@@ -368,16 +361,14 @@ const WaitingRoomForController = () => {
         const questionCheckInterval = setInterval(() => {
           waitTime += checkInterval;
           
-          // Kiểm tra xem đã nhận được first question chưa
+          // Kiểm tra xem đã nhận được first question chưa (chỉ cần có dữ liệu)
           const questionData = localStorage.getItem('firstQuestionData');
-          
-          if (questionData && window.firstQuestionReceived) {
-            console.log('✅ First question received with data! Navigating to controller game...');
-            console.log('✅ Question data preview:', questionData.substring(0, 100) + '...');
+          if (questionData) {
+            console.log('✅ First question data detected! Navigating to controller game...');
             clearInterval(questionCheckInterval);
             navigate(`/play-room-for-controller/${roomId}`);
             return;
-          } 
+          }
         
           // Timeout sau 10 giây
           if (waitTime >= maxWaitTime) {
@@ -387,7 +378,6 @@ const WaitingRoomForController = () => {
             const finalQuestionData = localStorage.getItem('firstQuestionData');
             console.warn('🔍 Final check:', {
               hasData: !!finalQuestionData,
-              hasWindowFlag: window.firstQuestionReceived === true,
               wsConnected: window.waitingRoomConnected
             });
             

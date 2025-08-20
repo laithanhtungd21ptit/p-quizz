@@ -552,6 +552,23 @@ export const getRoomParticipants = async (roomId) => {
   }
 };
 
+// API kết thúc phòng (host)
+export const endRoom = async (roomId) => {
+  try {
+    console.log("Kết thúc phòng:", roomId);
+    const response = await api.post(`/rooms/${roomId}/end`);
+    console.log("Phòng đã kết thúc. Final ranking:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("Lỗi khi kết thúc phòng:", error);
+    if (error.response) {
+      console.error("Response error:", error.response.data);
+      console.error("Status:", error.response.status);
+    }
+    throw error;
+  }
+};
+
 // API lưu lịch sử chơi của player (không cần authentication)
 export const savePlayerHistory = async (pinCode, clientSessionId) => {
   try {

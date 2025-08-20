@@ -313,6 +313,28 @@ const WaitingRoomForPlayer = () => {
           console.error('❌ Player lỗi parse unified message:', error);
         }
       });
+
+      const endedTopic = `/topic/room/${actualRoomId}/ended`;
+      console.log('📡 Player subscribing to ended topic:', endedTopic);
+      stompClient.subscribe(endedTopic, (message) => {
+        console.log('=== 🏁 ROOM ENDED MESSAGE RECEIVED (WAITING PLAYER) ===');
+        console.log('📨 Raw message:', message.body);
+        try {
+          const finalRanking = JSON.parse(message.body);
+          console.log('🏁 Final ranking (optional use):', finalRanking);
+        } catch (e) {
+          // ignore parse error
+        }
+
+        // Cleanup game-related state but keep currentRoom for GameResult
+        localStorage.removeItem('currentQuestionData');
+        localStorage.removeItem('gameStarted');
+        localStorage.removeItem('finalAnswerResult');
+        localStorage.setItem('roomEnded', 'true');
+
+        // Navigate to GameResult
+        navigate('/game-result');
+      });
       
       // Subscribe vào queue để nhận thông báo kick riêng
       stompClient.subscribe('/user/queue/kick', (message) => {

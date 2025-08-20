@@ -74,7 +74,6 @@ const EnterRoomCode = () => {
         }
         
         const roomId = roomData.roomId || roomData.id
-        console.log('Join successful, room ID:', roomId)
         
         // ✅ CHUẨN HÓA: Chỉ lưu currentRoom, tất cả thông tin đã có trong đó
         localStorage.setItem('currentRoom', JSON.stringify(roomData))
