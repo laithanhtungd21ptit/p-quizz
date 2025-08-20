@@ -1,5 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+// import SockJS from 'sockjs-client';
+// import Stomp from 'stompjs';
+import { updateRoomAvatarWithString } from '../services/api.js';
 import SupportCard from "../components/SupportCard";
 import Chat from "../components/Chat"
 
@@ -178,8 +181,6 @@ const WaitingRoomForPlayer = () => {
   // WebSocket connection để nhận real-time updates
   useEffect(() => {
     if (!roomId) return;
-
-
     
     // Sử dụng SockJS thay vì native WebSocket
     const socket = new SockJS('http://localhost:8080/ws');
@@ -361,8 +362,6 @@ const WaitingRoomForPlayer = () => {
       setLoading(false);
     }
   };
-  
-
 
   // Fetch participants
   const fetchParticipants = async (token) => {
@@ -433,8 +432,6 @@ const WaitingRoomForPlayer = () => {
     return await fetchSupportCardsWithData(token, roomData.pinCode, clientSessionId);
   };
 
-
-
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (
@@ -450,10 +447,49 @@ const WaitingRoomForPlayer = () => {
   }, []);
 
   const togglePopup = () => setIsPopupOpen((prev) => !prev);
-  const selectAvatar = (src) => {
-    setAvatar(src);
-    setIsPopupOpen(false);
-  };
+  const selectAvatar = async (src) => {
+  const oldAvatar = avatar;
+  setAvatar(src);           // optimistic UI
+  setIsPopupOpen(false);
+
+  try {
+    // gọi API (FormData avatar = string)
+    const updated = await updateRoomAvatarWithString(roomId, src);
+    // updated: ParticipantDTO (server trả participant đã update) hoặc object chứa avatar url
+
+    // update participants local nếu backend trả ParticipantDTO
+    if (updated && updated.id) {
+      setParticipants(prev => prev.map(p => (p.id === updated.id ? updated : p)));
+    } else if (updated && updated.avatar) {
+      // nếu backend trả chỉ avatar url
+      setParticipants(prev => prev.map(p => {
+        if (userData && (p.id === userData.id || p.username === userData.username)) {
+          return { ...p, avatar: updated.avatar };
+        }
+        return p;
+      }));
+    }
+
+    // cập nhật user local nếu user hiện tại thay đổi avatar
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      const u = JSON.parse(userStr);
+      if (u.id === (updated?.id) || u.username === (updated?.username) || u.username === userData?.username) {
+        u.avatar = updated?.avatar || src;
+        localStorage.setItem('user', JSON.stringify(u));
+        setUserData(u);
+      }
+    }
+  } catch (err) {
+    console.error('Update avatar thất bại', err);
+    setAvatar(oldAvatar); // rollback
+    // show UI feedback
+    alert('Cập nhật avatar thất bại. Vui lòng thử lại.');
+  }
+};
+
+
+  
   const swapSupport = async () => {
     if (swapCount >= maxSwapCount) {
       return;
@@ -641,9 +677,7 @@ const WaitingRoomForPlayer = () => {
 
       <div className="text-white text-center mt-10 text-base font-content">
         Đang chờ người điều khiển bắt đầu...
-      </div>
-
-      
+      </div>      
 
       <div className="w-full max-w-3xl mx-auto">
         <Chat />

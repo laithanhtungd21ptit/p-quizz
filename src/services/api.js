@@ -534,4 +534,50 @@ export const savePlayerHistory = async (pinCode, clientSessionId) => {
   }
 };
 
+// --- avatar API ---
+// Gửi FormData với field 'avatar' = string (ví dụ "/avatar/avatar_3.png")
+// Tương thích khi backend bind @ModelAttribute String avatar
+export const updateRoomAvatarWithString = async (roomId, avatarString) => {
+  try {
+    const clientSessionId = localStorage.getItem("clientSessionId") || "";
+
+    const form = new FormData();
+    form.append("avatar", avatarString); // key phải khớp với UserProfileUpdateRequest
+    form.append("clientSessionId", clientSessionId);
+
+    const response = await api.put(`/rooms/${roomId}/avatar`, form, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    return response.data; // ParticipantDTO
+  } catch (error) {
+    console.error(
+      "Lỗi updateRoomAvatarWithString:",
+      error.response?.status,
+      error.response?.data || error.message
+    );
+    throw error;
+  }
+};
+
+// Gửi FormData với field 'avatar' = file (MultipartFile)
+export const updateRoomAvatarWithFile = async (roomId, fileBlob, filename = 'avatar.png') => {
+  try {
+    const form = new FormData();
+    form.append('avatar', fileBlob, filename);
+
+    const response = await api.put(`/rooms/${roomId}/avatar`, form, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Lỗi updateRoomAvatarWithFile:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
 export default api;
