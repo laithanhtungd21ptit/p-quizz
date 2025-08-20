@@ -13,31 +13,30 @@ export default function GameResult({ joinCode = '682868' }) {
 
 
     const isHost = () => {
-    const currentRoom = localStorage.getItem('currentRoom');
-    
-    if (!currentRoom) {
-      console.log('🔍 No room data - defaulting to not host');
-      return false;
-    }
-    
-    try {
-      const roomData = JSON.parse(currentRoom);
-      
-      // ✅ LOGIC ĐƠN GIẢN: Kiểm tra host object trong currentRoom
-      const hasHostObject = roomData.host && typeof roomData.host === 'object';
-      
-      console.log('🔍 SIMPLE HOST CHECK:', {
-        hasHostObject: hasHostObject,
-        hostObject: roomData.host,
-        decision: hasHostObject ? 'HOST' : 'PLAYER'
-      });
-      
-      
-    } catch (error) {
-      console.error('❌ Error checking host status:', error);
-      return false;
-    }
-  };
+  const currentRoom = localStorage.getItem('currentRoom');
+  
+  if (!currentRoom) {
+    console.log('🔍 No room data - defaulting to not host');
+    return false;
+  }
+  
+  try {
+    const roomData = JSON.parse(currentRoom);
+    const hasHostObject = roomData.host && typeof roomData.host === 'object';
+
+    console.log('🔍 SIMPLE HOST CHECK:', {
+      hasHostObject: hasHostObject,
+      hostObject: roomData.host,
+      decision: hasHostObject ? 'HOST' : 'PLAYER'
+    });
+
+    return hasHostObject;
+  } catch (error) {
+    console.error('❌ Error checking host status:', error);
+    return false;
+  }
+};
+
 
   // Load dữ liệu từ localStorage khi component mount
   useEffect(() => {
@@ -386,6 +385,7 @@ export default function GameResult({ joinCode = '682868' }) {
               localStorage.removeItem('currentRoom');
               localStorage.removeItem('gameStarted');
               localStorage.removeItem("currentQuestionData");
+              localStorage.removeItem('clientSessionId');
             // Quay về trang chủ
             window.location.href = '/'
           }}

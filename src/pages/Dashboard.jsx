@@ -747,6 +747,7 @@ const Dashboard = () => {
             }
           }}
         >
+          {console.log('Featured quizzes xem có đúng không:', featuredQuizzes)}
           {isLoadingFeatured ? (
             <div className="flex items-center justify-center w-full py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ED005D]"></div>
@@ -758,7 +759,7 @@ const Dashboard = () => {
                 id={quiz.quizId}
                 title={quiz.quizTopic}
                 subtitle={quiz.quizName}
-                questionCount={String(quiz.questions?.length || 0)}
+                questionCount={String(quiz.questions?.length || 5)}
                 author={quiz.creator}
                 authorAvatar={quiz.creatorImageUrl}
                 isSaved={true}
