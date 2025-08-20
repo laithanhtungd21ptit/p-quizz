@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-const TOKEN_KEY = 'accessToken';
+// ✅ CHUẨN HÓA: Sử dụng 'token' thay vì 'accessToken'
+const TOKEN_KEY = 'token';
 
 const api = axios.create({
   baseURL: BASE,
@@ -15,8 +16,18 @@ api.interceptors.request.use(
   (cfg) => {
     try {
       const token = localStorage.getItem(TOKEN_KEY);
-      if (token) cfg.headers.Authorization = `Bearer ${token}`;
-    } catch (e) { /* ignore */ }
+      if (token) {
+        cfg.headers.Authorization = `Bearer ${token}`;
+      } else {
+        console.log('⚠️ API Request without token:', {
+          url: cfg.url,
+          method: cfg.method,
+          tokenKey: TOKEN_KEY
+        });
+      }
+    } catch (e) { 
+      console.error('❌ Error getting token:', e);
+    }
     return cfg;
   },
   (err) => Promise.reject(err)

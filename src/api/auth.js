@@ -1,18 +1,23 @@
-import {jwtDecode} from 'jwt-decode';
-import api from './api';
+import { jwtDecode } from "jwt-decode";
+import api from "./api";
 
-const TOKEN_KEY = 'accessToken';
-const USER_KEY = 'currentUser';
+// ✅ CHUẨN HÓA: Chỉ dùng 'token' làm key chính (vì được dùng nhiều nhất)
+const TOKEN_KEY = "token";
+const USER_KEY = "user";
 
 function decodeToken(token) {
   try {
     const payload = jwtDecode(token);
     // Normalize roles extraction (support multiple claim names)
     let roles = [];
-    if (payload.roles) roles = Array.isArray(payload.roles) ? payload.roles : [payload.roles];
-    else if (payload.role) roles = Array.isArray(payload.role) ? payload.role : [payload.role];
+    if (payload.roles)
+      roles = Array.isArray(payload.roles) ? payload.roles : [payload.roles];
+    else if (payload.role)
+      roles = Array.isArray(payload.role) ? payload.role : [payload.role];
     else if (payload.authorities && Array.isArray(payload.authorities)) {
-      roles = payload.authorities.map(a => (typeof a === 'string' ? a : a.authority)).filter(Boolean);
+      roles = payload.authorities
+        .map((a) => (typeof a === "string" ? a : a.authority))
+        .filter(Boolean);
     }
 
     const username = payload.sub || payload.username || payload.user || null;
@@ -26,7 +31,7 @@ function decodeToken(token) {
 
 export async function loginApi({ username, password }) {
   try {
-    const res = await api.post('/auth/login', { username, password });
+    const res = await api.post("/auth/login", { username, password });
     const token = res.data?.accessToken || res.data?.token || null;
 
     if (!token) {
@@ -34,18 +39,17 @@ export async function loginApi({ username, password }) {
       return { token: null, raw: res.data };
     }
 
+    // ✅ CHUẨN HÓA: TOKEN_KEY = 'token', không cần duplicate
     localStorage.setItem(TOKEN_KEY, token);
-    // keep legacy keys for backward compatibility
-    localStorage.setItem('token', token);
 
     const decoded = decodeToken(token);
     const currentUser = {
       username: decoded.username || username,
       roles: decoded.roles || [],
-      expiresAt: decoded.exp || null
+      expiresAt: decoded.exp || null,
     };
+    // ✅ CHUẨN HÓA: Sử dụng USER_KEY ('user') làm key duy nhất
     localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
-    localStorage.setItem('user', JSON.stringify(currentUser)); // Thêm key 'user'
 
     return { token, user: currentUser, raw: res.data };
   } catch (err) {
@@ -53,8 +57,10 @@ export async function loginApi({ username, password }) {
       err?.response?.data?.message ||
       err?.response?.data ||
       err.message ||
-      'Đăng nhập thất bại';
-    throw new Error(typeof message === 'string' ? message : JSON.stringify(message));
+      "Đăng nhập thất bại";
+    throw new Error(
+      typeof message === "string" ? message : JSON.stringify(message)
+    );
   }
 }
 
@@ -72,17 +78,23 @@ export function getAccessToken() {
 }
 
 export async function logoutLocal() {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
-  localStorage.removeItem('token'); // Xóa key 'token'
-  localStorage.removeItem('user'); // Xóa key 'user'
+  localStorage.removeItem(TOKEN_KEY); // TOKEN_KEY = 'token'
+  localStorage.removeItem(USER_KEY); // USER_KEY = 'user'
+  // ✅ CLEANUP LEGACY: Xóa các duplicate keys
+  localStorage.removeItem("accessToken"); // Legacy duplicate của 'token'
+  localStorage.removeItem("currentUser"); // Legacy duplicate của 'user'
   // optional: call backend logout endpoint if exists:
   // await api.post('/auth/logout');
 }
 
-export async function registerApi({ username, email, password, confirmPassword }) {
+export async function registerApi({
+  username,
+  email,
+  password,
+  confirmPassword,
+}) {
   try {
-    const res = await api.post('/auth/register', {
+    const res = await api.post("/auth/register", {
       username,
       email,
       password,
@@ -94,36 +106,42 @@ export async function registerApi({ username, email, password, confirmPassword }
       err?.response?.data?.message ||
       err?.response?.data ||
       err.message ||
-      'Đăng ký thất bại';
-    throw new Error(typeof message === 'string' ? message : JSON.stringify(message));
+      "Đăng ký thất bại";
+    throw new Error(
+      typeof message === "string" ? message : JSON.stringify(message)
+    );
   }
 }
 
 export async function forgotPasswordApi({ username }) {
   try {
-    const res = await api.post('/auth/forgot-password', { username });
+    const res = await api.post("/auth/forgot-password", { username });
     return res.data;
   } catch (err) {
     const message =
       err?.response?.data?.message ||
       err?.response?.data ||
       err.message ||
-      'Yêu cầu quên mật khẩu thất bại';
-    throw new Error(typeof message === 'string' ? message : JSON.stringify(message));
+      "Yêu cầu quên mật khẩu thất bại";
+    throw new Error(
+      typeof message === "string" ? message : JSON.stringify(message)
+    );
   }
 }
 
 export async function verifyCodeApi({ username, code, newPassword }) {
   try {
     const payload = { username, code, newPassword };
-    const res = await api.post('/auth/verify-code', payload);
+    const res = await api.post("/auth/verify-code", payload);
     return res.data;
   } catch (err) {
     const message =
       err?.response?.data?.message ||
       err?.response?.data ||
       err.message ||
-      'Xác thực thất bại';
-    throw new Error(typeof message === 'string' ? message : JSON.stringify(message));
+      "Xác thực thất bại";
+    throw new Error(
+      typeof message === "string" ? message : JSON.stringify(message)
+    );
   }
 }

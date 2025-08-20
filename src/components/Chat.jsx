@@ -65,7 +65,8 @@ const Chat = ({ groupName = 'default' }) => {
 
     if (stompClientRef.current && connected) return;
 
-    const token = (typeof getAccessToken === 'function') ? getAccessToken() : localStorage.getItem('accessToken');
+    // ✅ CHUẨN HÓA: Sử dụng getAccessToken() hoặc fallback về 'token'
+    const token = (typeof getAccessToken === 'function') ? getAccessToken() : localStorage.getItem('token');
     if (!token) {
       console.warn('No access token - websocket will not connect until logged in.');
       return;
