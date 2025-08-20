@@ -191,14 +191,10 @@ const CreateRoom = ({ onClose }) => {
       })
 
       if (response.ok) {
-        const roomData = await response.json()
-        console.log('Phòng đã được tạo:', roomData)
-        
+        const roomData = await response.json()     
         // Kiểm tra roomId có tồn tại không
         const roomId = roomData.roomId || roomData.id || roomData.room?.id
         const pinCode = roomData.pinCode || roomData.pin || roomData.joinCode
-        console.log('Extracted roomId:', roomId)
-        console.log('Extracted pinCode:', pinCode)
         
         if (!roomId) {
           setError('Không thể lấy ID phòng từ response')

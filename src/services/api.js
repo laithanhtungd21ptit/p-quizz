@@ -494,8 +494,6 @@ export const submitAnswer = async (pinCode, answerData) => {
 // API lấy bảng xếp hạng của phòng
 export const getRoomRanking = async (roomId) => {
   try {
-    console.log("Lấy bảng xếp hạng cho phòng:", roomId);
-
     const response = await api.get(`/gamerank/${roomId}/ranking`);
 
     console.log("Bảng xếp hạng từ backend:", response.data);
@@ -504,7 +502,6 @@ export const getRoomRanking = async (roomId) => {
     console.error("Lỗi khi lấy bảng xếp hạng:", error);
     if (error.response) {
       console.error("Response error:", error.response.data);
-      console.error("Status:", error.response.status);
     }
     throw error;
   }
@@ -525,7 +522,6 @@ export const getNextQuestion = async (pinCode, clientSessionId) => {
     console.log("Câu hỏi tiếp theo từ backend:", response.data);
     console.log("limitedTime từ API:", response.data?.limitedTime);
     console.log("questionLast từ API:", response.data?.questionLast);
-    console.log("All response keys:", Object.keys(response.data || {}));
     return response.data;
   } catch (error) {
     console.error("Lỗi khi lấy câu hỏi tiếp theo:", error);

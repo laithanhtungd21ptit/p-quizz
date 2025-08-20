@@ -201,7 +201,6 @@ export default function PlayRoomForController() {
     try {
       const roomId = getRoomIdFromJoinCode();
       if (roomId) {
-        console.log('🔄 Lấy bảng xếp hạng cho phòng:', roomId);
         const response = await getRoomRanking(roomId);
         setRankingData(response);
         setLoading(false);

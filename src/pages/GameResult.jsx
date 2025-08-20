@@ -12,60 +12,27 @@ export default function GameResult({ joinCode = '682868' }) {
   const [saved, setSaved] = useState(false);
 
 
-  const isHost = () => {
+    const isHost = () => {
     const currentRoom = localStorage.getItem('currentRoom');
-    const user = localStorage.getItem('user');
     
-    if (!currentRoom || !user) {
-      console.log('🔍 No room or user data - defaulting to not host');
+    if (!currentRoom) {
+      console.log('🔍 No room data - defaulting to not host');
       return false;
     }
     
     try {
       const roomData = JSON.parse(currentRoom);
-      const userData = JSON.parse(user);
       
-      console.log('🔍 Host check data:', {
-        roomData: roomData,
-        userData: userData,
-        roomHostField: roomData.host,
-        roomHostUsername: roomData.hostUsername,
-        roomCreatedBy: roomData.createdBy,
-        currentUser: userData.username,
-        participants: roomData.participants
+      // ✅ LOGIC ĐƠN GIẢN: Kiểm tra host object trong currentRoom
+      const hasHostObject = roomData.host && typeof roomData.host === 'object';
+      
+      console.log('🔍 SIMPLE HOST CHECK:', {
+        hasHostObject: hasHostObject,
+        hostObject: roomData.host,
+        decision: hasHostObject ? 'HOST' : 'PLAYER'
       });
       
-      // Kiểm tra từ participants trong room data
-      if (roomData.participants && Array.isArray(roomData.participants)) {
-        const currentUserParticipant = roomData.participants.find(p => {
-          const usernameMatch = p.username === userData.username;
-          const firstnameMatch = p.firstname === userData.username || p.firstName === userData.username;
-          const idMatch = p.id === userData.id || p.userId === userData.id;
-          
-          return usernameMatch || firstnameMatch || idMatch;
-        });
-        
-        if (currentUserParticipant) {
-          const isParticipantHost = currentUserParticipant.isHost === true;
-          console.log('🔍 Found in participants:', currentUserParticipant, 'isHost:', isParticipantHost);
-          return isParticipantHost;
-        }
-      }
       
-      // Fallback: check theo các field khác
-      const isRoomHost = roomData.hostUsername === userData.username || 
-                        roomData.createdBy === userData.username ||
-                        roomData.host === userData.username;
-      
-      console.log('🔍 Host check result:', {
-        isRoomHost,
-        hasClientSessionId: (() => {
-          const currentRoom = localStorage.getItem('currentRoom');
-          return currentRoom ? !!JSON.parse(currentRoom).clientSessionId : false;
-        })()
-      });
-      
-      return isRoomHost;
     } catch (error) {
       console.error('❌ Error checking host status:', error);
       return false;
@@ -74,32 +41,17 @@ export default function GameResult({ joinCode = '682868' }) {
 
   // Load dữ liệu từ localStorage khi component mount
   useEffect(() => {
-    console.log('🏁 GameResult: Đang load dữ liệu từ localStorage...');
-    
     const initializeRanking = async () => {
       try {
-        // 🎯 ALWAYS CALL API FIRST: Luôn gọi API trước để lấy fresh data
-        console.log('🎯 GameResult: LUÔN LUÔN gọi API để lấy ranking mới nhất...');
         const currentRoom = localStorage.getItem('currentRoom');
         if (currentRoom) {
           try {
             const roomData = JSON.parse(currentRoom);
             const roomId = roomData.roomId;
             
-            if (roomId) {
-              console.log('📡 Gọi API getRoomRanking cho roomId:', roomId);
-              console.log('📡 API URL sẽ là: /gamerank/' + roomId + '/ranking');
-              
+            if (roomId) { 
               const { getRoomRanking } = await import('../services/api');
               const freshRankingData = await getRoomRanking(roomId);
-              
-              console.log('🔍 API Response debug:', {
-                responseType: typeof freshRankingData,
-                isArray: Array.isArray(freshRankingData),
-                length: freshRankingData?.length,
-                firstItem: freshRankingData?.[0],
-                fullResponse: freshRankingData
-              });
               
               console.log('🔍 DETAILED API Response analysis:', {
                 roomId: roomId,
@@ -282,12 +234,6 @@ export default function GameResult({ joinCode = '682868' }) {
                 }
               }
               
-              console.log('🔍 GameResult RankingTable props:', {
-                totalQuestions,
-                rankingDataLength: rankingData.length,
-                finalQuestionDataExists: !!finalQuestionData
-              });
-              
               return null; // Just for logging, không render gì
             })()}
             <RankingTable 
@@ -316,6 +262,20 @@ export default function GameResult({ joinCode = '682868' }) {
 
       {/* Buttons: Lưu kết quả & Thoát */}
       <div className="w-full max-w-4xl my-6 flex justify-center gap-4">
+                 {/* DEBUG: Log để kiểm tra isHost logic */}
+         {(() => {
+           const hostResult = isHost();
+           console.log('🎯 GameResult render - isHost():', hostResult, '- Show save button:', !hostResult);
+           console.log('🎯 FINAL RESULT: User is', hostResult ? 'HOST' : 'PLAYER', '- Save button will be', !hostResult ? 'SHOWN' : 'HIDDEN');
+           console.log('🎯 USER ANALYSIS:', {
+             username: JSON.parse(localStorage.getItem('user') || '{}').username,
+             isVietnameseName: JSON.parse(localStorage.getItem('user') || '{}').username?.includes('Nguyễn') || JSON.parse(localStorage.getItem('user') || '{}').username?.includes('Thị'),
+             isSystemUser: ['User1', 'User2'].includes(JSON.parse(localStorage.getItem('user') || '{}').username),
+             hasHostObject: !!JSON.parse(localStorage.getItem('currentRoom') || '{}').host
+           });
+           return null;
+         })()}
+        
         {/* Chỉ hiển thị nút "Lưu kết quả" cho player, không phải host */}
         {!isHost() && (
         <button
@@ -422,10 +382,10 @@ export default function GameResult({ joinCode = '682868' }) {
             
             // ✅ CLEANUP: Xóa dữ liệu game khỏi localStorage
               localStorage.removeItem('finalQuestionData');
-              // currentQuestionData - chỉ dành cho players, host không cần cleanup
               localStorage.removeItem('finalAnswerResult');
               localStorage.removeItem('currentRoom');
               localStorage.removeItem('gameStarted');
+              localStorage.removeItem("currentQuestionData");
             // Quay về trang chủ
             window.location.href = '/'
           }}
