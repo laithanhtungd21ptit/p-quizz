@@ -131,6 +131,69 @@ const QuizCard = ({
     
     console.log('Star clicked, isStarred:', !isStarred)
   }
+
+  const handleStartLive = async (e) => {
+    e.stopPropagation()
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        alert('Bạn cần đăng nhập để tạo phòng')
+        return
+      }
+
+      if (!quizId) {
+        alert('Không xác định được ID bộ câu hỏi')
+        return
+      }
+
+      const response = await fetch(`http://192.168.0.138:8080/rooms/create?quizId=${quizId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '')
+        console.error('Create room failed:', response.status, errorText)
+        alert(errorText || 'Không thể tạo phòng. Vui lòng thử lại.')
+        return
+      }
+
+      const roomData = await response.json()
+      const createdRoomId = roomData.roomId || roomData.id || roomData.room?.id
+      if (!createdRoomId) {
+        alert('Không thể lấy ID phòng từ phản hồi máy chủ')
+        return
+      }
+
+      // Lưu thông tin phòng tối thiểu để WaitingRoom sử dụng
+      const currentRoom = {
+        roomId: createdRoomId,
+        pinCode: roomData.pinCode,
+        qrCodeUrl: roomData.qrCodeUrl,
+        clientSessionId: roomData.clientSessionId,
+        createdAt: new Date().toISOString(),
+        isStarted: false,
+        isHost: true
+      }
+      try {
+        localStorage.setItem('currentRoom', JSON.stringify(currentRoom))
+        if (createdRoomId) {
+          localStorage.setItem(`currentRoom_${createdRoomId}`, JSON.stringify(currentRoom))
+        }
+        if (roomData.clientSessionId) {
+          localStorage.setItem('clientSessionId', roomData.clientSessionId)
+        }
+      } catch {}
+
+      navigate(`/waiting-room-for-controller/${createdRoomId}`)
+    } catch (err) {
+      console.error('Lỗi khi tạo phòng:', err)
+      alert('Có lỗi xảy ra khi tạo phòng. Vui lòng thử lại.')
+    }
+  }
   return (
     <>
       <div className="max-w-xl w-full bg-white rounded-lg shadow-lg flex gap-6 p-6 relative mx-auto mt-8 border-2 border-[#ED005D]"
@@ -224,6 +287,7 @@ const QuizCard = ({
           {/* Buttons and stats */}
           <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 mt-3">
             <button type="button"
+              onClick={handleStartLive}
               className="bg-[#ED005D] text-white text-xs font-semibold px-4 py-1 rounded-full hover:bg-[#d10052] focus-visible:outline-[#ED005D] focus-visible:outline-2">
               Bắt đầu quiz trực tiếp
             </button>
