@@ -1226,7 +1226,7 @@ const PlayerGame = () => {
               setShowRankingTable(true);
               return 0;
             }
-            return prev - 2; // Giảm 2% mỗi 100ms (5 giây = 5000ms, 5000/100 = 50 lần, 100/50 = 2%)
+            return prev - 6; // Giảm 2% mỗi 100ms (5 giây = 5000ms, 5000/100 = 50 lần, 100/50 = 2%)
           });
         }, 100);
         
@@ -1494,7 +1494,7 @@ const PlayerGame = () => {
           setIsModalClosing(false);
           setIsTimerPaused(false);
         }, 300);
-      }, 2500);
+      }, 1500);
     }
   };
 
