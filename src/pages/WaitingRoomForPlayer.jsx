@@ -92,10 +92,13 @@ const WaitingRoomForPlayer = () => {
         
         const user = JSON.parse(userStr);
         
-        // Lấy clientSessionId từ localStorage nếu có
-        const clientSessionId = localStorage.getItem('clientSessionId');
-        if (clientSessionId) {
-          user.clientSessionId = clientSessionId;
+        // ✅ CHUẨN HÓA: Lấy clientSessionId từ currentRoom nếu có
+        const currentRoom = localStorage.getItem('currentRoom');
+        if (currentRoom) {
+          const roomData = JSON.parse(currentRoom);
+          if (roomData.clientSessionId) {
+            user.clientSessionId = roomData.clientSessionId;
+          }
         }
         
         setUserData(user);
@@ -184,16 +187,15 @@ const WaitingRoomForPlayer = () => {
     const stompClient = Stomp.over(socket);
     stompClient.debug = null;
     
-    const clientSessionId = localStorage.getItem('clientSessionId');
     const currentRoom = localStorage.getItem('currentRoom');
     let connectHeaders = {};
     
-    if (clientSessionId) {
-      connectHeaders.clientSessionId = clientSessionId;
-    }
-    
+    // ✅ CHUẨN HÓA: Lấy cả clientSessionId và pinCode từ currentRoom
     if (currentRoom) {
       const roomData = JSON.parse(currentRoom);
+      if (roomData.clientSessionId) {
+        connectHeaders.clientSessionId = roomData.clientSessionId;
+      }
       if (roomData.pinCode) {
         connectHeaders.pinCode = roomData.pinCode;
       }
@@ -403,8 +405,9 @@ const WaitingRoomForPlayer = () => {
         const data = await response.json();
         setRoomData(data);
         
-        // Sau khi có roomData, gọi fetchSupportCards nếu có clientSessionId
-        const clientSessionId = localStorage.getItem('clientSessionId');
+        // ✅ CHUẨN HÓA: Sau khi có roomData, gọi fetchSupportCards
+        const currentRoom = localStorage.getItem('currentRoom');
+        const clientSessionId = currentRoom ? JSON.parse(currentRoom).clientSessionId : null;
         
         if (clientSessionId && data.pinCode && !hasFetchedInitialCards.current) {
           hasFetchedInitialCards.current = true;
@@ -494,7 +497,9 @@ const WaitingRoomForPlayer = () => {
 
   // Fetch support cards từ backend (sử dụng state hiện tại)
   const fetchSupportCards = async (token) => {
-    const clientSessionId = localStorage.getItem('clientSessionId');
+    // ✅ CHUẨN HÓA: Lấy clientSessionId từ currentRoom
+    const currentRoom = localStorage.getItem('currentRoom');
+    const clientSessionId = currentRoom ? JSON.parse(currentRoom).clientSessionId : null;
     
     if (!roomData?.pinCode || !clientSessionId) {
       return;
@@ -530,7 +535,9 @@ const WaitingRoomForPlayer = () => {
     }
 
     const token = localStorage.getItem('token');
-    const clientSessionId = localStorage.getItem('clientSessionId');
+    // ✅ CHUẨN HÓA: Lấy clientSessionId từ currentRoom
+    const currentRoom = localStorage.getItem('currentRoom');
+    const clientSessionId = currentRoom ? JSON.parse(currentRoom).clientSessionId : null;
     
     if (!token || !clientSessionId || !roomData?.pinCode) {
       return;

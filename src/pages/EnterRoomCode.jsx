@@ -80,22 +80,19 @@ const EnterRoomCode = () => {
         const roomId = roomData.roomId || roomData.id
         console.log('Join successful, room ID:', roomId)
         
-        // Lưu thông tin room vào localStorage
+        // ✅ CHUẨN HÓA: Chỉ lưu currentRoom, tất cả thông tin đã có trong đó
         localStorage.setItem('currentRoom', JSON.stringify(roomData))
-        localStorage.setItem('roomId', roomId.toString())
         
-        // Lưu clientSessionId riêng biệt để sử dụng sau này
-        if (roomData.clientSessionId) {
-          localStorage.setItem('clientSessionId', roomData.clientSessionId)
-          console.log('ClientSessionId saved:', roomData.clientSessionId)
-        } else {
-          console.warn('Không có clientSessionId trong response!')
-          console.log('Toàn bộ roomData:', roomData)
-        }
+        // ✅ VERIFIED: clientSessionId và roomId đã có trong roomData
+        console.log('✅ Room data includes:', {
+          roomId: roomData.roomId || roomData.id,
+          clientSessionId: roomData.clientSessionId,
+          pinCode: roomData.pinCode
+        })
         
-        console.log('Room data saved to localStorage:', {
-          currentRoom: roomData,
+        console.log('✅ Room data consolidated in currentRoom:', {
           roomId: roomId,
+          pinCode: roomData.pinCode,
           clientSessionId: roomData.clientSessionId
         })
         

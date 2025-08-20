@@ -55,17 +55,8 @@ const PlayerGame = () => {
       }
     }
     
-    // Kiểm tra xem có ranking cũ trong localStorage không
-    const savedRanking = localStorage.getItem('finalRankingData');
-    if (savedRanking) {
-      try {
-        const parsedRanking = JSON.parse(savedRanking);
-        console.log('📊 Load ranking cũ từ localStorage:', parsedRanking);
-        setRealRankingData(parsedRanking);
-      } catch (error) {
-        console.error('❌ Lỗi khi parse ranking từ localStorage:', error);
-      }
-    }
+    // ✅ KHÔNG CẦN load finalRankingData từ localStorage - real-time via WebSocket
+    console.log('📊 PlayerGame init - ranking sẽ đến từ WebSocket real-time');
 
     // Load support cards từ WaitingRoomForPlayer
     const savedSupportCards = localStorage.getItem('currentSupportCards');
@@ -129,11 +120,8 @@ const PlayerGame = () => {
         console.log('Setting question time from database:', questionTime, 'seconds');
         setTimeLeft(questionTime);
         
-        // Lưu ranking cũ vào localStorage trước khi reset (nếu có)
-        if (realRankingData.length > 0) {
-          localStorage.setItem('finalRankingData', JSON.stringify(realRankingData));
-          console.log('💾 Đã lưu ranking cũ vào localStorage trước khi reset');
-        }
+        // ✅ KHÔNG CẦN lưu finalRankingData - real-time via WebSocket
+        console.log('🔄 Reset PlayerGame state (không lưu ranking localStorage)');
         
         // Reset các state khác khi load question mới
         setHasAnswered(false);
@@ -205,16 +193,14 @@ const PlayerGame = () => {
     // Disable STOMP debug logging
     client.debug = null;
     
-    // Lấy clientSessionId và pinCode để authenticate WebSocket
-    const clientSessionId = localStorage.getItem('clientSessionId');
+    // ✅ CHUẨN HÓA: Lấy clientSessionId từ currentRoom thay vì localStorage riêng
     let connectHeaders = {};
-    
-    if (clientSessionId) {
-      connectHeaders.clientSessionId = clientSessionId;
-    }
     
     if (currentRoom) {
       const roomData = JSON.parse(currentRoom);
+      if (roomData.clientSessionId) {
+        connectHeaders.clientSessionId = roomData.clientSessionId;
+      }
       if (roomData.pinCode) {
         connectHeaders.pinCode = roomData.pinCode;
       }
@@ -318,9 +304,8 @@ const PlayerGame = () => {
             }
           }
           
-          // Lưu ranking realtime vào localStorage
-          localStorage.setItem('finalRankingData', JSON.stringify(rankingData));
-          console.log('💾 [WebSocket] Saved real-time ranking to localStorage');
+          // ✅ KHÔNG CẦN lưu finalRankingData - chỉ update state
+          console.log('📊 [WebSocket] Real-time ranking updated (không lưu localStorage)');
           
         } catch (error) {
           console.error('❌ Error parsing ranking update:', error);
@@ -683,8 +668,9 @@ const PlayerGame = () => {
   const useSupportCard = async (cardType) => {
     try {
       const token = localStorage.getItem('token');
-      const clientSessionId = localStorage.getItem('clientSessionId');
       const currentRoom = localStorage.getItem('currentRoom');
+      // ✅ CHUẨN HÓA: Lấy clientSessionId từ currentRoom
+      const clientSessionId = currentRoom ? JSON.parse(currentRoom).clientSessionId : null;
       
       if (!token || !clientSessionId || !currentRoom) {
         console.error('Thiếu thông tin để gọi API sử dụng thẻ');
@@ -1001,7 +987,9 @@ const PlayerGame = () => {
       
       try {
       // === CHUẨN BỊ DỮ LIỆU ĐÁP ÁN ===
-      const clientSessionId = localStorage.getItem('clientSessionId');
+      // ✅ CHUẨN HÓA: Lấy clientSessionId từ currentRoom
+      const currentRoomData = localStorage.getItem('currentRoom');
+      const clientSessionId = currentRoomData ? JSON.parse(currentRoomData).clientSessionId : null;
       
       const answerData = {
           selectedAnswer: selectedLetter,
@@ -1026,8 +1014,8 @@ const PlayerGame = () => {
         }
         
         // Gửi đáp án về backend ngay lập tức
-      const currentRoom = localStorage.getItem('currentRoom');
-      const pinCode = currentRoom ? JSON.parse(currentRoom).pinCode : null;
+      const roomDataForSubmit = localStorage.getItem('currentRoom');
+      const pinCode = roomDataForSubmit ? JSON.parse(roomDataForSubmit).pinCode : null;
         
         if (pinCode) {
           const response = await submitAnswer(pinCode, answerData);
@@ -1143,11 +1131,7 @@ const PlayerGame = () => {
               
               // Lưu dữ liệu câu hỏi cuối và kết quả vào localStorage
               localStorage.setItem('finalQuestionData', JSON.stringify(questionData));
-              // Lưu thông tin phòng
-              const currentRoom = localStorage.getItem('currentRoom');
-              if (currentRoom) {
-                localStorage.setItem('roomInfo', currentRoom);
-              }
+              // ✅ CHUẨN HÓA: Chỉ dùng currentRoom, không lưu roomInfo duplicate
               
               // LẤY RANKING CUỐI CÙNG TỪ BACKEND sau khi trả lời câu cuối
               try {
@@ -1163,18 +1147,15 @@ const PlayerGame = () => {
                     // Cập nhật ranking state để hiển thị
                     setRealRankingData(finalRankingResponse);
                     
-                    // Lưu ranking cuối cùng vào localStorage cho GameResult
-                    localStorage.setItem('finalRankingData', JSON.stringify(finalRankingResponse));
-                    console.log('💾 Đã lưu ranking cuối cùng vào localStorage:', finalRankingResponse);
+                    // ✅ KHÔNG CẦN lưu vào localStorage - GameResult sẽ gọi API trực tiếp
+                    console.log('📊 Final ranking response (không lưu localStorage):', finalRankingResponse);
                   }
                 }
               } catch (rankingError) {
                 console.error('❌ Lỗi khi lấy bảng xếp hạng cuối cùng:', rankingError);
                 // Fallback: sử dụng ranking hiện tại nếu có lỗi
-                if (realRankingData.length > 0) {
-                  localStorage.setItem('finalRankingData', JSON.stringify(realRankingData));
-                  console.log('💾 Fallback: đã lưu ranking hiện tại vào localStorage');
-                }
+                // ✅ KHÔNG CẦN fallback localStorage - GameResult sẽ tự xử lý
+                console.log('⚠️ Fallback: không lưu ranking vào localStorage, GameResult sẽ gọi API');
               }
               
               // Hiển thị kết quả và ranking cho câu cuối sau 3 giây
@@ -1268,7 +1249,9 @@ const PlayerGame = () => {
     
     try {
       // === CHUẨN BỊ DỮ LIỆU ĐÁP ÁN NULL ===
-      const clientSessionId = localStorage.getItem('clientSessionId');
+      // ✅ CHUẨN HÓA: Lấy clientSessionId từ currentRoom
+      const currentRoomForTimeUp = localStorage.getItem('currentRoom');
+      const clientSessionId = currentRoomForTimeUp ? JSON.parse(currentRoomForTimeUp).clientSessionId : null;
       
       const answerData = {
         selectedAnswer: null, // Submit null khi không chọn gì
@@ -1289,8 +1272,8 @@ const PlayerGame = () => {
       console.log('⚠️ Không có đáp án được chọn, submit null answer');
       
       // Gửi đáp án về backend
-        const currentRoom = localStorage.getItem('currentRoom');
-        const pinCode = currentRoom ? JSON.parse(currentRoom).pinCode : null;
+        const roomDataForTimeUpSubmit = localStorage.getItem('currentRoom');
+        const pinCode = roomDataForTimeUpSubmit ? JSON.parse(roomDataForTimeUpSubmit).pinCode : null;
         
         if (pinCode) {
           const response = await submitAnswer(pinCode, answerData);
@@ -1389,11 +1372,7 @@ const PlayerGame = () => {
             
             // Lưu dữ liệu câu hỏi cuối và kết quả vào localStorage
             localStorage.setItem('finalQuestionData', JSON.stringify(questionData));
-            // Lưu thông tin phòng
-                const currentRoom = localStorage.getItem('currentRoom');
-                if (currentRoom) {
-                  localStorage.setItem('roomInfo', currentRoom);
-                }
+            // ✅ CHUẨN HÓA: Chỉ dùng currentRoom, không lưu roomInfo duplicate
                 
             // LẤY RANKING CUỐI CÙNG TỪ BACKEND sau khi trả lời câu cuối
               try {
@@ -1409,18 +1388,15 @@ const PlayerGame = () => {
                   // Cập nhật ranking state để hiển thị
                   setRealRankingData(finalRankingResponse);
                   
-                  // Lưu ranking cuối cùng vào localStorage cho GameResult
-                  localStorage.setItem('finalRankingData', JSON.stringify(finalRankingResponse));
-                  console.log('💾 Đã lưu ranking cuối cùng vào localStorage:', finalRankingResponse);
+                  // ✅ KHÔNG CẦN lưu vào localStorage - GameResult sẽ gọi API trực tiếp
+                  console.log('📊 Final ranking response (time-up, không lưu localStorage):', finalRankingResponse);
                   }
                 }
               } catch (rankingError) {
               console.error('❌ Lỗi khi lấy bảng xếp hạng cuối cùng:', rankingError);
               // Fallback: sử dụng ranking hiện tại nếu có lỗi
-              if (realRankingData.length > 0) {
-                localStorage.setItem('finalRankingData', JSON.stringify(realRankingData));
-                console.log('💾 Fallback: đã lưu ranking hiện tại vào localStorage');
-              }
+              // ✅ KHÔNG CẦN fallback localStorage - GameResult sẽ tự xử lý
+              console.log('⚠️ Fallback (time-up): không lưu ranking vào localStorage, GameResult sẽ gọi API');
             }
             
             // Hiển thị kết quả và ranking cho câu cuối sau 3 giây (cho time-up case)

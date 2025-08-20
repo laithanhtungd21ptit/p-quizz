@@ -20,7 +20,8 @@ const Login = () => {
       const res = await login({ username, password });
       const user = res?.user || (res?.success && res.user) || null;
       // roles check from localStorage/getCurrentUser()
-      const stored = JSON.parse(localStorage.getItem('currentUser') || 'null');
+      // ✅ CHUẨN HÓA: Dùng 'user' thay vì 'currentUser'
+      const stored = JSON.parse(localStorage.getItem('user') || 'null');
       const roles = (stored?.roles || []).map(r => String(r).toUpperCase());
       const isAdmin = roles.some(r => r.includes('ADMIN') || r.includes('ROLE_ADMIN'));
 

@@ -343,14 +343,14 @@ const WaitingRoomForController = () => {
         const existingData = localStorage.getItem('firstQuestionData');
         const existingFlag = localStorage.getItem('firstQuestionReceived');
         
-        if (!existingData && existingFlag !== 'true') {
+        if (!existingData && !window.firstQuestionReceived) {
           console.log('🧹 Clearing localStorage - no existing question data');
           localStorage.removeItem('firstQuestionData');
-          localStorage.removeItem('firstQuestionReceived');
+          // firstQuestionReceived - chỉ dùng window flag
         } else {
           console.log('✅ PROTECTING existing localStorage data:', {
             hasData: !!existingData,
-            hasFlag: existingFlag === 'true'
+            hasWindowFlag: window.firstQuestionReceived === true
           });
         }
         
@@ -377,10 +377,9 @@ const WaitingRoomForController = () => {
           waitTime += checkInterval;
           
           // Kiểm tra xem đã nhận được first question chưa
-          const receivedFlag = localStorage.getItem('firstQuestionReceived');
           const questionData = localStorage.getItem('firstQuestionData');
           
-          if (questionData) {
+          if (questionData && window.firstQuestionReceived) {
             console.log('✅ First question received with data! Navigating to controller game...');
             console.log('✅ Question data preview:', questionData.substring(0, 100) + '...');
             clearInterval(questionCheckInterval);
@@ -394,10 +393,9 @@ const WaitingRoomForController = () => {
             
             // Kiểm tra localStorage cuối cùng
             const finalQuestionData = localStorage.getItem('firstQuestionData');
-            const finalFlag = localStorage.getItem('firstQuestionReceived');
             console.warn('🔍 Final check:', {
               hasData: !!finalQuestionData,
-              hasFlag: finalFlag === 'true',
+              hasWindowFlag: window.firstQuestionReceived === true,
               wsConnected: window.waitingRoomConnected
             });
             
@@ -500,7 +498,7 @@ const WaitingRoomForController = () => {
                 console.log('🎯 Data:', data);
                 try {
                   localStorage.setItem('firstQuestionData', JSON.stringify(data));
-                  localStorage.setItem('firstQuestionReceived', 'true'); // ✅ MISSING: Set localStorage flag
+                  // firstQuestionReceived - chỉ dùng window flag, không cần localStorage
                   window.firstQuestionReceived = true;
                   
                   // ✅ PROTECTION: Set flag để không cho xóa
@@ -508,10 +506,9 @@ const WaitingRoomForController = () => {
                   
                   // Verify đã lưu thành công
                   const saved = localStorage.getItem('firstQuestionData');
-                  const flag = localStorage.getItem('firstQuestionReceived');
                   console.log('✅ VERIFY SAVE SUCCESS:', {
                     dataSaved: !!saved,
-                    flagSaved: flag === 'true',
+                    windowFlagSet: window.firstQuestionReceived === true,
                     savedLength: saved ? saved.length : 0,
                     protected: window.questionDataProtected
                   });
