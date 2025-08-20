@@ -108,12 +108,12 @@ const PlayerGame = () => {
           correctAnswer: indexToLetter(parsedData.correctAnswer || 0), // Chuyển từ số sang chữ cái A, B, C, D
           selectedAnswer: null,
           image: parsedData.imageUrl || parsedData.image || null,
-          currentQuestion: 1,
-          totalQuestions: parsedData.totalQuestions || 4 // Ưu tiên từ backend
+          currentQuestion: actualQuestionCount,
+          totalQuestions: parsedData.totalQuestion || 5 // Ưu tiên từ backend
         });
         
         // Reset actual question count cho game mới
-        setActualQuestionCount(1);
+        setActualQuestionCount(prev => prev + 1);
         
         // Lấy thời gian còn lại dựa trên startTime từ backend (nếu có)
         const baseLimit = parsedData.limitedTime || parsedData.timeLimit || parsedData.time || 30; // Ưu tiên limitedTime từ backend
@@ -421,7 +421,7 @@ const PlayerGame = () => {
       currentCount: actualQuestionCount,
       newQuestionId: newQuestionData.id,
       isQuestionLast: newQuestionData.questionLast,
-      willBecomeCount: actualQuestionCount + 1
+      willBecomeCount: actualQuestionCount
     });
     
     // Lưu totalQuestions từ backend nếu có
@@ -457,9 +457,11 @@ const PlayerGame = () => {
       correctAnswer: indexToLetter(newQuestionData.correctAnswer || 0),
       selectedAnswer: null,
       image: newQuestionData.imageUrl || newQuestionData.image || null,
-      currentQuestion: actualQuestionCount + 1, // Số câu hỏi mới (sẽ hiển thị)
-      totalQuestions: newQuestionData.totalQuestions || totalQuestionsFromBackend || 4 // Ưu tiên từ backend
+      currentQuestion: newQuestionData.currentQuestion || actualQuestionCount,
+      totalQuestions: newQuestionData.totalQuestion || newQuestionData.totalQuestions || totalQuestionsFromBackend || 4
     });
+    
+    setActualQuestionCount(prev => prev + 1);
     
     // Cập nhật actual question count TRƯỚC khi set state khác
     setActualQuestionCount(prev => prev + 1);
@@ -1119,7 +1121,7 @@ const PlayerGame = () => {
               isLastQuestion: isLastQuestion,
               reason: isLastQuestion ? 
                 (isLastQuestionByResponse ? 'Backend response.questionLast === true' : 
-                 shouldUseQuestionDataFlag ? 'questionData.questionLast === true (response missing)' : 'count check') 
+                 shouldUseQuestionDataFlag ? 'questionData.questionLast === true (response missing)' : 'count') 
                 : 'Not last question'
             });
             
@@ -1129,7 +1131,7 @@ const PlayerGame = () => {
             //   console.log('⚠️ BACKUP: Backend chưa set questionLast=true nhưng đã đủ số câu. Force last question logic!');
             //   // ... backup logic disabled
             // }
-            console.log('🔧 BACKUP LOGIC: Currently disabled for debugging');
+            console.log('🔧 BACKUP LOGIC: Currently disabled');
             
             // 🔍 COMPREHENSIVE DEBUG for early navigation detection
             console.log('🔍 [DEBUG] Pre-navigation check:', {
@@ -1354,7 +1356,7 @@ const PlayerGame = () => {
           //   console.log('⚠️ BACKUP (TIME UP): Backend chưa set questionLast=true nhưng đã đủ số câu');
           //   // ... backup logic disabled
           // }
-          console.log('🔧 BACKUP LOGIC (TIME UP): Currently disabled for debugging');
+          console.log('🔧 BACKUP LOGIC (TIME UP): Currently disabled');
           
           // 🔍 COMPREHENSIVE DEBUG for early navigation detection (TIME UP)
           console.log('🔍 [DEBUG TIME UP] Pre-navigation check:', {
@@ -1653,6 +1655,7 @@ const PlayerGame = () => {
                       <div
                         key={idx}
                         className={`relative text-black px-6 py-6 rounded cursor-pointer transition-all duration-300 ${
+                         
                           shouldShow ? 'opacity-100' : 'opacity-0 pointer-events-none'
                          } ${
                            isSelected ? 'brightness-110' : ''
@@ -1903,4 +1906,4 @@ const PlayerGame = () => {
   );
 };
 
-export default PlayerGame; 
+export default PlayerGame;
