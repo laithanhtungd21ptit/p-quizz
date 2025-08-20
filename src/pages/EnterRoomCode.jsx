@@ -55,7 +55,6 @@ const EnterRoomCode = () => {
         }
       })
 
-      console.log('Join room response status:', response.status)
       console.log('Request details:', {
         pin: roomCode.trim(),
         token: token ? `${token.substring(0, 20)}...` : 'null'
@@ -73,22 +72,12 @@ const EnterRoomCode = () => {
           console.log('Raw response text:', rawText)
           throw new Error('Không thể parse response JSON')
         }
-  
-        // Log toàn bộ response để debug
-        console.log('Full response data:', JSON.stringify(roomData, null, 2))
         
         const roomId = roomData.roomId || roomData.id
         console.log('Join successful, room ID:', roomId)
         
         // ✅ CHUẨN HÓA: Chỉ lưu currentRoom, tất cả thông tin đã có trong đó
         localStorage.setItem('currentRoom', JSON.stringify(roomData))
-        
-        // ✅ VERIFIED: clientSessionId và roomId đã có trong roomData
-        console.log('✅ Room data includes:', {
-          roomId: roomData.roomId || roomData.id,
-          clientSessionId: roomData.clientSessionId,
-          pinCode: roomData.pinCode
-        })
         
         console.log('✅ Room data consolidated in currentRoom:', {
           roomId: roomId,
@@ -118,7 +107,6 @@ const EnterRoomCode = () => {
         const tokenPayload = JSON.parse(atob(token.split('.')[1]))
         const currentUsername = tokenPayload.sub
         
-        // Check nếu user hiện tại là host (có isHost = true trong participants)
         const currentParticipant = participants.find(p => 
           p.username === currentUsername || 
           p.name === currentUsername ||
@@ -126,7 +114,6 @@ const EnterRoomCode = () => {
         )
         
         isHost = currentParticipant?.isHost || false
-        console.log('Current user is host:', isHost)
         
         // CẬP NHẬT: Lưu participants vào currentRoom
         const updatedRoomData = {

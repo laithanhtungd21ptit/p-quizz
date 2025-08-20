@@ -42,8 +42,6 @@ const WaitingRoomForController = () => {
         return;
       }
 
-      // Lấy QR code và pin code của phòng  
-      console.log('Fetching room data for roomId:', roomId);
       const response = await fetch(`http://localhost:8080/rooms/${roomId}/qrcode`, {
         method: 'GET',
         headers: {
@@ -51,8 +49,6 @@ const WaitingRoomForController = () => {
           'Content-Type': 'application/json'
         }
       });
-
-      console.log('Room data response status:', response.status);
 
       if (response.ok) {
         const data = await response.json();
@@ -132,7 +128,6 @@ const WaitingRoomForController = () => {
         // Debug user participation
         const userStr = localStorage.getItem('user');
         const currentUser = userStr ? JSON.parse(userStr) : null;
-        console.log('Current user:', currentUser);
         
         if (currentUser && data.length > 0) {
           console.log('=== USER PARTICIPATION CHECK ===');
@@ -341,12 +336,10 @@ const WaitingRoomForController = () => {
         
         // ✅ PROTECTION: Chỉ xóa nếu chưa có data
         const existingData = localStorage.getItem('firstQuestionData');
-        const existingFlag = localStorage.getItem('firstQuestionReceived');
         
         if (!existingData && !window.firstQuestionReceived) {
           console.log('🧹 Clearing localStorage - no existing question data');
           localStorage.removeItem('firstQuestionData');
-          // firstQuestionReceived - chỉ dùng window flag
         } else {
           console.log('✅ PROTECTING existing localStorage data:', {
             hasData: !!existingData,
@@ -359,7 +352,6 @@ const WaitingRoomForController = () => {
         const backendTopic = `/topic/room/${apiRoomId}`;
         const topicsMatch = frontendTopic === backendTopic;
         
-        console.log('🔍 Topic matching check:');
         console.log('- Frontend subscribed to:', frontendTopic);
         console.log('- Backend will send to:', backendTopic);
         console.log('- Topics match:', topicsMatch);
@@ -429,11 +421,9 @@ const WaitingRoomForController = () => {
   // Setup unified WebSocket để nhận cả participants updates và câu hỏi đầu tiên
   const setupUnifiedWebSocket = () => {
     console.log('🔌 Setup unified WebSocket trong WaitingRoom...');
-    
-    // ✅ PROTECTION: Override localStorage.removeItem để bảo vệ question data
     const originalRemoveItem = localStorage.removeItem;
     localStorage.removeItem = function(key) {
-      if ((key === 'firstQuestionData' || key === 'firstQuestionReceived') && window.questionDataProtected) {
+      if (key === 'firstQuestionData' && window.questionDataProtected) {
         console.log('🛡️ PROTECTED: Không cho xóa', key, 'vì đã có question data');
         return;
       }
@@ -469,7 +459,6 @@ const WaitingRoomForController = () => {
         
         client.subscribe(topicPath, (message) => {
           try {
-            console.log('📨 HOST nhận message:', message.body);
             const data = JSON.parse(message.body);
             
             // Case 1: Participants update (ưu tiên xử lý trước)

@@ -209,7 +209,6 @@ const WaitingRoomForPlayer = () => {
       const actualRoomId = currentRoom ? JSON.parse(currentRoom).roomId : roomId;
       const topicPath = `/topic/room/${actualRoomId}`;
       
-      console.log('🔌 Player subscribing to unified topic:', topicPath);
       console.log('🔌 Player Current room data:', currentRoom ? JSON.parse(currentRoom) : null);
       
       stompClient.subscribe(topicPath, (message) => {
