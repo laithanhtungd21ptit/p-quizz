@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 // import SockJS from 'sockjs-client';
 // import Stomp from 'stompjs';
-import { updateRoomAvatarWithString } from '../services/api.js';
+import { updateRoomAvatarAxios } from '../services/api';
 import SupportCard from "../components/SupportCard";
 import Chat from "../components/Chat"
 
@@ -525,47 +525,74 @@ const WaitingRoomForPlayer = () => {
 
   const togglePopup = () => setIsPopupOpen((prev) => !prev);
   const selectAvatar = async (src) => {
-  const oldAvatar = avatar;
-  setAvatar(src);           // optimistic UI
-  setIsPopupOpen(false);
+    const oldAvatar = avatar;
+    setAvatar(src);           // optimistic UI
+    setIsPopupOpen(false);
 
-  try {
-    // gọi API (FormData avatar = string)
-    const updated = await updateRoomAvatarWithString(roomId, src);
-    // updated: ParticipantDTO (server trả participant đã update) hoặc object chứa avatar url
+    const token = localStorage.getItem('token');
 
-    // update participants local nếu backend trả ParticipantDTO
-    if (updated && updated.id) {
-      setParticipants(prev => prev.map(p => (p.id === updated.id ? updated : p)));
-    } else if (updated && updated.avatar) {
-      // nếu backend trả chỉ avatar url
-      setParticipants(prev => prev.map(p => {
-        if (userData && (p.id === userData.id || p.username === userData.username)) {
-          return { ...p, avatar: updated.avatar };
+    try {
+      // Nếu src là string (ví dụ "/avatar/avatar_1.png"), chuyển về absolute URL trước khi fetch
+      let fileToUpload = null;
+
+      if (typeof src === 'string') {
+        // Build absolute URL so fetch won't be confused by base tag or different origin
+        const fetchUrl = src.startsWith('http') ? src : `${window.location.origin}${src}`;
+        const fetchRes = await fetch(fetchUrl, { mode: 'cors' });
+        if (!fetchRes.ok) {
+          throw new Error(`Không lấy được ảnh từ '${fetchUrl}' (status ${fetchRes.status})`);
         }
-        return p;
-      }));
-    }
+        const blob = await fetchRes.blob();
 
-    // cập nhật user local nếu user hiện tại thay đổi avatar
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      const u = JSON.parse(userStr);
-      if (u.id === (updated?.id) || u.username === (updated?.username) || u.username === userData?.username) {
-        u.avatar = updated?.avatar || src;
-        localStorage.setItem('user', JSON.stringify(u));
-        setUserData(u);
+        try {
+          // Tạo File (nếu trình duyệt hỗ trợ)
+          const ext = blob.type ? `.${blob.type.split('/')[1]}` : '.png';
+          fileToUpload = new File([blob], `avatar${ext}`, { type: blob.type });
+        } catch (e) {
+          // Fallback: FormData chấp nhận Blob
+          fileToUpload = blob;
+        }
+      } else if (src instanceof File || (typeof Blob !== 'undefined' && src instanceof Blob)) {
+        fileToUpload = src;
+      } else {
+        throw new Error('Unsupported avatar type');
       }
+
+      // Gọi API upload (sử dụng axios instance `api` đã cài đặt)
+      const updated = await updateRoomAvatarAxios(roomId, fileToUpload, token, (p) => {
+        // p là phần trăm tiến độ upload (0-100) hoặc null
+        console.log('Upload progress:', p);
+      });
+
+      // Cập nhật participants nếu backend trả ParticipantDTO hoặc avatar
+      if (updated && updated.id) {
+        setParticipants(prev => prev.map(p => (p.id === updated.id ? { ...p, ...updated } : p)));
+      } else if (updated && updated.avatar) {
+        setParticipants(prev => prev.map(p => {
+          if (userData && (p.id === userData.id || p.username === userData.username)) {
+            return { ...p, avatar: updated.avatar };
+          }
+          return p;
+        }));
+      }
+
+      // Cập nhật local user nếu cần
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const u = JSON.parse(userStr);
+        if (u.id === (updated?.id) || u.username === (updated?.username) || u.username === userData?.username) {
+          u.avatar = updated?.avatar || src;
+          localStorage.setItem('user', JSON.stringify(u));
+          setUserData(u);
+        }
+      }
+
+    } catch (err) {
+      console.error('Update avatar thất bại', err);
+      setAvatar(oldAvatar); // rollback optimistic UI
+      alert('Cập nhật avatar thất bại. Vui lòng thử lại.');
     }
-  } catch (err) {
-    console.error('Update avatar thất bại', err);
-    setAvatar(oldAvatar); // rollback
-    // show UI feedback
-    alert('Cập nhật avatar thất bại. Vui lòng thử lại.');
-  }
-};
-
-
+  };
   
   const swapSupport = async () => {
     if (swapCount >= maxSwapCount) {

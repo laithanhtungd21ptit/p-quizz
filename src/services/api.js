@@ -591,49 +591,42 @@ export const savePlayerHistory = async (pinCode, clientSessionId) => {
 };
 
 // --- avatar API ---
-// Gửi FormData với field 'avatar' = string (ví dụ "/avatar/avatar_3.png")
-// Tương thích khi backend bind @ModelAttribute String avatar
-export const updateRoomAvatarWithString = async (roomId, avatarString) => {
+export async function updateRoomAvatarAxios(roomId, file, token = null, onUploadProgress = null) {
+  if (!roomId) throw new Error('roomId is required');
+  if (!file) throw new Error('file is required');
+
+  // Chuẩn bị FormData
+  const formData = new FormData();
+  const filename = (file instanceof File && file.name) ? file.name : 'avatar.png';
+  formData.append('avatar', file, filename);
+
+  // Cấu hình headers (nếu truyền token thì sẽ override interceptor, nếu không thì interceptor của `api` sẽ tự thêm token từ localStorage)
+  const headers = {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    'Content-Type': 'multipart/form-data' // consistent với các hàm khác trong file
+  };
+
   try {
-    const clientSessionId = localStorage.getItem("clientSessionId") || "";
-
-    const form = new FormData();
-    form.append("avatar", avatarString); // key phải khớp với UserProfileUpdateRequest
-    form.append("clientSessionId", clientSessionId);
-
-    const response = await api.put(`/rooms/${roomId}/avatar`, form, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-
-    return response.data; // ParticipantDTO
-  } catch (error) {
-    console.error(
-      "Lỗi updateRoomAvatarWithString:",
-      error.response?.status,
-      error.response?.data || error.message
-    );
-    throw error;
-  }
-};
-
-// Gửi FormData với field 'avatar' = file (MultipartFile)
-export const updateRoomAvatarWithFile = async (roomId, fileBlob, filename = 'avatar.png') => {
-  try {
-    const form = new FormData();
-    form.append('avatar', fileBlob, filename);
-
-    const response = await api.put(`/rooms/${roomId}/avatar`, form, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
+    const res = await api.put(`/rooms/${roomId}/avatar`, formData, {
+      headers,
+      onUploadProgress: (progressEvent) => {
+        if (typeof onUploadProgress === 'function') {
+          const total = progressEvent.total || 0;
+          const percent = total ? Math.round((progressEvent.loaded * 100) / total) : null;
+          onUploadProgress(percent);
+        }
       }
     });
-    return response.data;
-  } catch (error) {
-    console.error('Lỗi updateRoomAvatarWithFile:', error.response?.data || error.message);
-    throw error;
+
+    return res.data; // backend trả ParticipantDTO hoặc object chứa avatar
+  } catch (err) {
+    console.error('Lỗi updateRoomAvatarAxios:', err.response?.status, err.response?.data || err.message);
+    if (err.response) {
+      throw new Error(err.response.data?.message || `HTTP ${err.response.status}`);
+    }
+    throw err;
   }
-};
+}
+
 
 export default api;
