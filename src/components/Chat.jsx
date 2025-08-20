@@ -1,12 +1,11 @@
-// src/components/Chat.jsx
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { fetchMessages, sendMessage } from '../api/chatApi';
-// SockJS được load từ CDN trong index.html
-// STOMP được load từ CDN trong index.html
+import SockJS from 'sockjs-client/dist/sockjs.min.js';
+import { Client } from '@stomp/stompjs';
 
-
-// --- Sticker asset loading ---
+// --- Sticker asset loading (unchanged) ---
 const modules = import.meta.globEager('/src/assets/stickers/*/*.png');
 const stickerFoldersMap = {};
 for (const path in modules) {
@@ -18,8 +17,25 @@ for (const path in modules) {
 const folderNames = Object.keys(stickerFoldersMap);
 const defaultFolder = folderNames[0] || '';
 
-const Chat = ({ groupName = 'default' }) => {
+/**
+ * Chat component
+ * Props:
+ *  - groupName (optional): preferred group/pin to join
+ *
+ * Behavior:
+ *  - Determine effective groupName from multiple sources (prop, location.state, route param, localStorage per-room, generic localStorage)
+ *  - Load history for that group, aborting stale requests
+ *  - Subscribe to WS topic `/topic/chat/{groupName}` and ignore stale subscription messages
+ *  - Ensure messages for other groups (if server includes groupName in payload) are ignored
+ */
+const Chat = ({ groupName: propGroupName }) => {
+  const location = useLocation();
+  const params = useParams(); // expect route to possibly contain :id (roomId)
+  const roomId = params?.id || params?.roomId || null;
+
   const { user, getAccessToken } = useAuth();
+
+  // UI state
   const [isOpen, setIsOpen] = useState(false);
   const [showStickers, setShowStickers] = useState(false);
   const [activeFolder, setActiveFolder] = useState(defaultFolder);
@@ -27,55 +43,124 @@ const Chat = ({ groupName = 'default' }) => {
   const [messages, setMessages] = useState([]);
   const [connected, setConnected] = useState(false);
 
+  // effective group used for fetch/subscribe
+  const [groupName, setGroupName] = useState(null);
+
+  // refs for concurrency control & websocket
   const messagesEndRef = useRef(null);
   const stompClientRef = useRef(null);
+  const subscriptionRef = useRef(null);
 
-  const loadHistory = async () => {
-    try {
-      const history = await fetchMessages(groupName);
-      setMessages(Array.isArray(history) ? history : []);
-    } catch (e) {
-      console.error('Failed to load messages', e);
-    }
-  };
+  const historyAbortRef = useRef(null);
+  const loadRequestIdRef = useRef(0);
+  const subscriptionVersionRef = useRef(0);
+  const groupNameRef = useRef(null);
 
+  // keep groupNameRef in sync
+  useEffect(() => { groupNameRef.current = groupName; }, [groupName]);
+
+  // Determine groupName from multiple sources:
   useEffect(() => {
-    loadHistory();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupName]);
+    // 1. propGroupName
+    if (propGroupName) {
+      setGroupName(propGroupName);
+      console.debug('[Chat] using propGroupName ->', propGroupName);
+      return;
+    }
 
+    // 2. location.state (if navigate(..., { state: { pinCode } }))
+    const pinFromState = location?.state?.pinCode || location?.state?.pin;
+    if (pinFromState) {
+      setGroupName(pinFromState);
+      console.debug('[Chat] using pin from location.state ->', pinFromState);
+      return;
+    }
+
+    // 3. per-room localStorage key currentRoom_<roomId>
+    if (roomId) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(`currentRoom_${roomId}`) || '{}');
+        const pin = saved?.pinCode || saved?.pin || saved?.joinCode;
+        if (pin) {
+          setGroupName(pin);
+          console.debug(`[Chat] using pin from localStorage currentRoom_${roomId} ->`, pin);
+          return;
+        }
+      } catch (e) {
+        console.warn('Error reading currentRoom_<id> from localStorage', e);
+      }
+    }
+
+    // 4. generic localStorage.currentRoom
+    try {
+      const savedGen = JSON.parse(localStorage.getItem('currentRoom') || '{}');
+      const pinGen = savedGen?.pinCode || savedGen?.pin || savedGen?.joinCode;
+      if (pinGen) {
+        setGroupName(pinGen);
+        console.debug('[Chat] using pin from generic currentRoom ->', pinGen);
+        return;
+      }
+    } catch (e) {
+      // ignore parse errors
+    }
+
+    // 5. not found -> null (don't fall back to 'default')
+    setGroupName(null);
+    console.debug('[Chat] no groupName found (prop/location/localStorage)');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propGroupName, location?.state, roomId]);
+
+  // scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Connect when chat is opened and token exists
-  useEffect(() => {
-    if (!isOpen) {
-      if (stompClientRef.current) {
-        try { 
-          if (stompClientRef.current.connected) {
-            stompClientRef.current.disconnect();
-          }
-        } catch (e) {}
-        stompClientRef.current = null;
-        setConnected(false);
+  // Helper: sanitize topic only if you must. By default use raw groupName.
+  const sanitizeTopic = (g) => {
+    if (!g) return '';
+    // Default: return raw. If your server encodes topic differently, adapt here.
+    return g;
+    // e.g. return encodeURIComponent(String(g));
+  };
+
+  // Load history with abort and request-id to avoid races
+  const loadHistory = async () => {
+    if (!groupNameRef.current) {
+      setMessages([]);
+      return;
+    }
+
+    const reqId = ++loadRequestIdRef.current;
+    // clear UI immediately when switching group
+    setMessages([]);
+
+    // abort previous fetch
+    try { historyAbortRef.current?.abort?.(); } catch (e) {}
+    historyAbortRef.current = new AbortController();
+    const signal = historyAbortRef.current.signal;
+
+    console.debug('[Chat] fetchMessages for ->', groupNameRef.current);
+    try {
+      // fetchMessages should accept signal as second param (best-effort)
+      const history = await fetchMessages(groupNameRef.current, { signal });
+      if (reqId !== loadRequestIdRef.current) {
+        console.debug('[Chat] ignored stale history response (reqId mismatch)');
+        return;
       }
-      return;
+      setMessages(Array.isArray(history) ? history : []);
+    } catch (err) {
+      if (reqId !== loadRequestIdRef.current) return;
+      if (err?.name === 'AbortError') {
+        // expected when aborted
+        return;
+      }
+      console.error('Failed to load messages', err);
+      setMessages([]);
     }
+  };
 
-    if (stompClientRef.current && connected) return;
-
-    // ✅ CHUẨN HÓA: Sử dụng getAccessToken() hoặc fallback về 'token'
-    const token = (typeof getAccessToken === 'function') ? getAccessToken() : localStorage.getItem('token');
-    if (!token) {
-      console.warn('No access token - websocket will not connect until logged in.');
-      return;
-    }
-
-    const WS_URL_BASE = import.meta.env.VITE_WS_URL || null;
-    const WS_ENDPOINT = import.meta.env.VITE_WS_ENDPOINT || '/ws';
-    const WS_AUTH_METHOD = import.meta.env.VITE_WS_AUTH_METHOD || 'header';
-
+  // create/activate stomp client when chat opens
+  useEffect(() => {
     const toHttpIfWs = (url) => {
       if (!url) return url;
       if (url.startsWith('ws://')) return 'http://' + url.slice(5);
@@ -83,77 +168,159 @@ const Chat = ({ groupName = 'default' }) => {
       return url;
     };
 
-    let wsUrl = '';
-    if (WS_URL_BASE) {
-      const baseForSock = toHttpIfWs(WS_URL_BASE.replace(/\/$/, ''));
-      wsUrl = `${baseForSock}${WS_ENDPOINT}`;
-    } else {
-      const apiBase = import.meta.env.VITE_API_URL || window.location.origin;
-      const apiBaseNoSlash = apiBase.replace(/\/$/, '');
-      const baseForSock = apiBaseNoSlash.replace(/^ws:/, 'http:').replace(/^wss:/, 'https:');
-      wsUrl = `${baseForSock}${WS_ENDPOINT}`;
+    const createAndActivateClient = (token) => {
+      const WS_URL_BASE = import.meta.env.VITE_WS_URL || null;
+      const WS_ENDPOINT = import.meta.env.VITE_WS_ENDPOINT || '/ws';
+      const WS_AUTH_METHOD = import.meta.env.VITE_WS_AUTH_METHOD || 'header';
+
+      let wsUrl = '';
+      if (WS_URL_BASE) {
+        const baseForSock = toHttpIfWs(WS_URL_BASE.replace(/\/$/, ''));
+        wsUrl = `${baseForSock}${WS_ENDPOINT}`;
+      } else {
+        const apiBase = import.meta.env.VITE_API_URL || window.location.origin;
+        const apiBaseNoSlash = apiBase.replace(/\/$/, '');
+        const baseForSock = apiBaseNoSlash.replace(/^ws:/, 'http:').replace(/^wss:/, 'https:');
+        wsUrl = `${baseForSock}${WS_ENDPOINT}`;
+      }
+
+      const sockJsUrl = (WS_AUTH_METHOD === 'query' && token)
+        ? `${wsUrl}?token=${encodeURIComponent(token)}`
+        : wsUrl;
+
+      const client = new Client({
+        webSocketFactory: () => new SockJS(sockJsUrl),
+        reconnectDelay: 5000,
+        connectHeaders: (WS_AUTH_METHOD === 'header' && token) ? { Authorization: `Bearer ${token}` } : {},
+        onConnect: () => {
+          setConnected(true);
+          // safe subscribe to current group
+          try {
+            // use subscribe utility below
+            subscribeToGroup(client, groupNameRef.current);
+          } catch (e) {
+            console.error('subscribe onConnect failed', e);
+          }
+        },
+        onStompError: (frame) => console.error('STOMP error', frame),
+        onWebSocketClose: () => setConnected(false),
+      });
+
+      stompClientRef.current = client;
+      client.activate();
+    };
+
+    if (!isOpen) {
+      // cleanup if closed
+      try { subscriptionRef.current?.unsubscribe?.(); } catch (e) {}
+      try { stompClientRef.current?.deactivate?.(); } catch (e) {}
+      stompClientRef.current = null;
+      subscriptionRef.current = null;
+      setConnected(false);
+      try { historyAbortRef.current?.abort(); } catch (e) {}
+      return;
     }
 
-    const sockJsUrl = (WS_AUTH_METHOD === 'query' && token)
-      ? `${wsUrl}?token=${encodeURIComponent(token)}`
-      : wsUrl;
+    // if already have client active and connected, do nothing here
+    if (stompClientRef.current && connected) return;
 
-    const socket = new SockJS(sockJsUrl);
-    const client = Stomp.over(socket);
-    
-    client.connect(
-      (WS_AUTH_METHOD === 'header' && token) ? { Authorization: `Bearer ${token}` } : {},
-      () => {
-        // onConnect
-        setConnected(true);
-        client.subscribe(`/topic/chat/${groupName}`, (msg) => {
-          try {
-            const body = JSON.parse(msg.body);
-            setMessages(prev => [...prev, body]);
-          } catch (err) {
-            console.error('Invalid STOMP message', err);
-          }
-        });
-      },
-      (error) => {
-        // onError
-        console.error('STOMP error', error);
-        setConnected(false);
-      }
-    );
+    const token = (typeof getAccessToken === 'function') ? getAccessToken() : localStorage.getItem('token');
+    if (!token) {
+      console.warn('No access token - websocket will not connect until logged in.');
+      return;
+    }
 
-    stompClientRef.current = client;
-
-    loadHistory();
+    createAndActivateClient(token);
 
     return () => {
-      try { 
-        if (client && client.connected) {
-          client.disconnect();
-        }
-      } catch (e) {}
+      try { subscriptionRef.current?.unsubscribe?.(); } catch (e) {}
+      try { stompClientRef.current?.deactivate?.(); } catch (e) {}
       stompClientRef.current = null;
+      subscriptionRef.current = null;
       setConnected(false);
+      try { historyAbortRef.current?.abort(); } catch (e) {}
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, groupName]);
+  }, [isOpen]);
 
-  const toggleChat = () => {
-    setIsOpen(open => !open);
-    setShowStickers(false);
-  };
+  // subscription utility with versioning
+  const subscribeToGroup = (client, group) => {
+    // bump version so old handlers ignore
+    subscriptionVersionRef.current++;
+    const myVersion = subscriptionVersionRef.current;
 
-  const renderTime = (timestamp) => {
-    if (!timestamp) return '';
+    // unsubscribe old
+    try { subscriptionRef.current?.unsubscribe?.(); } catch (e) {}
+
+    if (!group) {
+      console.debug('[Chat] subscribeToGroup called without group, skipping');
+      subscriptionRef.current = null;
+      return;
+    }
+
+    const topic = `/topic/chat/${sanitizeTopic(group)}`;
+    console.debug('[Chat] subscribing to topic ->', topic, 'version=', myVersion);
+
     try {
-      const d = new Date(timestamp);
-      // show only hour:minute in user's locale
-      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      subscriptionRef.current = client.subscribe(topic, (msg) => {
+        // ignore stale handler
+        if (myVersion !== subscriptionVersionRef.current) {
+          // console.debug('[Chat] ignored stale subscription message (version mismatch)');
+          return;
+        }
+
+        let body;
+        try {
+          body = JSON.parse(msg.body);
+        } catch (e) {
+          console.error('Invalid STOMP message', e, msg.body);
+          return;
+        }
+
+        // If server includes groupName in payload, ensure it matches current group
+        if (body && typeof body.groupName === 'string' && body.groupName !== groupNameRef.current) {
+          // console.debug('Ignored inbound for different group', body.groupName, 'current', groupNameRef.current);
+          return;
+        }
+
+        // Append
+        setMessages(prev => [...prev, body]);
+      });
     } catch (e) {
-      return '';
+      console.error('Subscribe failed', e);
+      subscriptionRef.current = null;
     }
   };
 
+  // When groupName changes, ensure we load history and resubscribe if connected
+  useEffect(() => {
+    // always update ref
+    groupNameRef.current = groupName;
+
+    // clear messages immediately
+    setMessages([]);
+
+    // cancel any previous history fetch and load new one
+    loadHistory();
+
+    // if connected, resubscribe to new topic
+    const client = stompClientRef.current;
+    if (client && client.connected) {
+      subscribeToGroup(client, groupNameRef.current);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupName]);
+
+  // resubscribe when connection state changes and we have a groupName
+  useEffect(() => {
+    if (!connected) return;
+    const client = stompClientRef.current;
+    if (!client) return;
+    subscribeToGroup(client, groupNameRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connected]);
+
+  // helper to render message content (kept from your original)
   const renderContent = (content) => {
     if (content === null || content === undefined) return null;
 
@@ -187,14 +354,38 @@ const Chat = ({ groupName = 'default' }) => {
     return <span className="whitespace-pre-wrap break-words">{String(content)}</span>;
   };
 
+  // render time helper
+  const renderTime = (timestamp) => {
+    if (!timestamp) return '';
+    try {
+      const d = new Date(timestamp);
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      return '';
+    }
+  };
+
+  // send handler uses current groupNameRef
   const handleSend = async (content) => {
     if (!String(content || '').trim()) return;
+    if (!groupNameRef.current) {
+      console.warn('No groupName - cannot send message');
+      return;
+    }
     try {
-      await sendMessage({ content, groupName }); // ensure using groupName
+      // sendMessage expected to POST to API with content & groupName
+      await sendMessage({ content, groupName: groupNameRef.current });
       setInput('');
+      // optional optimistic UI:
+      // setMessages(prev => [...prev, { id: `temp-${Date.now()}`, senderUsername: user?.username, content, timestamp: Date.now(), groupName: groupNameRef.current }])
     } catch (e) {
       console.error('Send failed', e);
     }
+  };
+
+  const toggleChat = () => {
+    setIsOpen(v => !v);
+    setShowStickers(false);
   };
 
   return (
@@ -206,8 +397,9 @@ const Chat = ({ groupName = 'default' }) => {
 
       {/* Panel */}
       <div className={`fixed top-[56px] right-0 z-20 w-[300px] max-w-[90vw] bg-white shadow-xl flex flex-col h-[calc(100vh-56px)] transform transition-transform duration-300 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-        {/* Header */}
-        <div className="flex justify-end p-2">
+        {/* Header: show current groupName obviously */}
+        <div className="flex items-center justify-between p-2">
+          <div className="text-xs text-gray-500">Room: <strong>{groupName ?? '—'}</strong></div>
           <button onClick={toggleChat}><img src="/close_chat.png" alt="Close chat" className="w-6 h-6" /></button>
         </div>
 
@@ -220,8 +412,9 @@ const Chat = ({ groupName = 'default' }) => {
               const name = msg.senderUsername || msg.sender || 'System';
               const isMe = user && name === (user.username || user?.name);
               const timeStr = renderTime(msg.timestamp);
+              const key = msg.id ?? msg.timestamp ?? idx;
               return (
-                <div key={idx} className={`mb-3 flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                <div key={key} className={`mb-3 flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[80%] ${isMe ? 'text-right' : 'text-left'}`}>
                     <div className={`text-xs text-gray-500 mb-1 flex items-center gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
                       <strong className="mr-1">{name}</strong>

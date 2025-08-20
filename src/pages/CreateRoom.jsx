@@ -241,6 +241,15 @@ const CreateRoom = ({ onClose }) => {
         localStorage.setItem('currentRoom', JSON.stringify(roomInfo))
         console.log('✅ Đã lưu thông tin phòng vào localStorage:', roomInfo)
         
+        // lưu theo roomId để Chat có thể đọc chính xác trên route đó
+        if (roomId) {
+          try {
+            localStorage.setItem(`currentRoom_${roomId}`, JSON.stringify(roomInfo));
+          } catch (e) {
+            console.warn('Cannot save per-room currentRoom:', e);
+          }
+        }
+
         // Verify ngay sau khi lưu
         const savedData = JSON.parse(localStorage.getItem('currentRoom') || '{}') 
         if (onClose) onClose()
