@@ -60,7 +60,14 @@ const QuestionSetDetail = () => {
         // Chuẩn hóa danh sách câu hỏi cho cột phải
         const mappedQuestions = (quiz.questions || []).map((q, index) => {
           const options = [q.answerA || '', q.answerB || '', q.answerC || '', q.answerD || '']
-          const correctIndex = options.findIndex(opt => opt && opt === q.correctAnswer)
+          const corr = (q.correctAnswer || '').toString().trim().toUpperCase()
+          let correctLetter = 'A'
+          if (['A','B','C','D'].includes(corr)) {
+            correctLetter = corr
+          } else {
+            const idx = options.findIndex(opt => (opt || '').toString().trim() === corr)
+            correctLetter = ['A','B','C','D'][idx >= 0 ? idx : 0]
+          }
           return {
             id: q.id || index + 1,
             question: q.content || '',
@@ -70,7 +77,7 @@ const QuestionSetDetail = () => {
               { id: 'C', label: options[2] },
               { id: 'D', label: options[3] },
             ],
-            answer: ['A', 'B', 'C', 'D'][correctIndex >= 0 ? correctIndex : 0],
+            answer: correctLetter,
           }
         })
         setQuestions(mappedQuestions)
