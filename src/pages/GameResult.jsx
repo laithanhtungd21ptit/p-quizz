@@ -11,8 +11,7 @@ export default function GameResult({ joinCode = '682868' }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  // Check xem user có phải là host không
-  // LƯU Ý: Host cũng có clientSessionId giống player, không thể dùng clientSessionId để phân biệt
+
   const isHost = () => {
     const currentRoom = localStorage.getItem('currentRoom');
     const user = localStorage.getItem('user');
@@ -60,7 +59,10 @@ export default function GameResult({ joinCode = '682868' }) {
       
       console.log('🔍 Host check result:', {
         isRoomHost,
-        hasClientSessionId: !!localStorage.getItem('clientSessionId')
+        hasClientSessionId: (() => {
+          const currentRoom = localStorage.getItem('currentRoom');
+          return currentRoom ? !!JSON.parse(currentRoom).clientSessionId : false;
+        })()
       });
       
       return isRoomHost;
@@ -76,8 +78,8 @@ export default function GameResult({ joinCode = '682868' }) {
     
     const initializeRanking = async () => {
       try {
-        // 🔄 PRIORITY 1: Thử lấy ranking mới nhất từ backend để đảm bảo consistency
-        console.log('🔄 Thử lấy ranking mới nhất từ backend...');
+        // 🎯 ALWAYS CALL API FIRST: Luôn gọi API trước để lấy fresh data
+        console.log('🎯 GameResult: LUÔN LUÔN gọi API để lấy ranking mới nhất...');
         const currentRoom = localStorage.getItem('currentRoom');
         if (currentRoom) {
           try {
@@ -86,46 +88,58 @@ export default function GameResult({ joinCode = '682868' }) {
             
             if (roomId) {
               console.log('📡 Gọi API getRoomRanking cho roomId:', roomId);
+              console.log('📡 API URL sẽ là: /gamerank/' + roomId + '/ranking');
+              
               const { getRoomRanking } = await import('../services/api');
               const freshRankingData = await getRoomRanking(roomId);
               
+              console.log('🔍 API Response debug:', {
+                responseType: typeof freshRankingData,
+                isArray: Array.isArray(freshRankingData),
+                length: freshRankingData?.length,
+                firstItem: freshRankingData?.[0],
+                fullResponse: freshRankingData
+              });
+              
+              console.log('🔍 DETAILED API Response analysis:', {
+                roomId: roomId,
+                apiUrl: `/gamerank/${roomId}/ranking`,
+                responseData: freshRankingData,
+                isOnlyOneParticipant: freshRankingData?.length === 1,
+                participantData: freshRankingData?.[0],
+                allParticipantNames: freshRankingData?.map(p => p.firstName || p.username),
+                currentRoomParticipants: JSON.parse(currentRoom)?.participants?.map(p => p.firstname || p.username)
+              });
+              
               if (freshRankingData && Array.isArray(freshRankingData) && freshRankingData.length > 0) {
-                console.log('✅ Lấy fresh ranking từ backend thành công:', freshRankingData);
+                console.log('✅ Lấy fresh ranking từ API thành công:', freshRankingData);
                 setRankingData(freshRankingData);
-                
-                // Cập nhật localStorage với data mới nhất
-                localStorage.setItem('finalRankingData', JSON.stringify(freshRankingData));
                 setLoading(false);
-                return; // Dừng ở đây nếu lấy được từ backend
+                return; // SUCCESS - Dùng data từ API
+              } else {
+                console.log('⚠️ API trả về data rỗng hoặc không hợp lệ');
               }
+            } else {
+              console.log('❌ Không có roomId trong currentRoom');
             }
           } catch (apiError) {
-            console.log('⚠️ Không thể lấy ranking từ backend:', apiError);
+            console.error('❌ API Error details:', {
+              message: apiError.message,
+              status: apiError.response?.status,
+              data: apiError.response?.data,
+              url: apiError.config?.url
+            });
           }
+        } else {
+          console.log('❌ Không có currentRoom trong localStorage');
         }
         
-        // 📂 FALLBACK 1: Load dữ liệu ranking từ localStorage
-        console.log('📂 Fallback: Load ranking từ localStorage...');
-        const finalRanking = localStorage.getItem('finalRankingData');
-        if (finalRanking) {
-          const parsedRanking = JSON.parse(finalRanking);
-          console.log('📊 Ranking data từ localStorage:', parsedRanking);
-          console.log('📊 Ranking data count:', parsedRanking.length);
-          console.log('📊 Ranking data details:', parsedRanking.map(p => ({
-            name: p.firstName || p.name,
-            score: p.score,
-            correctCount: p.correctCount
-          })));
-          setRankingData(parsedRanking);
-        } else {
-          console.log('⚠️ Không tìm thấy finalRankingData trong localStorage');
-          console.log('🔍 Available localStorage keys:', Object.keys(localStorage));
-          
-          // 📂 FALLBACK 2: thử load từ currentRoom nếu có participants
-          const currentRoom = localStorage.getItem('currentRoom');
-        if (currentRoom) {
+        // 📂 FALLBACK 1: API failed, tạo fallback từ currentRoom participants
+        console.log('📂 FALLBACK: API failed, creating fallback from participants...');
+        const currentRoomForFallback = localStorage.getItem('currentRoom');
+        if (currentRoomForFallback) {
           try {
-            const roomData = JSON.parse(currentRoom);
+            const roomData = JSON.parse(currentRoomForFallback);
             if (roomData.participants && Array.isArray(roomData.participants)) {
               console.log('🔄 Fallback: tạo ranking từ participants');
               const fallbackRanking = roomData.participants.map((p, index) => ({
@@ -142,16 +156,15 @@ export default function GameResult({ joinCode = '682868' }) {
             console.error('❌ Lỗi khi tạo fallback ranking:', error);
           }
         }
-        }
         
-        // Load thông tin phòng
-        const roomInfoData = localStorage.getItem('roomInfo');
-        if (roomInfoData) {
-          const parsedRoomInfo = JSON.parse(roomInfoData);
-          console.log('🏠 Room info từ localStorage:', parsedRoomInfo);
+        // ✅ CHUẨN HÓA: Load thông tin phòng chỉ từ currentRoom
+        const currentRoomData = localStorage.getItem('currentRoom');
+        if (currentRoomData) {
+          const parsedRoomInfo = JSON.parse(currentRoomData);
+          console.log('🏠 Room info từ currentRoom localStorage:', parsedRoomInfo);
           setRoomInfo(parsedRoomInfo);
         } else {
-          console.log('⚠️ Không tìm thấy roomInfo trong localStorage');
+          console.log('⚠️ Không tìm thấy currentRoom trong localStorage');
         }
 
         // Load dữ liệu câu hỏi cuối cùng
@@ -254,7 +267,45 @@ export default function GameResult({ joinCode = '682868' }) {
             <div>Đang tải bảng xếp hạng...</div>
           </div>
         ) : rankingData.length > 0 ? (
-          <RankingTable data={rankingData} totalQuestions={finalQuestionData ? 1 : 15} />
+          <>
+            {(() => {
+              // Lấy totalQuestions từ currentRoom (ưu tiên) hoặc fallback
+              const currentRoom = localStorage.getItem('currentRoom');
+              let totalQuestions = 4; // default fallback
+              
+              if (currentRoom) {
+                try {
+                  const roomData = JSON.parse(currentRoom);
+                  totalQuestions = roomData.totalQuestions || roomData.selectedQuiz?.questionCount || 4;
+                } catch (error) {
+                  console.error('❌ Error parsing currentRoom for totalQuestions:', error);
+                }
+              }
+              
+              console.log('🔍 GameResult RankingTable props:', {
+                totalQuestions,
+                rankingDataLength: rankingData.length,
+                finalQuestionDataExists: !!finalQuestionData
+              });
+              
+              return null; // Just for logging, không render gì
+            })()}
+            <RankingTable 
+              data={rankingData} 
+              totalQuestions={(() => {
+                const currentRoom = localStorage.getItem('currentRoom');
+                if (currentRoom) {
+                  try {
+                    const roomData = JSON.parse(currentRoom);
+                    return roomData.totalQuestions || roomData.selectedQuiz?.questionCount || 4;
+                  } catch (error) {
+                    console.error('❌ Error parsing currentRoom:', error);
+                  }
+                }
+                return 4;
+              })()} 
+            />
+          </>
         ) : (
           <div className="text-center text-gray-500 py-20">
             <div className="text-2xl mb-2">📊</div>
@@ -281,16 +332,20 @@ export default function GameResult({ joinCode = '682868' }) {
             try {
               setSaving(true);
               
-              // Lấy thông tin cần thiết từ localStorage
+              // ✅ CHUẨN HÓA: Lấy thông tin từ currentRoom
               const currentRoom = localStorage.getItem('currentRoom');
-              const clientSessionId = localStorage.getItem('clientSessionId');
               
-              if (!currentRoom || !clientSessionId) {
-                throw new Error('Không tìm thấy thông tin phòng hoặc session');
+              if (!currentRoom) {
+                throw new Error('Không tìm thấy thông tin phòng');
               }
               
               const roomData = JSON.parse(currentRoom);
+              const clientSessionId = roomData.clientSessionId;
               const pinCode = roomData.pinCode;
+              
+              if (!clientSessionId) {
+                throw new Error('Không tìm thấy session ID');
+              }
               
               console.log('💾 Đang lưu lịch sử chơi:', {
                 pinCode,
@@ -305,13 +360,9 @@ export default function GameResult({ joinCode = '682868' }) {
               if (!token) {
                 throw new Error('Không tìm thấy token đăng nhập. Vui lòng đăng nhập lại.');
               }
-              
-              // Kiểm tra token expired
+            
               try {
                 const tokenPayload = JSON.parse(atob(token.split('.')[1]));
-                console.log('🔍 Token payload:', tokenPayload);
-                console.log('🔍 Token exp:', new Date(tokenPayload.exp * 1000));
-                console.log('🔍 Current time:', new Date());
                 
                 const isExpired = tokenPayload.exp * 1000 < Date.now();
                 console.log('🔍 Token expired?', isExpired);
@@ -369,15 +420,14 @@ export default function GameResult({ joinCode = '682868' }) {
             // Xóa dữ liệu game và quay về trang chủ
             console.log('🚪 Thoát khỏi game result');
             
-            // Xóa dữ liệu game khỏi localStorage
-            localStorage.removeItem('finalQuestionData');
-            localStorage.removeItem('finalRankingData');
-            localStorage.removeItem('roomInfo');
-            localStorage.removeItem('currentQuestionData');
-            localStorage.removeItem('finalAnswerResult');
-            
+            // ✅ CLEANUP: Xóa dữ liệu game khỏi localStorage
+              localStorage.removeItem('finalQuestionData');
+              // currentQuestionData - chỉ dành cho players, host không cần cleanup
+              localStorage.removeItem('finalAnswerResult');
+              localStorage.removeItem('currentRoom');
+              localStorage.removeItem('gameStarted');
             // Quay về trang chủ
-            window.location.href = '/';
+            window.location.href = '/'
           }}
         >
           Thoát

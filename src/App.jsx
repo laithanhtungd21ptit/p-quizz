@@ -209,7 +209,7 @@ export default function App() {
               <Route path="/created-sets" element={<CreatedSets />} />
               <Route path="/saved-sets" element={<SavedSets />} />
               <Route path="/history" element={<History />} />
-              <Route path="/history-detail" element={<HistoryDetail />} />
+              <Route path="/history-detail/:roomId" element={<HistoryDetail />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/search" element={<SearchResults />} />

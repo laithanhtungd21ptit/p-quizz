@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { submitAnswer, getRoomRanking } from '../services/api';
 import { useParams } from 'react-router-dom';
 import Chat from '../components/Chat';
@@ -55,17 +55,8 @@ const PlayerGame = () => {
       }
     }
     
-    // Kiểm tra xem có ranking cũ trong localStorage không
-    const savedRanking = localStorage.getItem('finalRankingData');
-    if (savedRanking) {
-      try {
-        const parsedRanking = JSON.parse(savedRanking);
-        console.log('📊 Load ranking cũ từ localStorage:', parsedRanking);
-        setRealRankingData(parsedRanking);
-      } catch (error) {
-        console.error('❌ Lỗi khi parse ranking từ localStorage:', error);
-      }
-    }
+    // ✅ KHÔNG CẦN load finalRankingData từ localStorage - real-time via WebSocket
+    console.log('📊 PlayerGame init - ranking sẽ đến từ WebSocket real-time');
 
     // Load support cards từ WaitingRoomForPlayer
     const savedSupportCards = localStorage.getItem('currentSupportCards');
@@ -129,11 +120,8 @@ const PlayerGame = () => {
         console.log('Setting question time from database:', questionTime, 'seconds');
         setTimeLeft(questionTime);
         
-        // Lưu ranking cũ vào localStorage trước khi reset (nếu có)
-        if (realRankingData.length > 0) {
-          localStorage.setItem('finalRankingData', JSON.stringify(realRankingData));
-          console.log('💾 Đã lưu ranking cũ vào localStorage trước khi reset');
-        }
+        // ✅ KHÔNG CẦN lưu finalRankingData - real-time via WebSocket
+        console.log('🔄 Reset PlayerGame state (không lưu ranking localStorage)');
         
         // Reset các state khác khi load question mới
         setHasAnswered(false);
@@ -148,6 +136,10 @@ const PlayerGame = () => {
         // Reset cached score và rank cho câu hỏi mới
         setCachedPlayerScore(null);
         setCachedPlayerRank(null);
+        
+        // ✅ RESET: Clear submission lock cho câu hỏi mới
+        window.isSubmittingAnswer = false;
+        console.log('🔓 Cleared submission lock for new question');
         
         // Clear localStorage để tránh load lại
         localStorage.removeItem('currentQuestionData');
@@ -192,7 +184,6 @@ const PlayerGame = () => {
     if (currentRoom) {
       const roomData = JSON.parse(currentRoom);
       console.log('🏠 Room data từ localStorage:', roomData);
-      console.log('🔑 PinCode:', roomData.pinCode, 'RoomId:', roomData.roomId);
     }
     
     // Sử dụng SockJS và STOMP
@@ -202,16 +193,14 @@ const PlayerGame = () => {
     // Disable STOMP debug logging
     client.debug = null;
     
-    // Lấy clientSessionId và pinCode để authenticate WebSocket
-    const clientSessionId = localStorage.getItem('clientSessionId');
+    // ✅ CHUẨN HÓA: Lấy clientSessionId từ currentRoom thay vì localStorage riêng
     let connectHeaders = {};
-    
-    if (clientSessionId) {
-      connectHeaders.clientSessionId = clientSessionId;
-    }
     
     if (currentRoom) {
       const roomData = JSON.parse(currentRoom);
+      if (roomData.clientSessionId) {
+        connectHeaders.clientSessionId = roomData.clientSessionId;
+      }
       if (roomData.pinCode) {
         connectHeaders.pinCode = roomData.pinCode;
       }
@@ -231,22 +220,42 @@ const PlayerGame = () => {
       client.subscribe(roomTopic, (message) => {
         console.log('=== 🎯 MESSAGE RECEIVED IN PLAYERGAME - ROOM TOPIC ===');
         console.log('📨 Raw message:', message.body);
-        console.log('🎯 Topic received:', message.destination);
+        console.log('📨 Message timestamp:', new Date().toISOString());
+        console.log('📨 Current question count when received:', actualQuestionCount);
         
         try {
           const data = JSON.parse(message.body);
           console.log('🔍 Parsed message data:', data);
+          console.log('🔍 Message type check:', {
+            hasType: !!data.type,
+            type: data.type,
+            hasId: !!data.id,
+            hasAnswers: !!(data.answerA || data.answerB || data.answerC || data.answerD),
+            isArray: Array.isArray(data)
+          });
           
           // Kiểm tra xem có phải câu hỏi tiếp theo không
           if (data.type === 'NEXT_QUESTION' && data.data) {
-            console.log('🚀 Nhận câu hỏi tiếp theo từ backend!');
+            console.log('🎯 ROOM TOPIC: Nhận NEXT_QUESTION message!');
+            console.log('Question answers:', {
+              A: data.data.answerA,
+              B: data.data.answerB,
+              C: data.data.answerC,
+              D: data.data.answerD
+            });
+
             handleNextQuestion(data.data);
           } else if (data.id && (data.answerA || data.answerB || data.answerC || data.answerD)) {
             // Trường hợp nhận câu hỏi trực tiếp (không có type)
-            console.log('🚀 Nhận câu hỏi trực tiếp từ backend!');
+            console.log('🎯 ROOM TOPIC: Nhận câu hỏi trực tiếp từ backend!');
             handleNextQuestion(data);
           } else {
-            console.log('📝 Không phải câu hỏi, bỏ qua message');
+            console.log('📝 ROOM TOPIC: Không phải câu hỏi, bỏ qua message:', {
+              hasType: !!data.type,
+              type: data.type,
+              hasId: !!data.id,
+              messageKeys: Object.keys(data)
+            });
           }
         } catch (error) {
           console.error('❌ Error parsing WebSocket message:', error);
@@ -295,9 +304,8 @@ const PlayerGame = () => {
             }
           }
           
-          // Lưu ranking realtime vào localStorage
-          localStorage.setItem('finalRankingData', JSON.stringify(rankingData));
-          console.log('💾 [WebSocket] Saved real-time ranking to localStorage');
+          // ✅ KHÔNG CẦN lưu finalRankingData - chỉ update state
+          console.log('📊 [WebSocket] Real-time ranking updated (không lưu localStorage)');
           
         } catch (error) {
           console.error('❌ Error parsing ranking update:', error);
@@ -306,21 +314,33 @@ const PlayerGame = () => {
       
       // Subscribe vào personal queue để nhận câu hỏi tiếp theo riêng
       client.subscribe('/user/queue/next-question', (message) => {
+        console.log('=== 📨 PERSONAL QUEUE MESSAGE RECEIVED ===');
         console.log('📨 Question raw message:', message.body);
+        console.log('📨 Personal queue timestamp:', new Date().toISOString());
+        console.log('📨 Current question count when received (personal):', actualQuestionCount);
         
         try {
           const data = JSON.parse(message.body);
           console.log('➡️ Next Question từ personal queue:', data);
+          console.log('🔍 Personal queue message type check:', {
+            hasType: !!data.type,
+            type: data.type,
+            hasId: !!data.id,
+            hasAnswers: !!(data.answerA || data.answerB || data.answerC || data.answerD)
+          });
           
           // Xử lý câu hỏi tiếp theo
           if (data.id && (data.answerA || data.answerB || data.answerC || data.answerD)) {
-            console.log('🚀 Xử lý câu hỏi tiếp theo từ personal queue!');
+            console.log('🎯 PERSONAL QUEUE: Xử lý câu hỏi tiếp theo từ personal queue!');
             handleNextQuestion(data);
           } else if (data.type === 'NEXT_QUESTION' && data.data) {
-            console.log('🚀 Xử lý NEXT_QUESTION từ personal queue!');
+            console.log('🎯 PERSONAL QUEUE: Xử lý NEXT_QUESTION từ personal queue!');
             handleNextQuestion(data.data);
           } else {
-            console.log('📝 Personal message không phải câu hỏi:', data);
+            console.log('📝 PERSONAL QUEUE: Personal message không phải câu hỏi:', {
+              messageKeys: Object.keys(data),
+              data: data
+            });
           }
         } catch (error) {
           console.error('❌ Error parsing personal next-question message:', error);
@@ -365,7 +385,20 @@ const PlayerGame = () => {
 
   // Xử lý khi nhận câu hỏi tiếp theo
   const handleNextQuestion = (newQuestionData) => {
-    console.log('🔄 Xử lý câu hỏi tiếp theo:', newQuestionData.id);
+    console.log('🔄 === PLAYER HANDLE NEXT QUESTION DEBUG ===');
+    console.log('Question ID:', newQuestionData.id);
+    console.log('Question content:', newQuestionData.content);
+    console.log('Question questionLast:', newQuestionData.questionLast);
+    console.log('Question limitedTime:', newQuestionData.limitedTime);
+    console.log('Current actualQuestionCount (before update):', actualQuestionCount);
+    console.log('Total questions from backend:', newQuestionData.totalQuestions);
+    console.log('All question keys:', Object.keys(newQuestionData));
+    console.log('📊 Question progression:', {
+      currentCount: actualQuestionCount,
+      newQuestionId: newQuestionData.id,
+      isQuestionLast: newQuestionData.questionLast,
+      willBecomeCount: actualQuestionCount + 1
+    });
     
     // Lưu totalQuestions từ backend nếu có
     if (newQuestionData.totalQuestions) {
@@ -400,9 +433,12 @@ const PlayerGame = () => {
       correctAnswer: indexToLetter(newQuestionData.correctAnswer || 0),
       selectedAnswer: null,
       image: newQuestionData.imageUrl || newQuestionData.image || null,
-      currentQuestion: actualQuestionCount + 1, // Sử dụng actual count
+      currentQuestion: actualQuestionCount + 1, // Số câu hỏi mới (sẽ hiển thị)
       totalQuestions: newQuestionData.totalQuestions || totalQuestionsFromBackend || 4 // Ưu tiên từ backend
     });
+    
+    // Cập nhật actual question count TRƯỚC khi set state khác
+    setActualQuestionCount(prev => prev + 1);
     
     // Reset timer với thời gian mới
     const newTime = newQuestionData.limitedTime || 30;
@@ -421,8 +457,9 @@ const PlayerGame = () => {
     setCachedPlayerScore(null);
     setCachedPlayerRank(null);
     
-    // Cập nhật actual question count
-    setActualQuestionCount(prev => prev + 1);
+    // ✅ RESET: Clear submission lock cho câu hỏi tiếp theo
+    window.isSubmittingAnswer = false;
+    console.log('🔓 Cleared submission lock for next question');
     
     console.log('✅ Đã cập nhật câu hỏi mới và reset game state');
     console.log('📊 Current question count:', actualQuestionCount + 1);
@@ -467,6 +504,72 @@ const PlayerGame = () => {
     };
     return mapping[cardName];
   };
+
+  // ✅ OPTIMIZATION: Memoize score/rank calculation để tránh re-calculation mỗi render
+  const playerDisplayData = useMemo(() => {
+    // Ưu tiên sử dụng cached data từ submit answer response
+    let playerRank = cachedPlayerRank || "?";
+    let playerScore = cachedPlayerScore || 0;
+    
+    console.log('🔍 Score Display Debug:', {
+      cachedScore: cachedPlayerScore,
+      cachedRank: cachedPlayerRank,
+      displayScore: playerScore,
+      displayRank: playerRank,
+      hasRankingData: realRankingData.length > 0,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Fallback: Chỉ lấy từ ranking nếu HOÀN TOÀN không có cached data
+    if (cachedPlayerScore === null && cachedPlayerRank === null) {
+      console.log('🔄 Using fallback ranking data (no cached data available)');
+      const currentUser = localStorage.getItem('user');
+      
+      if (currentUser && realRankingData.length > 0) {
+        try {
+          const userData = JSON.parse(currentUser);
+          
+          // Tìm player trong ranking - thử nhiều cách match
+          const playerIndex = realRankingData.findIndex(player => {
+            return (
+              player.username === userData.username ||  // username
+              player.name === userData.username ||      // name
+              player.firstName === userData.username || // firstName
+              player.id === userData.id ||              // id
+              player.firstName === userData.firstName || // firstName match
+              player.username === userData.firstName    // username vs firstName
+            );
+          });
+          
+          if (playerIndex !== -1) {
+            playerRank = (playerIndex + 1); // Rank bắt đầu từ 1
+            playerScore = realRankingData[playerIndex].score || 0;
+            console.log('📊 Fallback data used:', { rank: playerRank, score: playerScore });
+          }
+        } catch (error) {
+          console.error('❌ Error parsing user data for ranking:', error);
+        }
+      }
+    } else {
+      console.log('✅ Using cached data - no fallback needed');
+    }
+    
+    // Format rank display
+    const formatRank = (rank) => {
+      if (typeof rank === 'number') {
+        if (rank === 1) return '1st';
+        if (rank === 2) return '2nd'; 
+        if (rank === 3) return '3rd';
+        return `${rank}th`;
+      }
+      return rank;
+    };
+    
+    return {
+      score: playerScore,
+      rank: formatRank(playerRank)
+    };
+  }, [cachedPlayerScore, cachedPlayerRank, realRankingData]);
 
   // Handler cho từng thẻ hỗ trợ
   const handleSupportCardClick = async (cardIndex) => {
@@ -565,8 +668,9 @@ const PlayerGame = () => {
   const useSupportCard = async (cardType) => {
     try {
       const token = localStorage.getItem('token');
-      const clientSessionId = localStorage.getItem('clientSessionId');
       const currentRoom = localStorage.getItem('currentRoom');
+      // ✅ CHUẨN HÓA: Lấy clientSessionId từ currentRoom
+      const clientSessionId = currentRoom ? JSON.parse(currentRoom).clientSessionId : null;
       
       if (!token || !clientSessionId || !currentRoom) {
         console.error('Thiếu thông tin để gọi API sử dụng thẻ');
@@ -705,12 +809,6 @@ const PlayerGame = () => {
       const roomInfo = JSON.parse(currentRoom);
       console.log('=== THÔNG TIN PHÒNG DEBUG ===');
       console.log('Thông tin phòng hiện tại:', roomInfo);
-      console.log('Tất cả keys:', Object.keys(roomInfo));
-      console.log('PinCode:', roomInfo.pinCode);
-      console.log('Room ID:', roomInfo.id);
-      console.log('Room name:', roomInfo.name);
-      console.log('Room status:', roomInfo.status);
-      
       // Kiểm tra pinCode có khớp với roomId không
       if (roomInfo.pinCode !== roomId) {
         console.warn('PinCode không khớp với roomId:', {
@@ -718,13 +816,6 @@ const PlayerGame = () => {
           roomId: roomId,
           roomIdFromStorage: roomInfo.roomId
         });
-        
-        // Thử so sánh với roomId từ storage
-        if (roomInfo.roomId && roomInfo.roomId.toString() === roomId) {
-          console.log('✅ PinCode khớp với roomId từ storage');
-        } else {
-          console.warn('⚠️ PinCode và roomId không khớp!');
-        }
       }
       
       // Kiểm tra có đủ thông tin cần thiết không
@@ -740,11 +831,9 @@ const PlayerGame = () => {
         console.log('=== ROOM PARTICIPANTS DEBUG ===');
         console.log('Participants trong room:', roomInfo.participants);
         
-        // Kiểm tra user hiện tại có trong danh sách không
         const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
         console.log('Current user:', currentUser);
         
-        // Tìm participant hiện tại
         const foundParticipant = roomInfo.participants.find(p => {
           const usernameMatch = p.username === currentUser.username;
           const firstNameMatch = p.firstName === currentUser.username || p.firstname === currentUser.username;
@@ -778,9 +867,6 @@ const PlayerGame = () => {
         
         if (!isParticipant) {
           console.warn('⚠️ USER KHÔNG CÓ TRONG DANH SÁCH PARTICIPANTS!');
-          console.warn('Username hiện tại:', currentUser.username);
-          console.warn('Có thể gây lỗi 403 khi submit answer');
-          console.warn('Backend tìm kiếm bằng username:', currentUser.username);
         }
       } else {
         console.warn('Không có thông tin participants trong room data');
@@ -816,7 +902,6 @@ const PlayerGame = () => {
             console.log('=== PARTICIPANTS FROM API ===');
             console.log('Participants:', data);
             
-            // CẬP NHẬT: Lưu participants vào currentRoom để sử dụng sau này
             const currentRoomData = JSON.parse(localStorage.getItem('currentRoom') || '{}');
             const updatedRoomData = {
               ...currentRoomData,
@@ -838,9 +923,6 @@ const PlayerGame = () => {
             
             if (!isParticipant) {
               console.error('❌ USER KHÔNG CÓ TRONG DANH SÁCH PARTICIPANTS!');
-              console.error('Đây chính là nguyên nhân gây lỗi 403!');
-              console.error('Username hiện tại:', currentUser.username);
-              console.error('Backend tìm kiếm bằng username:', currentUser.username);
             } else {
               console.log('✅ User có trong danh sách participants');
             }
@@ -868,23 +950,10 @@ const PlayerGame = () => {
         setTimeLeft(timeLeft - 1);
       }, 1000);
       return () => clearTimeout(timer);
-    } else if (timeLeft === 0 && !hasAnswered) {
-      // Khi thời gian hết mà chưa trả lời, tự động đánh dấu sai
-      setIsCorrect(false);
-      setHasAnswered(true);
-      
-      // Bắt đầu countdown progress
-      setCountdownProgress(100);
-      const countdownInterval = setInterval(() => {
-        setCountdownProgress(prev => {
-          if (prev <= 0) {
-            clearInterval(countdownInterval);
-            setShowRankingTable(true);
-            return 0;
-          }
-          return prev - 2; // Giảm 2% mỗi 100ms (5 giây = 5000ms, 5000/100 = 50 lần, 100/50 = 2%)
-        });
-      }, 100);
+    } else if (timeLeft === 0 && !hasAnswered && !window.isSubmittingAnswer) {
+      // ✅ KHI HẾT THỜI GIAN VÀ CHƯA TRẢ LỜI: Gọi hàm submit answer với null
+      console.log('⏰ Hết thời gian và chưa chọn đáp án! Tự động submit null answer...');
+      submitAnswerWhenTimeUp();
     }
   }, [timeLeft, isTimerPaused, hasAnswered]);
 
@@ -896,111 +965,324 @@ const PlayerGame = () => {
   ];
 
     const handleAnswerSelect = async (idx) => {
-    if (!hasAnswered) {
+    // ✅ CHỌN VÀ SUBMIT ĐÁP ÁN NGAY LẬP TỨC
+    if (!hasAnswered && timeLeft > 0 && !window.isSubmittingAnswer) {
+      const selectedLetter = indexToLetter(idx);
+      console.log('✅ Player chọn và submit đáp án ngay:', selectedLetter);
+      
+      // Set flag để tránh duplicate submission
+      window.isSubmittingAnswer = true;
+      console.log('🔒 Setting submission lock for immediate submit');
+      
+      // Lưu đáp án đã chọn ngay lập tức
       setQuestionData(prev => ({
         ...prev,
-        selectedAnswer: indexToLetter(idx) // Chuyển từ số sang chữ cái A, B, C, D
+        selectedAnswer: selectedLetter
       }));
       
-      // Chỉ set selectedAnswer, KHÔNG set isCorrect hay hasAnswered
-      // Đợi backend trả về kết quả trước khi hiển thị
+      // Tạo hiệu ứng haptic feedback nếu có (mobile)
+      if (navigator.vibrate) {
+        navigator.vibrate(50); // Rung nhẹ 50ms
+      }
       
+      try {
       // === CHUẨN BỊ DỮ LIỆU ĐÁP ÁN ===
-      const clientSessionId = localStorage.getItem('clientSessionId');
+      // ✅ CHUẨN HÓA: Lấy clientSessionId từ currentRoom
+      const currentRoomData = localStorage.getItem('currentRoom');
+      const clientSessionId = currentRoomData ? JSON.parse(currentRoomData).clientSessionId : null;
       
       const answerData = {
-        selectedAnswer: indexToLetter(idx),
+          selectedAnswer: selectedLetter,
         clientSessionId: clientSessionId
       };
       
-      console.log('=== DEBUG SUBMIT ANSWER ===');
-      const token = localStorage.getItem('token');
-      const currentRoom = localStorage.getItem('currentRoom');
-      const pinCode = currentRoom ? JSON.parse(currentRoom).pinCode : null;
-      console.log('Token:', token);
-      console.log('Pin code:', pinCode);
-      console.log('Answer data:', answerData);
-      console.log('Room ID from URL:', roomId);
-      console.log('User info:', JSON.parse(localStorage.getItem('user') || '{}'));
-      console.log('Client session ID:', clientSessionId);
-      console.log('Current room data:', currentRoom ? JSON.parse(currentRoom) : null);
-      
-      // === DEBUG USER PARTICIPATION ===
-      try {
-        const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        const roomData = currentRoom ? JSON.parse(currentRoom) : null;
+        console.log('=== 🚀 SUBMIT ANSWER IMMEDIATELY ===');
+        console.log('Selected answer:', selectedLetter);
+        console.log('Time left when selected:', timeLeft);
         
-        console.log('=== USER PARTICIPATION DEBUG ===');
-        console.log('Current user data:', userData);
-        console.log('Current room data:', roomData);
-        
-        if (roomData && roomData.participants) {
-          console.log('Participants in room:', roomData.participants);
-          
-          // Kiểm tra xem user có trong danh sách tham gia không
-          const isParticipant = roomData.participants.some(p => {
-            const usernameMatch = p.username === userData.username;
-            const firstNameMatch = p.firstName === userData.username || p.firstname === userData.username;
-            const idMatch = p.userId === userData.id || p.id === userData.id;
-            
-            console.log(`Participant ${p.username || p.firstName || p.firstname}:`, {
-              username: p.username,
-              firstName: p.firstName,
-              firstname: p.firstname,
-              userId: p.userId,
-              id: p.id,
-              usernameMatch,
-              firstNameMatch,
-              idMatch,
-              isMatch: usernameMatch || firstNameMatch || idMatch
-            });
-            
-            return usernameMatch || firstNameMatch || idMatch;
-          });
-          
-          console.log('User có trong danh sách tham gia:', isParticipant);
-          
-          if (!isParticipant) {
-            console.warn('⚠️ USER KHÔNG CÓ TRONG DANH SÁCH THAM GIA!');
-            console.warn('Đây có thể là nguyên nhân gây lỗi 403');
-            console.warn('Backend tìm kiếm bằng username:', userData.username);
-            console.warn('Nhưng trong danh sách participants có thể không có username này');
-          }
-        } else {
-          console.warn('Không có thông tin participants trong room data');
+        // Kiểm tra dữ liệu trước khi gửi
+        if (!answerData.clientSessionId) {
+          console.error('❌ Thiếu clientSessionId');
+          window.isSubmittingAnswer = false;
+          return;
         }
-      } catch (error) {
-        console.error('Lỗi khi debug user participation:', error);
-      }
-      
-      // Kiểm tra dữ liệu trước khi gửi
-      if (!answerData.selectedAnswer) {
-        throw new Error('Đáp án không hợp lệ');
-      }
-      
-      if (!answerData.clientSessionId) {
-        throw new Error('Thiếu clientSessionId');
-      }
-      
-      // Gửi đáp án về backend
-      try {
-        const currentRoom = localStorage.getItem('currentRoom');
-        const pinCode = currentRoom ? JSON.parse(currentRoom).pinCode : null;
-        const token = localStorage.getItem('token');
-        const user = localStorage.getItem('user');
         
-        console.log('=== DEBUG SUBMIT ANSWER ===');
-        console.log('Current room:', currentRoom);
-        console.log('Pin code:', pinCode);
-        console.log('Token exists:', !!token);
-        console.log('User exists:', !!user);
-        console.log('Room ID from URL:', roomId);
+        if (!answerData.selectedAnswer) {
+          console.error('❌ Thiếu selectedAnswer');
+          window.isSubmittingAnswer = false;
+          return;
+        }
+        
+        // Gửi đáp án về backend ngay lập tức
+      const roomDataForSubmit = localStorage.getItem('currentRoom');
+      const pinCode = roomDataForSubmit ? JSON.parse(roomDataForSubmit).pinCode : null;
         
         if (pinCode) {
-          
           const response = await submitAnswer(pinCode, answerData);
-          console.log('Đáp án đã được gửi thành công');
-          console.log('Kết quả từ backend:', response);
+          console.log('✅ Kết quả từ backend:', response);
+          
+          // ✅ UNLOCK: Clear submission flag after successful submission
+          window.isSubmittingAnswer = false;
+          console.log('🔓 Cleared submission lock after successful immediate submit');
+          
+          // Xử lý kết quả từ backend
+          if (response) {
+            // Set kết quả đúng/sai từ backend
+            setIsCorrect(response.correct || false);
+            setHasAnswered(true);
+            
+            // Lưu thông tin kết quả để hiển thị
+            setAnswerResult({
+              isCorrect: response.correct,
+              correctAnswer: response.correctAnswer,
+              selectedAnswer: response.selectedAnswer,
+              score: response.score,
+              timeTaken: response.timeTaken
+            });
+            
+            // Cache điểm số từ response để hiển thị ngay lập tức
+            setCachedPlayerScore(response.score);
+            
+            console.log('=== 🎯 IMMEDIATE SUBMIT ANSWER RESPONSE ===');
+            console.log('Score mới từ backend:', response.score);
+            console.log('Is Correct:', response.correct);
+            console.log('Đáp án đúng:', response.correctAnswer);
+            console.log('Bạn chọn:', response.selectedAnswer);
+            console.log('Response questionLast:', response.questionLast);
+            console.log('Response questionLast type:', typeof response.questionLast);
+            console.log('Current question questionLast:', questionData.questionLast);
+            console.log('🔍 QUESTION PROGRESSION DEBUG:', {
+              currentQuestionId: questionData.id,
+              responseQuestionId: response.questionId,
+              actualQuestionCount: actualQuestionCount,
+              totalQuestionsFromBackend: totalQuestionsFromBackend,
+              questionDataTotalQuestions: questionData.totalQuestions,
+              questionDataCurrentQuestion: questionData.currentQuestion
+            });
+            console.log('Full response object:', response);
+            
+            // Kiểm tra xem có phải câu hỏi cuối cùng không - Multiple checks
+            const isLastQuestionByResponse = response.questionLast === true;
+            const isLastQuestionByQuestionData = questionData.questionLast === true;
+            const totalQuestions = totalQuestionsFromBackend || questionData.totalQuestions || 4;
+            // ✅ FIX: Check nếu câu HIỆN TẠI (chưa tăng) là câu cuối
+            const isLastQuestionByCount = actualQuestionCount === totalQuestions;
+            
+            // 🔧 IMPORTANT: Backend submit response không có questionLast field
+            // Chỉ dùng questionData.questionLast NẾU backend response không có
+            const shouldUseQuestionDataFlag = response.questionLast === undefined && isLastQuestionByQuestionData;
+            
+            console.log('🔍 LAST QUESTION CHECK (IMMEDIATE):', {
+              byResponse: isLastQuestionByResponse,
+              byQuestionData: isLastQuestionByQuestionData,
+              byCount: isLastQuestionByCount,
+              shouldUseQuestionDataFlag: shouldUseQuestionDataFlag,
+              actualQuestionCount: actualQuestionCount,
+              totalQuestions: totalQuestions,
+              responseQuestionLast: response.questionLast,
+              questionDataQuestionLast: questionData.questionLast,
+              calculation: `${actualQuestionCount} === ${totalQuestions} = ${isLastQuestionByCount}`
+            });
+            
+            // 🔧 LOGIC: Ưu tiên response.questionLast, fallback về questionData.questionLast nếu cần
+            const isLastQuestion = isLastQuestionByResponse || shouldUseQuestionDataFlag;
+            
+            console.log('🎯 FINAL LAST QUESTION DECISION:', {
+              isLastQuestion: isLastQuestion,
+              reason: isLastQuestion ? 
+                (isLastQuestionByResponse ? 'Backend response.questionLast === true' : 
+                 shouldUseQuestionDataFlag ? 'questionData.questionLast === true (response missing)' : 'count check') 
+                : 'Not last question'
+            });
+            
+            // 🔧 BACKUP LOGIC: DISABLED temporarily to debug early navigation
+            // const shouldForceLastQuestionByCount = isLastQuestionByCount && !isLastQuestion;
+            // if (shouldForceLastQuestionByCount) {
+            //   console.log('⚠️ BACKUP: Backend chưa set questionLast=true nhưng đã đủ số câu. Force last question logic!');
+            //   // ... backup logic disabled
+            // }
+            console.log('🔧 BACKUP LOGIC: Currently disabled for debugging');
+            
+            // 🔍 COMPREHENSIVE DEBUG for early navigation detection
+            console.log('🔍 [DEBUG] Pre-navigation check:', {
+              isLastQuestion,
+              isLastQuestionByResponse,
+              isLastQuestionByQuestionData, 
+              isLastQuestionByCount,
+              actualQuestionCount,
+              totalQuestions,
+              questionDataQuestionLast: questionData.questionLast,
+              responseQuestionLast: response.questionLast,
+              currentQuestionField: questionData.currentQuestion,
+              isAlreadyNavigating: !!window.isNavigatingToGameResult
+            });
+            
+            if (isLastQuestion) {
+              console.log('🏁 Đây là câu hỏi cuối cùng! Lấy ranking cuối cùng...', {
+                detectedBy: isLastQuestionByResponse ? 'response' : isLastQuestionByQuestionData ? 'questionData' : 'count'
+              });
+              
+              // ✅ SET FLAG to prevent multiple navigation
+              if (window.isNavigatingToGameResult) {
+                console.log('🚫 Already navigating to GameResult, skip duplicate');
+                return;
+              }
+              window.isNavigatingToGameResult = true;
+              
+              // Lưu dữ liệu câu hỏi cuối và kết quả vào localStorage
+              localStorage.setItem('finalQuestionData', JSON.stringify(questionData));
+              // ✅ CHUẨN HÓA: Chỉ dùng currentRoom, không lưu roomInfo duplicate
+              
+              // LẤY RANKING CUỐI CÙNG TỪ BACKEND sau khi trả lời câu cuối
+              try {
+                const currentRoom = localStorage.getItem('currentRoom');
+                if (currentRoom) {
+                  const roomData = JSON.parse(currentRoom);
+                  const roomId = roomData.roomId;
+                  
+                  if (roomId) {
+                    console.log('📊 Lấy bảng xếp hạng cuối cùng cho phòng:', roomId);
+                    const finalRankingResponse = await getRoomRanking(roomId);
+                    
+                    // Cập nhật ranking state để hiển thị
+                    setRealRankingData(finalRankingResponse);
+                    
+                    // ✅ KHÔNG CẦN lưu vào localStorage - GameResult sẽ gọi API trực tiếp
+                    console.log('📊 Final ranking response (không lưu localStorage):', finalRankingResponse);
+                  }
+                }
+              } catch (rankingError) {
+                console.error('❌ Lỗi khi lấy bảng xếp hạng cuối cùng:', rankingError);
+                // Fallback: sử dụng ranking hiện tại nếu có lỗi
+                // ✅ KHÔNG CẦN fallback localStorage - GameResult sẽ tự xử lý
+                console.log('⚠️ Fallback: không lưu ranking vào localStorage, GameResult sẽ gọi API');
+              }
+              
+              // Hiển thị kết quả và ranking cho câu cuối sau 3 giây
+              console.log('📊 Sẽ hiển thị ranking cuối cùng sau 3 giây...');
+              setTimeout(() => {
+                console.log('📊 Hiển thị ranking cuối cùng ngay bây giờ!');
+                setShowRankingTable(true);
+              }, 3000); // 3 giây để xem kết quả đúng/sai và điểm
+              
+              // Bắt đầu countdown progress cho câu cuối (chỉ để hiệu ứng)
+              setCountdownProgress(100);
+              const finalCountdownInterval = setInterval(() => {
+                setCountdownProgress(prev => {
+                  if (prev <= 0) {
+                    clearInterval(finalCountdownInterval);
+                    return 0;
+                  }
+                  return prev - 1.4; // Giảm để hết 100% trong 7 giây (100/70 = ~1.4)
+                });
+              }, 100);
+              
+              // ✅ GUARANTEED NAVIGATION: Đảm bảo chuyển trang sau 8 giây
+              const navigationTimer = setTimeout(() => {
+                console.log('🚀 [TIMER] Navigating to GameResult after 8s...');
+                console.log('🔍 [TIMER] Current state:', {
+                  hasAnswered,
+                  isLastQuestion,
+                  showRankingTable,
+                  timeLeft
+                });
+                window.location.href = '/game-result';
+              }, 8000); // 8 giây để chắc chắn
+              
+              // Store timer reference to clear if needed
+              window.gameResultNavigationTimer = navigationTimer;
+              console.log('⏱️ Set navigation timer for 8 seconds');
+              
+              return; // Không tiếp tục xử lý ranking thường
+            }
+            console.log('✅ Ranking sẽ được cập nhật real-time qua WebSocket từ Kafka');
+        } else {
+            // Nếu backend trả về null (lỗi), vẫn set đã trả lời để tránh spam
+            setHasAnswered(true);
+            console.log('Backend trả về null, có thể có lỗi');
+          }
+        }
+        
+        // Bắt đầu countdown progress sau khi submit
+        setCountdownProgress(100);
+        const countdownInterval = setInterval(() => {
+          setCountdownProgress(prev => {
+            if (prev <= 0) {
+              clearInterval(countdownInterval);
+              setShowRankingTable(true);
+              return 0;
+            }
+            return prev - 2; // Giảm 2% mỗi 100ms (5 giây = 5000ms, 5000/100 = 50 lần, 100/50 = 2%)
+          });
+        }, 100);
+        
+      } catch (error) {
+        console.error('❌ Lỗi trong handleAnswerSelect:', error);
+        window.isSubmittingAnswer = false;
+      }
+      
+    } else if (hasAnswered) {
+      console.log('🚫 Đã submit rồi, không thể chọn lại');
+    } else if (timeLeft <= 0) {
+      console.log('🚫 Hết thời gian, không thể chọn đáp án');
+    } else if (window.isSubmittingAnswer) {
+      console.log('🚫 Đang submit, vui lòng đợi...');
+    }
+  };
+
+  // ✅ HÀM SUBMIT ĐÁP ÁN KHI HẾT THỜI GIAN (CHỈ KHI CHƯA CHỌN)
+  const submitAnswerWhenTimeUp = async () => {
+    if (hasAnswered || window.isSubmittingAnswer) {
+      console.log('🚫 Đã submit hoặc đang submit, bỏ qua');
+      return;
+    }
+
+    // Kiểm tra xem đã chọn đáp án chưa
+    if (questionData.selectedAnswer) {
+      console.log('⚠️ Đã chọn đáp án rồi, không cần submit khi hết thời gian');
+      return;
+    }
+
+    // Set flag để tránh duplicate submission
+    window.isSubmittingAnswer = true;
+    console.log('🔒 Setting submission lock for time-up null submit');
+    
+    try {
+      // === CHUẨN BỊ DỮ LIỆU ĐÁP ÁN NULL ===
+      // ✅ CHUẨN HÓA: Lấy clientSessionId từ currentRoom
+      const currentRoomForTimeUp = localStorage.getItem('currentRoom');
+      const clientSessionId = currentRoomForTimeUp ? JSON.parse(currentRoomForTimeUp).clientSessionId : null;
+      
+      const answerData = {
+        selectedAnswer: null, // Submit null khi không chọn gì
+        clientSessionId: clientSessionId
+      };
+        
+      console.log('=== 🕐 SUBMIT NULL ANSWER WHEN TIME UP ===');
+      console.log('Selected answer:', null);
+      console.log('Time left:', timeLeft);
+      
+      // Kiểm tra dữ liệu trước khi gửi
+      if (!answerData.clientSessionId) {
+        console.error('❌ Thiếu clientSessionId');
+        window.isSubmittingAnswer = false;
+        return;
+      }
+      
+      console.log('⚠️ Không có đáp án được chọn, submit null answer');
+      
+      // Gửi đáp án về backend
+        const roomDataForTimeUpSubmit = localStorage.getItem('currentRoom');
+        const pinCode = roomDataForTimeUpSubmit ? JSON.parse(roomDataForTimeUpSubmit).pinCode : null;
+        
+        if (pinCode) {
+          const response = await submitAnswer(pinCode, answerData);
+        console.log('✅ Đáp án đã được gửi thành công khi hết thời gian');
+        console.log('✅ Kết quả từ backend:', response);
+        
+        // ✅ UNLOCK: Clear submission flag after successful submission
+        window.isSubmittingAnswer = false;
+        console.log('🔓 Cleared submission lock after successful submit');
           
           // Xử lý kết quả từ backend
                       if (response) {
@@ -1017,103 +1299,152 @@ const PlayerGame = () => {
                 timeTaken: response.timeTaken
               });
               
-              // Cache điểm số từ response để hiển thị ngay lập tức
-              setCachedPlayerScore(response.score);
-              
-              console.log('=== 🎯 SUBMIT ANSWER RESPONSE ===');
-              console.log('Score mới từ backend:', response.score);
+          // Cache điểm số từ response để hiển thị ngay lập tức
+          setCachedPlayerScore(response.score);
+          
+          console.log('=== 🎯 SUBMIT ANSWER RESPONSE ===');
+          console.log('Score mới từ backend:', response.score);
               console.log('Is Correct:', response.correct);
               console.log('Đáp án đúng:', response.correctAnswer);
               console.log('Bạn chọn:', response.selectedAnswer);
-              console.log('Timestamp:', new Date().toISOString());
-              console.log('📈 Cached player score updated to:', response.score);
-              
-              // Kiểm tra xem có phải câu hỏi cuối cùng không - kiểm tra từ response thay vì questionData
-              console.log('🔍 Debug questionLast check:', {
-                responseQuestionLast: response.questionLast,
-                questionDataQuestionLast: questionData.questionLast,
-                actualQuestionCount: actualQuestionCount,
-                totalQuestions: totalQuestionsFromBackend || questionData.totalQuestions
-              });
-              
-              if (response.questionLast === true) {
-                console.log('🏁 Đây là câu hỏi cuối cùng! Lấy ranking cuối cùng...');
+          console.log('Response questionLast:', response.questionLast);
+          console.log('Response questionLast type:', typeof response.questionLast);
+          console.log('Current question questionLast:', questionData.questionLast);
+          console.log('Full response object:', response);
+          
+          // Kiểm tra xem có phải câu hỏi cuối cùng không - Multiple checks
+          const isLastQuestionByResponse = response.questionLast === true;
+          const isLastQuestionByQuestionData = questionData.questionLast === true;
+          const totalQuestions = totalQuestionsFromBackend || questionData.totalQuestions || 4;
+          // ✅ FIX: Check nếu câu HIỆN TẠI (chưa tăng) là câu cuối
+          const isLastQuestionByCount = actualQuestionCount === totalQuestions;
+          
+          console.log('🔍 LAST QUESTION CHECK:', {
+            byResponse: isLastQuestionByResponse,
+            byQuestionData: isLastQuestionByQuestionData,
+            byCount: isLastQuestionByCount,
+            actualQuestionCount: actualQuestionCount,
+            totalQuestions: totalQuestions,
+            calculation: `${actualQuestionCount} === ${totalQuestions} = ${isLastQuestionByCount}`
+          });
+          
+          // ❌ THAY ĐỔI: Chỉ dựa vào response.questionLast từ backend, không dùng count
+          const isLastQuestion = isLastQuestionByResponse;
+          
+          console.log('🎯 FINAL LAST QUESTION DECISION (TIME UP):', {
+            isLastQuestion: isLastQuestion,
+            reason: isLastQuestion ? 'Backend response.questionLast === true' : 'Not last question according to backend'
+          });
+          
+          // 🔧 BACKUP LOGIC: DISABLED temporarily to debug early navigation (TIME UP)
+          // const shouldForceLastQuestionByCount = isLastQuestionByCount && !isLastQuestion;
+          // if (shouldForceLastQuestionByCount) {
+          //   console.log('⚠️ BACKUP (TIME UP): Backend chưa set questionLast=true nhưng đã đủ số câu');
+          //   // ... backup logic disabled
+          // }
+          console.log('🔧 BACKUP LOGIC (TIME UP): Currently disabled for debugging');
+          
+          // 🔍 COMPREHENSIVE DEBUG for early navigation detection (TIME UP)
+          console.log('🔍 [DEBUG TIME UP] Pre-navigation check:', {
+            isLastQuestion,
+            isLastQuestionByResponse,
+            isLastQuestionByQuestionData, 
+            isLastQuestionByCount,
+            actualQuestionCount,
+            totalQuestions,
+            questionDataQuestionLast: questionData.questionLast,
+            responseQuestionLast: response.questionLast,
+            currentQuestionField: questionData.currentQuestion,
+            isAlreadyNavigating: !!window.isNavigatingToGameResult
+          });
+          
+          if (isLastQuestion) {
+            console.log('🏁 Đây là câu hỏi cuối cùng! Lấy ranking cuối cùng...', {
+              detectedBy: isLastQuestionByResponse ? 'response' : isLastQuestionByQuestionData ? 'questionData' : 'count'
+            });
+            
+            // ✅ SET FLAG to prevent multiple navigation (TIME UP case)
+            if (window.isNavigatingToGameResult) {
+              console.log('🚫 Already navigating to GameResult, skip duplicate (time up)');
+              return;
+            }
+            window.isNavigatingToGameResult = true;
+            
+            // Lưu dữ liệu câu hỏi cuối và kết quả vào localStorage
+            localStorage.setItem('finalQuestionData', JSON.stringify(questionData));
+            // ✅ CHUẨN HÓA: Chỉ dùng currentRoom, không lưu roomInfo duplicate
                 
-                // Lưu dữ liệu câu hỏi cuối và kết quả vào localStorage
-                localStorage.setItem('finalQuestionData', JSON.stringify(questionData));
-                localStorage.setItem('finalAnswerResult', JSON.stringify(response));
-                
-                // Lưu thông tin phòng
+            // LẤY RANKING CUỐI CÙNG TỪ BACKEND sau khi trả lời câu cuối
+              try {
                 const currentRoom = localStorage.getItem('currentRoom');
                 if (currentRoom) {
-                  localStorage.setItem('roomInfo', currentRoom);
-                }
-                
-                // LẤY RANKING CUỐI CÙNG TỪ BACKEND sau khi trả lời câu cuối
-                try {
-                  const currentRoom = localStorage.getItem('currentRoom');
-                  if (currentRoom) {
-                    const roomData = JSON.parse(currentRoom);
-                    const roomId = roomData.roomId;
-                    
-                    if (roomId) {
-                      console.log('📊 Lấy bảng xếp hạng cuối cùng cho phòng:', roomId);
-                      const finalRankingResponse = await getRoomRanking(roomId);
-                      
-                      // Cập nhật ranking state để hiển thị
-                      setRealRankingData(finalRankingResponse);
-                      
-                      // Lưu ranking cuối cùng vào localStorage cho GameResult
-                      localStorage.setItem('finalRankingData', JSON.stringify(finalRankingResponse));
-                      console.log('💾 Đã lưu ranking cuối cùng vào localStorage:', finalRankingResponse);
-                    }
-                  }
-                } catch (rankingError) {
-                  console.error('❌ Lỗi khi lấy bảng xếp hạng cuối cùng:', rankingError);
-                  // Fallback: sử dụng ranking hiện tại nếu có lỗi
-                  if (realRankingData.length > 0) {
-                    localStorage.setItem('finalRankingData', JSON.stringify(realRankingData));
-                    console.log('💾 Fallback: đã lưu ranking hiện tại vào localStorage');
+                  const roomData = JSON.parse(currentRoom);
+                  const roomId = roomData.roomId;
+                  
+                  if (roomId) {
+                  console.log('📊 Lấy bảng xếp hạng cuối cùng cho phòng:', roomId);
+                  const finalRankingResponse = await getRoomRanking(roomId);
+                  
+                  // Cập nhật ranking state để hiển thị
+                  setRealRankingData(finalRankingResponse);
+                  
+                  // ✅ KHÔNG CẦN lưu vào localStorage - GameResult sẽ gọi API trực tiếp
+                  console.log('📊 Final ranking response (time-up, không lưu localStorage):', finalRankingResponse);
                   }
                 }
-                
-                // Bắt đầu countdown progress cho câu cuối
-                setCountdownProgress(100);
-                const finalCountdownInterval = setInterval(() => {
-                  setCountdownProgress(prev => {
-                    if (prev <= 60) { // Sau 2 giây (40% progress), hiển thị ranking
-                      clearInterval(finalCountdownInterval);
-                      console.log('📊 Hiển thị ranking cuối cùng...');
-                      setShowRankingTable(true);
-                      return 60;
-                    }
-                    return prev - 2; // Giảm 2% mỗi 100ms
-                  });
-                }, 100);
-                
-                // Đợi 7 giây để người chơi xem kết quả và ranking cuối cùng, sau đó chuyển đến GameResult
-                setTimeout(() => {
-                  console.log('🚀 Chuyển đến GameResult...');
-                  window.location.href = '/game-result';
-                }, 7000); // 7 giây để có thời gian xem ranking
-                
-                return; // Không tiếp tục xử lý ranking thường
-              }
-              
-              // ✅ RANKING SẼ ĐƯỢC CẬP NHẬT TỰ ĐỘNG QUA WEBSOCKET
-              // Không cần manual API call nữa vì đã subscribe /topic/room/{roomId}/ranking
-              console.log('✅ Ranking sẽ được cập nhật real-time qua WebSocket từ Kafka');
+              } catch (rankingError) {
+              console.error('❌ Lỗi khi lấy bảng xếp hạng cuối cùng:', rankingError);
+              // Fallback: sử dụng ranking hiện tại nếu có lỗi
+              // ✅ KHÔNG CẦN fallback localStorage - GameResult sẽ tự xử lý
+              console.log('⚠️ Fallback (time-up): không lưu ranking vào localStorage, GameResult sẽ gọi API');
+            }
+            
+            // Hiển thị kết quả và ranking cho câu cuối sau 3 giây (cho time-up case)
+            console.log('📊 Sẽ hiển thị ranking cuối cùng sau 3 giây (time-up)...');
+            setTimeout(() => {
+              console.log('📊 Hiển thị ranking cuối cùng ngay bây giờ (time-up)!');
+              setShowRankingTable(true);
+            }, 3000); // 3 giây để xem kết quả
+            
+            // Bắt đầu countdown progress cho câu cuối (chỉ để hiệu ứng)
+            setCountdownProgress(100);
+            const finalCountdownInterval = setInterval(() => {
+              setCountdownProgress(prev => {
+                if (prev <= 0) {
+                  clearInterval(finalCountdownInterval);
+                  return 0;
+                }
+                return prev - 1.4; // Giảm để hết 100% trong 7 giây (100/70 = ~1.4)
+              });
+            }, 100);
+            
+            // ✅ GUARANTEED NAVIGATION: Đảm bảo chuyển trang sau 8 giây (TIME UP case)
+            const navigationTimer = setTimeout(() => {
+              console.log('🚀 [TIMER TIME-UP] Navigating to GameResult after 8s...');
+              console.log('🔍 [TIMER TIME-UP] Current state:', {
+                hasAnswered,
+                isLastQuestion,
+                showRankingTable,
+                timeLeft
+              });
+              window.location.href = '/game-result';
+            }, 8000); // 8 giây để chắc chắn
+            
+            // Store timer reference to clear if needed
+            window.gameResultNavigationTimerTimeUp = navigationTimer;
+            console.log('⏱️ Set navigation timer for 8 seconds (time up case)');
+            
+            return; // Không tiếp tục xử lý ranking thường
+          }
+          console.log('✅ Ranking sẽ được cập nhật real-time qua WebSocket từ Kafka');
           } else {
             // Nếu backend trả về null (lỗi), vẫn set đã trả lời để tránh spam
             setHasAnswered(true);
             console.log('Backend trả về null, có thể có lỗi');
           }
-        }
-      } catch (error) {
-        console.error('Lỗi khi gửi đáp án:', error);
       }
       
-      // Bắt đầu countdown progress
+      // Bắt đầu countdown progress sau khi submit
       setCountdownProgress(100);
       const countdownInterval = setInterval(() => {
         setCountdownProgress(prev => {
@@ -1125,6 +1456,10 @@ const PlayerGame = () => {
           return prev - 2; // Giảm 2% mỗi 100ms (5 giây = 5000ms, 5000/100 = 50 lần, 100/50 = 2%)
         });
       }, 100);
+      
+    } catch (error) {
+      console.error('❌ Lỗi trong submitAnswerWhenTimeUp:', error);
+      window.isSubmittingAnswer = false;
     }
   };
 
@@ -1179,80 +1514,16 @@ const PlayerGame = () => {
         <div className="flex items-center justify-between px-8">
           {/* Bên trái: Hạng + Điểm */}
           <div className="flex items-center space-x-3">
-            {(() => {
-              // Ưu tiên sử dụng cached data từ submit answer response
-              let playerRank = cachedPlayerRank || "?";
-              let playerScore = cachedPlayerScore || 0;
-              
-              console.log('🔍 Score Display Debug:', {
-                cachedScore: cachedPlayerScore,
-                cachedRank: cachedPlayerRank,
-                displayScore: playerScore,
-                displayRank: playerRank,
-                hasRankingData: realRankingData.length > 0,
-                timestamp: new Date().toISOString()
-              });
-              
-              // Fallback: Chỉ lấy từ ranking nếu HOÀN TOÀN không có cached data
-              if (cachedPlayerScore === null && cachedPlayerRank === null) {
-                console.log('🔄 Using fallback ranking data (no cached data available)');
-                const currentUser = localStorage.getItem('user');
-                
-                if (currentUser && realRankingData.length > 0) {
-                  try {
-                    const userData = JSON.parse(currentUser);
-                    
-                    // Tìm player trong ranking - thử nhiều cách match
-                    const playerIndex = realRankingData.findIndex(player => {
-                      return (
-                        player.username === userData.username ||  // username
-                        player.name === userData.username ||      // name
-                        player.firstName === userData.username || // firstName
-                        player.id === userData.id ||              // id
-                        player.firstName === userData.firstName || // firstName match
-                        player.username === userData.firstName    // username vs firstName
-                      );
-                    });
-                    
-                    if (playerIndex !== -1) {
-                      playerRank = (playerIndex + 1); // Rank bắt đầu từ 1
-                      playerScore = realRankingData[playerIndex].score || 0;
-                      console.log('📊 Fallback data used:', { rank: playerRank, score: playerScore });
-                    }
-                  } catch (error) {
-                    console.error('❌ Error parsing user data for ranking:', error);
-                  }
-                }
-              } else {
-                console.log('✅ Using cached data - no fallback needed');
-              }
-              
-              // Format rank display
-              const formatRank = (rank) => {
-                if (typeof rank === 'number') {
-                  if (rank === 1) return '1st';
-                  if (rank === 2) return '2nd'; 
-                  if (rank === 3) return '3rd';
-                  return `${rank}th`;
-                }
-                return rank;
-              };
-              
-              return (
-                <>
                   {/* Hạng */}
                   <div className="flex items-center px-3 py-1 bg-gradient-to-r from-pink-500 to-pink-600 rounded-lg text-white space-x-1 h-9">
                     <img src="/Frame (5).png" className="w-8 h-8" alt="crown" />
-                    <span className="text-sm font-bold">{formatRank(playerRank)}</span>
+              <span className="text-sm font-bold">{playerDisplayData.rank}</span>
                   </div>
                   {/* Điểm */}
                   <div className="flex items-center px-3 py-1 bg-gradient-to-r from-pink-500 to-pink-600 rounded-lg text-white space-x-1 h-9">
                     <img src="Frame (6).png" className="w-8 h-8" alt="coin" />
-                    <span className="text-sm font-bold">{playerScore}</span>
+              <span className="text-sm font-bold">{playerDisplayData.score}</span>
                   </div>
-                </>
-              );
-            })()}
           </div>
           {/* Giữa: Mã phòng */}
           <div className="bg-white rounded-lg border-2 border-pink-500 px-4 flex items-center h-9">
@@ -1290,7 +1561,7 @@ const PlayerGame = () => {
                 {/* Hiển thị số câu */}
                 <div className="flex justify-center mb-2">
                   <div className="bg-pink-500 text-white px-4 rounded-lg font-bold text-lg">
-                    {actualQuestionCount}/{totalQuestionsFromBackend || questionData.totalQuestions || 4}
+                    {questionData.currentQuestion || 1}/{totalQuestionsFromBackend || questionData.totalQuestions || 4}
                   </div>
                 </div>
 
@@ -1305,10 +1576,14 @@ const PlayerGame = () => {
 
                 {/* Ô thời gian đếm ngược */}
                 <div className="absolute top-[30px] right-[5px]">
-                  <div className="border-4 border-pink-500 text-white w-14 h-14 rounded-full flex items-center justify-center font-black text-2xl bg-transparent">
+                  <div className={`border-4 text-white w-14 h-14 rounded-full flex items-center justify-center font-black text-2xl bg-transparent ${
+                    timeLeft <= 10 ? 'border-red-500' : 'border-pink-500'
+                  }`}>
                     {timeLeft}
                   </div>
                 </div>
+
+
 
                 {/* Hiển thị điểm ở chính giữa giao diện */}
                 {hasAnswered && answerResult && (
@@ -1338,6 +1613,14 @@ const PlayerGame = () => {
                   {[0, 1, 2, 3].map((idx) => {
                     let bgImage = bgImages[idx]; // Mặc định là background gốc
                     let shouldShow = true; // Mặc định hiển thị tất cả
+                    let isSelected = false; // Track xem có được chọn không
+                    
+                    // Kiểm tra xem đáp án này có được chọn không (trước khi submit)
+                    if (!hasAnswered && questionData.selectedAnswer === indexToLetter(idx)) {
+                      isSelected = true;
+                      // Có thể thay đổi background cho đáp án đã chọn
+                      // bgImage = '/Group_selected.png'; // Nếu có ảnh riêng cho selected
+                    }
                     
                                          if (hasAnswered) {
                        if (answerResult && indexToLetter(idx) === answerResult.correctAnswer) {
@@ -1359,10 +1642,16 @@ const PlayerGame = () => {
                         key={idx}
                         className={`relative text-black px-6 py-6 rounded cursor-pointer transition-all duration-300 ${
                           shouldShow ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                         } ${
+                           isSelected ? 'brightness-110' : ''
                         }`}
                         style={{ 
                           background: `url('${bgImage}') center center / 100% 100% no-repeat`, 
-                          height: 104 
+                           height: 104,
+                           // Chỉ tăng độ sáng và bão hòa màu, không có viền
+                           ...(isSelected && {
+                             filter: 'brightness(1.2) saturate(1.3) contrast(1.1)'
+                           })
                         }}
                         onClick={() => handleAnswerSelect(idx)}
                       >
@@ -1371,16 +1660,27 @@ const PlayerGame = () => {
                         </div>
                         <div className="absolute -top-[11px] right-2 flex flex-col items-end group">
                           <span className="text-xs bg-pink-600 text-white px-2 py-0.5 rounded mb-1 opacity-0 group-hover:opacity-100 transition">
-                            Chọn đáp án này
+                            {hasAnswered ? 'Đã submit đáp án' : 'Chọn đáp án này'}
                           </span>
                           <input
                             type="radio"
                             name="correct"
-                            checked={answerResult && answerResult.selectedAnswer === indexToLetter(idx)}
-                            onChange={() => handleAnswerSelect(idx)}
-                            className="w-5 h-5 cursor-pointer"
+                            checked={
+                              // Hiển thị selected khi đã chọn (chưa submit) hoặc khi đã submit
+                              questionData.selectedAnswer === indexToLetter(idx) ||
+                              (answerResult && answerResult.selectedAnswer === indexToLetter(idx))
+                            }
+                            readOnly // ✅ READ-ONLY: Tránh onChange event, chỉ dùng onClick của container
+                            className={`w-5 h-5 cursor-pointer transition-all duration-200 ${
+                              isSelected ? 'scale-125' : ''
+                            }`}
                             style={{
-                              accentColor: answerResult && answerResult.selectedAnswer === indexToLetter(idx) ? '#dc2626' : '#9ca3af'
+                              accentColor: 
+                                questionData.selectedAnswer === indexToLetter(idx) && !hasAnswered 
+                                  ? '#3b82f6' // Xanh dương khi chọn nhưng chưa submit
+                                  : answerResult && answerResult.selectedAnswer === indexToLetter(idx) 
+                                    ? '#dc2626' // Đỏ khi đã submit
+                                    : '#9ca3af' // Xám mặc định
                             }}
                           />
                         </div>

@@ -172,11 +172,6 @@ const CreateRoom = ({ onClose }) => {
       return
     }
 
-    console.log('Creating room with quiz:', selectedQuiz)
-    console.log('Quiz ID:', quizId)
-    console.log('Quiz topic:', selectedQuiz.quizTopic || selectedQuiz.topic)
-    console.log('Quiz structure keys:', Object.keys(selectedQuiz))
-
     setLoading(true)
     setError('')
     
@@ -198,8 +193,6 @@ const CreateRoom = ({ onClose }) => {
       if (response.ok) {
         const roomData = await response.json()
         console.log('Phòng đã được tạo:', roomData)
-        console.log('Room ID:', roomData.id)
-        console.log('Room keys:', Object.keys(roomData))
         
         // Kiểm tra roomId có tồn tại không
         const roomId = roomData.roomId || roomData.id || roomData.room?.id
@@ -253,10 +246,7 @@ const CreateRoom = ({ onClose }) => {
         console.log('✅ Đã lưu thông tin phòng vào localStorage:', roomInfo)
         
         // Verify ngay sau khi lưu
-        const savedData = JSON.parse(localStorage.getItem('currentRoom') || '{}')
-        console.log('🔍 Kiểm tra ngay sau khi lưu:', savedData)
-        console.log('🔍 So sánh key count - Trước:', Object.keys(roomInfo).length, 'Sau:', Object.keys(savedData).length)
-      
+        const savedData = JSON.parse(localStorage.getItem('currentRoom') || '{}') 
         if (onClose) onClose()
         navigate(`/waiting-room-for-controller/${roomId}`)
       } else {
